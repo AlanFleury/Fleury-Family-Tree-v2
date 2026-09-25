@@ -1,18 +1,38 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    function signedIn() { return request.auth != null; }
-    function myUser() { return get(/databases/$(database)/documents/users/$(request.auth.uid)); }
-    function role() { return signedIn() && myUser().data.role; }
-    function isAdmin() { return role() == 'admin'; }
-    function isEditor() { return role() == 'editor' || role() == 'admin'; }
-    function isViewer() { return role() in ['viewer','editor','admin']; }
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function role() {
+      return signedIn()
+        ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role
+        : null;
+    }
+
+    function isAdmin() {
+      return role() == 'admin';
+    }
+
+    function isEditor() {
+      return role() in ['editor', 'admin'];
+    }
+
+    function isViewer() {
+      return role() in ['viewer', 'editor', 'admin'];
+    }
 
     match /users/{uid} {
-      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
-      // A newly signed-in user may create only a viewer record for themselves.
-      // The first administrator should be created manually in the Firebase console.
-      allow create: if signedIn() && request.auth.uid == uid && request.resource.data.role == 'viewer';
+      allow read: if signedIn() &&
+        (request.auth.uid == uid || isAdmin());
+
+      allow create: if signedIn() &&
+        request.auth.uid == uid &&
+        request.resource.data.role == 'viewer';
+
       allow update, delete: if isAdmin();
     }
 
@@ -20,10 +40,12 @@ service cloud.firestore {
       allow read: if isViewer();
       allow create, update, delete: if isEditor();
     }
+
     match /relationships/{relationshipId} {
       allow read: if isViewer();
       allow create, update, delete: if isEditor();
     }
+
     match /meta/{docId} {
       allow read: if isViewer();
       allow create, update, delete: if isEditor();
