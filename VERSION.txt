@@ -1,0 +1,4 @@
+Fleury Family Archive rebuilt v5
+Google redirect auth
+Private Firestore
+No public family data
