@@ -854,13 +854,16 @@ async function init(){
 
   renderAll();
 
-  bindAuth();
-
   if('serviceWorker' in navigator){
 
     navigator.serviceWorker
       .register('sw.js')
-      .catch(()=>{});
+      .catch(e =>
+        console.warn(
+          'Service worker registration failed:',
+          e
+        )
+      );
 
   }
 
@@ -871,12 +874,18 @@ async function init(){
 
     await firebaseApi.initAuth(handleUser);
 
+    bindAuth();
+
   }catch(e){
 
-    console.error('Firebase initialization failed:',e);
+    console.error(
+      'Firebase initialization failed:',
+      e
+    );
 
     setCloudStatus(
-      'Firebase connection not available yet.'
+      'Firebase connection failed: ' +
+      e.message
     );
 
   }
