@@ -1,4 +1,4 @@
-import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js';
+﻿import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence } from 'https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js';
 import { getFirestore, doc, getDoc, collection, getDocs, writeBatch, setDoc } from 'https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js';
 import { firebaseConfig } from './firebase-config.js';
@@ -40,8 +40,8 @@ export async function loadDatabase(){
       getDocs(collection(store,'relationships')),
       getDoc(doc(store,'meta','archive-v5'))
     ]);
-    const people=peopleSnap.docs.filter(d=>d.id.startsWith('v5_')).map(d=>d.data());
-    const relationships=relSnap.docs.filter(d=>d.id.startsWith('v5_')).map(d=>d.data());
+    const peopleDocs=peopleSnap.docs.filter(d=>d.id.startsWith('v5_')); const people=(peopleDocs.length?peopleDocs:peopleSnap.docs).map(d=>d.data());
+    const relDocs=relSnap.docs.filter(d=>d.id.startsWith('v5_')); const relationships=(relDocs.length?relDocs:relSnap.docs).map(d=>d.data());
     if(!people.length) throw new Error('The private database returned 0 people. Please retry instead of opening an empty archive.');
     return {people,relationships,meta:metaSnap.exists()?metaSnap.data():{name:'Fleury Family Archive',version:'5.0'}};
   },'Loading the family archive',4);
@@ -68,3 +68,4 @@ export async function saveDatabase(database){
   }
   await setDoc(doc(store,'meta','archive-v5'),{...(database.meta||{}),updatedAt:new Date().toISOString(),version:'5.0'});
 }
+

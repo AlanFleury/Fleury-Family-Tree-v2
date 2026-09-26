@@ -435,7 +435,7 @@ function bind(){
   $('#newRel').onclick=editRel;
   $('#findKinship').onclick=findKinship;
   $('#generateReport').onclick=generateReport;
-  $('#printReport').onclick=()=>{ const html=$('#reportPreview').innerHTML; const w=window.open('','_blank'); if(!w)return; w.document.write('<!doctype html><html><head><title>Fleury Family Archive Report</title><style>body{font-family:Georgia,serif;margin:28px;color:#222}h1,h2{font-family:Georgia,serif}table{border-collapse:collapse;width:100%}td,th{padding:6px;border-bottom:1px solid #ccc;text-align:left}.small{color:#666}</style><style id="fleury-mobile-fresh">
+  $('#printReport').onclick=()=>{ const html=$('#reportPreview').innerHTML; const w=window.open('','_blank'); if(!w)return; w.document.write(`<!doctype html><html><head><title>Fleury Family Archive Report</title><style>body{font-family:Georgia,serif;margin:28px;color:#222}h1,h2{font-family:Georgia,serif}table{border-collapse:collapse;width:100%}td,th{padding:6px;border-bottom:1px solid #ccc;text-align:left}.small{color:#666}</style><style id="fleury-mobile-fresh">
 html{-webkit-text-size-adjust:100%}
 body{margin:0;min-width:0}
 button,input,select,textarea{font:inherit}
@@ -454,7 +454,7 @@ nav,.tabs,.tabbar,.nav-tabs{overflow-x:auto;white-space:nowrap;-webkit-overflow-
   .card,.panel,.section{margin-left:8px;margin-right:8px}
   .modal,.dialog{width:calc(100vw - 16px)!important;max-width:none!important}
 }
-</style></head><body>'+html+'</body></html>'); w.document.close(); w.focus(); setTimeout(()=>w.print(),250); };
+</style></head><body>'+html+'</body></html>`); w.document.close(); w.focus(); setTimeout(()=>w.print(),250); };
 
   $('#generateChart').onclick=generateChart;
   $('#downloadSvg').onclick=exportSvg;
@@ -676,6 +676,7 @@ start();
 </script>
 </body>
 </html>
+
 
 
 
