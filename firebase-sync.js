@@ -4,7 +4,9 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
   signOut,
-  onAuthStateChanged
+  onAuthStateChanged,
+  setPersistence,
+  browserLocalPersistence
 } from 'https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js';
 import {
   getFirestore,
@@ -21,9 +23,14 @@ import { firebaseConfig } from './firebase-config.js';
 let auth = null;
 let store = null;
 
-export function initAuth(callback) {
+export async function initAuth(callback) {
   const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
   auth = getAuth(app);
+  try {
+    await setPersistence(auth, browserLocalPersistence);
+  } catch (e) {
+    console.warn('Browser-local Firebase auth persistence unavailable:', e);
+  }
   store = getFirestore(app);
   return onAuthStateChanged(auth, callback);
 }

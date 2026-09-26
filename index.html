@@ -21,7 +21,7 @@ main{padding:14px}.grid{display:grid;grid-template-columns:1.25fr .95fr;gap:14px
 .treewrap{overflow:auto;padding:12px;border:1px solid var(--line);border-radius:12px;background:#f5ead8}.tree{min-width:900px}.level{display:flex;justify-content:center;gap:14px;margin:10px 0}.node{width:190px;min-height:78px;padding:10px;border:2px solid #9d7b58;border-radius:12px;background:#fffaf0;text-align:center;box-shadow:0 2px 5px rgba(70,40,10,.08)}.node.self{border-color:#6b4f2a;background:#f5e5c8}.node.uncertain{border-style:dashed}
 .pathbox{white-space:pre-wrap;background:#f8f0e2;border:1px solid var(--line);padding:12px;border-radius:10px;margin-top:10px}
 @media(max-width:800px){.grid,.formgrid{grid-template-columns:1fr}.panel{padding:12px}.people-list{max-height:40vh}}
-</style>
+.person-link{display:inline;padding:0;border:0;background:transparent;color:var(--accent);text-decoration:underline;text-underline-offset:2px;min-height:0;cursor:pointer}.person-link:hover{color:var(--accent2)}.node[role="button"]{cursor:pointer}.node[role="button"]:focus{outline:2px solid var(--accent2);outline-offset:2px}</style>
 </head>
 <body>
 <header>
@@ -87,7 +87,17 @@ main{padding:14px}.grid{display:grid;grid-template-columns:1.25fr .95fr;gap:14px
 <section id="sync" class="tab hidden"><div class="panel">
 <h2>Private Cloud & Family Access</h2><div id="cloudStatus" class="notice">Sign in to connect.</div>
 <div id="adminTools" class="hidden"><h3>Administrator</h3><p class="muted">Your Firestore user document controls access.</p></div>
-<div id="migrationTools" class="hidden"><h3>Initial database import</h3><p class="muted">Import an existing Fleury JSON backup into private Firestore.</p><div class="actions"><input id="migrationFile" type="file" accept="application/json"><button id="migrateBtn" class="primary">Import to private cloud</button></div><div id="migrationStatus" class="notice">Waiting for a JSON file.</div></div>
+<div id="migrationTools" class="hidden">
+<h3>Master Fleury chart</h3>
+<p class="muted">The supplied family charts have been assembled into the expanded master archive. This installs the bundled names and relationships into private Firestore.</p>
+<div class="actions"><button id="installMasterBtn" class="primary">Install expanded master chart</button></div>
+<div id="masterStatus" class="notice">The master package contains 137 people and 183 recorded relationships.</div>
+<hr>
+<h3>Other JSON backup</h3>
+<p class="muted">Import a different Fleury JSON backup if required.</p>
+<div class="actions"><input id="migrationFile" type="file" accept="application/json"><button id="migrateBtn">Import JSON to private cloud</button></div>
+<div id="migrationStatus" class="notice">Waiting for a JSON file.</div>
+</div>
 </div></section>
 </main>
 
@@ -110,6 +120,8 @@ const canEdit = () => ['editor','admin'].includes(currentRole);
 const canAdmin = () => currentRole === 'admin';
 const person = id => db.people.find(p => p['Person ID'] === id);
 const nameOf = id => person(id)?.Name || id;
+const personLink = (id, label = nameOf(id)) =>
+  '<button type="button" class="person-link" data-person-link="'+esc(id)+'">'+esc(label)+'</button>';
 const parentsOf = id => db.relationships.filter(r=>r.type==='parent'&&r.person2===id).map(r=>r.person1);
 const childrenOf = id => db.relationships.filter(r=>r.type==='parent'&&r.person1===id).map(r=>r.person2);
 const spousesOf = id => db.relationships.filter(r=>r.type==='spouse'&&(r.person1===id||r.person2===id)).map(r=>r.person1===id?r.person2:r.person1);
@@ -141,18 +153,68 @@ function updateAuthUI(){
 
 async function handleUser(user){
   currentUser=user; currentRole=null; cloudReady=false; updateAuthUI();
-  if(!user){db={people:[],relationships:[],meta:{}};renderAll();setStatus('Sign in to connect to the private family database.');return;}
+  if(!user){
+    db={people:[],relationships:[],meta:{}};
+    renderAll();
+    setStatus('Sign in to connect to the private family database.');
+    return;
+  }
   try{
     currentRole=await firebaseApi.getMyRole(user.uid);
     updateAuthUI();
-    if(!currentRole){setStatus('Signed in, but this Google account has not been approved for family access.');return;}
+    if(!currentRole){
+      setStatus('Signed in, but this Google account has not been approved for family access.');
+      return;
+    }
+
     db=await firebaseApi.loadDatabase();
+
+    // Restore the two-parent links represented in the supplied Fleury charts.
+    // Only missing links are added; existing records are left untouched.
+    if(currentRole==='admin'){
+      const chartParentGroups=[
+        ['GEORGE-LOUIS-FLEURY','ISABELLA-WEEKES',['RICHARD-CHENEVIX','HENRY-FRANCIS-DOWNES','ELIZABETH-MELESINA','GEORGE-ALEXANDER','ROBERT-ANTOINE','ISABELLA-JULIA','CHARLES-MARLAY','MARY-ANNE','JOHN-FRANQUEFORT']],
+        ['HENRY-FRANCIS-DOWNES','ELLEN-COOKE',['JOHN-CHENEVIX-CHILD','ISABELLA-CHILD','EDWARD-CHILD','GEORGE-CHILD','CAESAR-CHILD','CHARLES-CHILD','ELIZABETH-CHILD','OTHERS-HF']],
+        ['ELIZABETH-MELESINA','HENRY-MCCLINTOCK',['LOUIS-MCCLINTOCK','ALFRED-MCCLINTOCK','SIR-FRANCIS-LEOPOLD','ERNEST-MCCLINTOCK','CAROLINE-MCCLINTOCK','ISABELLA-MCCLINTOCK','FLORENCE-MCCLINTOCK','ROSA-MCCLINTOCK','EMMA-MCCLINTOCK','EMILY-MCCLINTOCK','CHARLES-FORTESCUE-MCCLINTOCK','UNRECOVERED-MCCLINTOCK']],
+        ['CAESAR-CHILD','AGNUS-MCKECHNIE',['ROBERT-FLEURY','CHARLES-EDWARD','RICHARD-FLEURY','JONATHAN-FLEURY','DAVID-FLEURY']],
+        ['CHARLES-EDWARD','SHEILA-ANN-HARRISON',['GRAHAM-FLEURY','ALAN-FLEURY','DEBORAH-FLEURY']],
+        ['ISABELLA-JULIA','RICHARD-HOPKINS-RYLAND',['RYLAND-RICHARD-RYLAND','RYLAND-GEORGE-HENRY-RYLAND','RYLAND-CHARLES-THOMAS-RYLAND','RYLAND-REV-JOHN-FREDERICK-RYLAND','RYLAND-THEODORE-RYLAND','RYLAND-MARY-RYLAND','RYLAND-EMILY-RYLAND','RYLAND-ANOTHER-DAUGHTER']],
+        ['CHARLES-MARLAY','EMMA-BARKER',['MARLAY-ANNA-KATE','MARLAY-LOUIS','MARLAY-ARTHUR-T','MARLAY-GERTRUDE-ALBINA','MARLAY-ALFRED-EDWARD','CHARLES-WILLIAM-MARLAY']],
+        ['CHARLES-MARLAY','MARY-ISOBEL-REID',['REID-ARTHUR-THOMAS-JOHN-FLEURY','REID-ANNE-MARY','REID-CHARLES-DENNIS-ADRIAN','REID-JOHN-ARTHUR-THOMAS','REID-PAUL-ANTHONY','REID-BRIAN-TERENCE-GERARD','REID-JACQUELINE-ISABELLA-VERONICA']],
+        ['ARTHUR-THOMAS-JOHN','VERONICA-OCALLAGHAN',['ARTHUR-CHILD-ANNE-MARY','ARTHUR-CHILD-CHARLES-DENNIS-ADRIAN','ARTHUR-CHILD-JOHN-ARTHUR-THOMAS','ARTHUR-CHILD-PAUL-ANTHONY','ARTHUR-CHILD-BRIAN-TERENCE-GERARD','ARTHUR-CHILD-JACQUELINE-ISABELLA-VERONICA']],
+        ['JOHN-FRANQUEFORT','ALBINA-NEWMAN',['FRANQUEFORT-GEORGE-CHARLES','FRANQUEFORT-JOHN-ZACHARIAS','FRANQUEFORT-MARTHA','FRANQUEFORT-LOUIS-RICHARD']]
+      ];
+      let repaired=false;
+      for(const [parentA,parentB,children] of chartParentGroups){
+        if(!person(parentA)||!person(parentB)) continue;
+        for(const child of children){
+          if(!person(child)) continue;
+          const exists=db.relationships.some(r=>r.type==='parent'&&r.person1===parentB&&r.person2===child);
+          if(!exists){
+            db.relationships.push({
+              id:uid(),
+              type:'parent',
+              person1:parentB,
+              person2:child,
+              sourceIds:'Fleury family chart',
+              notes:'Second-parent link restored from the supplied family chart.'
+            });
+            repaired=true;
+          }
+        }
+      }
+      if(repaired) await firebaseApi.saveDatabase(db);
+    }
+
     cloudReady=true;
     renderAll();
     setStatus('Connected to the private family database.');
     $('#adminTools').classList.toggle('hidden',!canAdmin());
     $('#migrationTools').classList.toggle('hidden',!canAdmin());
-  }catch(e){console.error(e);setStatus('Private database connection error: '+e.message);}
+  }catch(e){
+    console.error(e);
+    setStatus('Private database connection error: '+e.message);
+  }
 }
 
 async function save(){
@@ -176,13 +238,13 @@ function renderAll(){
 function renderPeopleList(){
   const q=($('#search')?.value||'').toLowerCase();
   const arr=db.people.filter(p=>Object.values(p).join(' ').toLowerCase().includes(q)).sort((a,b)=>String(a.Name||'').localeCompare(String(b.Name||'')));
-  $('#peopleList').innerHTML=arr.map(p=>'<div class="person" data-id="'+esc(p['Person ID'])+'"><strong>'+esc(p.Name)+'</strong><span class="muted"> — '+esc(p['Relationship to Alan']||'')+'</span><div class="small muted">'+esc(p['Person ID'])+'</div></div>').join('')||'<p class="muted" style="padding:10px">No matches.</p>';
+  $('#peopleList').innerHTML=arr.map(p=>'<div class="person" data-id="'+esc(p['Person ID'])+'"><strong>'+personLink(p['Person ID'],p.Name)+'</strong><span class="muted"> — '+esc(p['Relationship to Alan']||'')+'</span><div class="small muted">'+esc(p['Person ID'])+'</div></div>').join('')||'<p class="muted" style="padding:10px">No matches.</p>';
   $$('#peopleList .person').forEach(el=>el.onclick=()=>{selected=el.dataset.id;showDetail(selected);});
 }
 
 function showDetail(id){
   const p=person(id);if(!p)return;
-  const buttons=ids=>ids.map(x=>'<button data-jump="'+esc(x)+'">'+esc(nameOf(x))+'</button>').join(' ')||'—';
+  const buttons=ids=>ids.map(x=>personLink(x)).join(' ')||'—';
   $('#detail').innerHTML='<h2>'+esc(p.Name)+'</h2><p class="muted">ID: '+esc(p['Person ID'])+'</p><div class="formgrid"><div><strong>Birth</strong><br>'+esc(p.Birth||'—')+'</div><div><strong>Death</strong><br>'+esc(p.Death||'—')+'</div><div><strong>Relationship to Alan</strong><br>'+esc(p['Relationship to Alan']||'—')+'</div><div><strong>Evidence</strong><br>'+esc(p['Evidence Status']||'—')+'</div><div><strong>Parents</strong><br>'+buttons(parentsOf(id))+'</div><div><strong>Spouse(s)</strong><br>'+buttons(spousesOf(id))+'</div><div class="full"><strong>Children</strong><br>'+buttons(childrenOf(id))+'</div><div class="full"><strong>Places</strong><br>'+esc(p.Places||'—')+'</div><div class="full"><strong>Sources</strong><br>'+esc(p['Source IDs']||'—')+'</div><div class="full"><strong>Notes</strong><br>'+esc(p.Notes||'—')+'</div></div><div class="actions"><button class="primary" id="detailChart">Chart this person</button><button id="detailEdit">Edit</button></div>';
   $$('[data-jump]').forEach(b=>b.onclick=()=>{selected=b.dataset.jump;showDetail(selected);});
   $('#detailChart').onclick=()=>{openTab('chart');$('#chartPerson').value=id;generateChart();};
@@ -207,12 +269,12 @@ function editPerson(id=''){
 
 function renderPeopleTable(){
   const arr=[...db.people].sort((a,b)=>sortAZ ? String(a.Name||'').localeCompare(String(b.Name||'')) : String(a['Person ID']||'').localeCompare(String(b['Person ID']||'')));
-  $('#peopleTable').innerHTML='<table class="table"><thead><tr><th>ID</th><th>Name</th><th>Birth</th><th>Death</th><th>Evidence</th><th></th></tr></thead><tbody>'+arr.map(p=>'<tr><td>'+esc(p['Person ID'])+'</td><td>'+esc(p.Name)+'</td><td>'+esc(p.Birth||'')+'</td><td>'+esc(p.Death||'')+'</td><td>'+esc(p['Evidence Status']||'')+'</td><td>'+(canEdit()?'<button data-edit="'+esc(p['Person ID'])+'">Edit</button>':'View only')+'</td></tr>').join('')+'</tbody></table>';
+  $('#peopleTable').innerHTML='<table class="table"><thead><tr><th>ID</th><th>Name</th><th>Birth</th><th>Death</th><th>Evidence</th><th></th></tr></thead><tbody>'+arr.map(p=>'<tr><td>'+esc(p['Person ID'])+'</td><td>'+personLink(p['Person ID'],p.Name)+'</td><td>'+esc(p.Birth||'')+'</td><td>'+esc(p.Death||'')+'</td><td>'+esc(p['Evidence Status']||'')+'</td><td>'+(canEdit()?'<button data-edit="'+esc(p['Person ID'])+'">Edit</button>':'View only')+'</td></tr>').join('')+'</tbody></table>';
   $$('[data-edit]').forEach(b=>b.onclick=()=>editPerson(b.dataset.edit));
 }
 
 function renderRelationships(){
-  $('#relTable').innerHTML='<table class="table"><thead><tr><th>ID</th><th>Type</th><th>Person 1</th><th>Person 2</th><th>Sources</th><th></th></tr></thead><tbody>'+db.relationships.map(r=>'<tr><td>'+esc(r.id)+'</td><td>'+esc(r.type)+'</td><td>'+esc(nameOf(r.person1))+'</td><td>'+esc(nameOf(r.person2))+'</td><td>'+esc(r.sourceIds||'')+'</td><td>'+(canEdit()?'<button data-delrel="'+esc(r.id)+'">Delete</button>':'')+'</td></tr>').join('')+'</tbody></table>';
+  $('#relTable').innerHTML='<table class="table"><thead><tr><th>ID</th><th>Type</th><th>Person 1</th><th>Person 2</th><th>Sources</th><th></th></tr></thead><tbody>'+db.relationships.map(r=>'<tr><td>'+esc(r.id)+'</td><td>'+esc(r.type)+'</td><td>'+personLink(r.person1)+'</td><td>'+personLink(r.person2)+'</td><td>'+esc(r.sourceIds||'')+'</td><td>'+(canEdit()?'<button data-delrel="'+esc(r.id)+'">Delete</button>':'')+'</td></tr>').join('')+'</tbody></table>';
   $$('[data-delrel]').forEach(b=>b.onclick=()=>{db.relationships=db.relationships.filter(r=>r.id!==b.dataset.delrel);save();});
 }
 
@@ -281,7 +343,7 @@ function levels(root,mode,depth){
 function nodeHtml(id,root){
   const p=person(id);if(!p)return '';
   const ev=String(p['Evidence Status']||'').toLowerCase(),unc=ev.includes('verify')||ev.includes('uncertain');
-  return '<div class="node '+(id===root?'self ':'')+(unc?'uncertain':'')+'"><strong>'+esc(p.Name)+'</strong><div class="small">'+esc(p.Birth||'')+(p.Death?' – '+esc(p.Death):'')+'</div><div class="small muted">'+esc(id)+'</div></div>';
+  return '<div class="node '+(id===root?'self ':'')+(unc?'uncertain':'')+'" data-person-link="'+esc(id)+'" tabindex="0" role="button"><strong>'+esc(p.Name)+'</strong><div class="small">'+esc(p.Birth||'')+(p.Death?' – '+esc(p.Death):'')+'</div><div class="small muted">'+esc(id)+'</div></div>';
 }
 function generateChart(){
   const root=$('#chartPerson').value;if(!root)return;
@@ -311,6 +373,29 @@ function renderData(){ $('#dataSummary').innerHTML='<div class="stats"><span cla
 function openTab(id){$$('.tab').forEach(x=>x.classList.toggle('hidden',x.id!==id));$$('nav button').forEach(x=>x.classList.toggle('active',x.dataset.tab===id));}
 
 function bind(){
+  document.addEventListener('click',e=>{
+    const el=e.target.closest('[data-person-link]');
+    if(!el)return;
+    const id=el.dataset.personLink;
+    if(!person(id))return;
+    e.preventDefault();
+    selected=id;
+    openTab('explore');
+    showDetail(id);
+  });
+
+  document.addEventListener('keydown',e=>{
+    const el=e.target.closest('[data-person-link][tabindex]');
+    if(!el || (e.key!=='Enter' && e.key!==' '))return;
+    const id=el.dataset.personLink;
+    if(person(id)){
+      e.preventDefault();
+      selected=id;
+      openTab('explore');
+      showDetail(id);
+    }
+  });
+
   $$('nav button').forEach(b=>b.onclick=()=>openTab(b.dataset.tab));
   $('#search').oninput=renderPeopleList;
   $('#newPerson').onclick=()=>editPerson();
@@ -323,11 +408,64 @@ function bind(){
   $('#exportCsv').onclick=exportCsv;
   $('#exportGedcom').onclick=exportGedcom;
   $('#importJson').onclick=()=>$('#fileInput').click();
-  $('#fileInput').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const x=JSON.parse(await f.text());if(!Array.isArray(x.people)||!Array.isArray(x.relationships))throw new Error('Invalid archive JSON');db=x;await save();alert('Database imported.');}catch(err){alert(err.message);}};
-  $('#signInBtn').onclick=async()=>{try{await firebaseApi.signInWithGoogle();}catch(e){console.error(e);alert('Google sign-in failed: '+e.message);}};
+
+  $('#fileInput').onchange=async e=>{
+    const f=e.target.files[0];
+    if(!f)return;
+    try{
+      const x=JSON.parse(await f.text());
+      if(!Array.isArray(x.people)||!Array.isArray(x.relationships))throw new Error('Invalid archive JSON');
+      db=x;
+      await save();
+      alert('Database imported.');
+    }catch(err){alert(err.message);}
+  };
+
+  $('#signInBtn').onclick=async()=>{
+    try{await firebaseApi.signInWithGoogle();}
+    catch(e){console.error(e);alert('Google sign-in failed: '+e.message);}
+  };
   $('#signOutBtn').onclick=()=>firebaseApi.signOutUser();
-  $('#migrationFile').onchange=()=>{const f=$('#migrationFile').files[0];$('#migrationStatus').textContent=f?f.name+' selected.':'Waiting for a JSON file.';};
-  $('#migrateBtn').onclick=async()=>{if(!canAdmin())return alert('Admin access required.');const f=$('#migrationFile').files[0];if(!f)return alert('Choose the JSON backup first.');try{const x=JSON.parse(await f.text());if(!Array.isArray(x.people)||!Array.isArray(x.relationships))throw new Error('Invalid archive JSON');await firebaseApi.saveDatabase(x);db=x;renderAll();$('#migrationStatus').textContent='Imported '+x.people.length+' people and '+x.relationships.length+' relationships into private Firestore.';}catch(e){$('#migrationStatus').textContent='Import failed: '+e.message;}};
+
+  $('#installMasterBtn').onclick=async()=>{
+    if(!canAdmin())return alert('Admin access required.');
+    if(!confirm('Install the expanded master Fleury chart into the private database? This replaces the current people and relationship records with the bundled master package.'))return;
+    const status=$('#masterStatus');
+    status.textContent='Installing the expanded master chart…';
+    try{
+      const response=await fetch('./archive-seed.json',{cache:'no-store'});
+      if(!response.ok)throw new Error('The bundled master chart could not be loaded.');
+      const x=await response.json();
+      if(!Array.isArray(x.people)||!Array.isArray(x.relationships))throw new Error('The bundled master chart is invalid.');
+      await firebaseApi.saveDatabase(x);
+      db=x;
+      renderAll();
+      status.textContent='Installed '+x.people.length+' people and '+x.relationships.length+' relationships into private Firestore.';
+      setStatus('Expanded master chart installed successfully.');
+    }catch(e){
+      console.error(e);
+      status.textContent='Master chart installation failed: '+e.message;
+    }
+  };
+
+  $('#migrationFile').onchange=()=>{
+    const f=$('#migrationFile').files[0];
+    $('#migrationStatus').textContent=f?f.name+' selected.':'Waiting for a JSON file.';
+  };
+
+  $('#migrateBtn').onclick=async()=>{
+    if(!canAdmin())return alert('Admin access required.');
+    const f=$('#migrationFile').files[0];
+    if(!f)return alert('Choose the JSON backup first.');
+    try{
+      const x=JSON.parse(await f.text());
+      if(!Array.isArray(x.people)||!Array.isArray(x.relationships))throw new Error('Invalid archive JSON');
+      await firebaseApi.saveDatabase(x);
+      db=x;
+      renderAll();
+      $('#migrationStatus').textContent='Imported '+x.people.length+' people and '+x.relationships.length+' relationships into private Firestore.';
+    }catch(e){$('#migrationStatus').textContent='Import failed: '+e.message;}
+  };
 }
 
 async function start(){
@@ -348,7 +486,7 @@ async function start(){
 
   try{
     firebaseApi=await import('./firebase-sync.js');
-    firebaseApi.initAuth(handleUser);
+    await firebaseApi.initAuth(handleUser);
   }catch(e){
     console.error('Firebase startup failed:',e);
     setStatus('Firebase could not start: '+e.message);
