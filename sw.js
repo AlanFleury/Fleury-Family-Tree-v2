@@ -1,4 +1,4 @@
-const CACHE = 'fleury-v1';
+const CACHE = 'fleury-v5';
 
 self.addEventListener('install', event => {
   event.waitUntil(

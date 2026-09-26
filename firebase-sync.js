@@ -56,12 +56,12 @@ export async function loadDatabase() {
   const [peopleSnap, relSnap, metaSnap] = await Promise.all([
     getDocs(collection(store, 'people')),
     getDocs(collection(store, 'relationships')),
-    getDoc(doc(store, 'meta', 'archive'))
+    getDoc(doc(store, 'meta', 'archive-v5'))
   ]);
 
   return {
-    people: peopleSnap.docs.map(d => d.data()),
-    relationships: relSnap.docs.map(d => d.data()),
+    people: peopleSnap.docs.filter(d => d.id.startsWith('v5_')).map(d => d.data()),
+    relationships: relSnap.docs.filter(d => d.id.startsWith('v5_')).map(d => d.data()),
     meta: metaSnap.exists()
       ? metaSnap.data()
       : { name: 'Fleury Family Archive', version: '4.0' }
@@ -71,29 +71,34 @@ export async function loadDatabase() {
 export async function saveDatabase(database) {
   if (!store) throw new Error('Firestore is not ready.');
 
-  const batch = writeBatch(store);
-
+  const chunkSize = 400;
   const existingPeople = await getDocs(collection(store, 'people'));
-  existingPeople.forEach(snap => batch.delete(snap.ref));
-
   const existingRelationships = await getDocs(collection(store, 'relationships'));
-  existingRelationships.forEach(snap => batch.delete(snap.ref));
+  const deletes = [...existingPeople.docs.filter(s => s.id.startsWith('v5_')), ...existingRelationships.docs.filter(s => s.id.startsWith('v5_'))];
+  for (let i = 0; i < deletes.length; i += chunkSize) {
+    const batch = writeBatch(store);
+    deletes.slice(i, i + chunkSize).forEach(snap => batch.delete(snap.ref));
+    await batch.commit();
+  }
 
+  const writes = [];
   for (const p of database.people || []) {
     const id = String(p['Person ID'] || '').trim();
-    if (id) batch.set(doc(store, 'people', id), p);
+    if (id) writes.push(['people', 'v5_' + id, p]);
   }
-
   for (const r of database.relationships || []) {
     const id = String(r.id || '').trim();
-    if (id) batch.set(doc(store, 'relationships', id), r);
+    if (id) writes.push(['relationships', 'v5_' + id, r]);
+  }
+  for (let i = 0; i < writes.length; i += chunkSize) {
+    const batch = writeBatch(store);
+    writes.slice(i, i + chunkSize).forEach(([col, id, data]) => batch.set(doc(store, col, id), data));
+    await batch.commit();
   }
 
-  batch.set(doc(store, 'meta', 'archive'), {
+  await setDoc(doc(store, 'meta', 'archive-v5'), {
     ...(database.meta || {}),
     updatedAt: new Date().toISOString(),
-    version: '4.0'
+    version: '5.0'
   });
-
-  await batch.commit();
 }

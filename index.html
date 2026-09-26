@@ -39,7 +39,7 @@ main{padding:14px}.grid{display:grid;grid-template-columns:1.25fr .95fr;gap:14px
 <button data-tab="people">People</button>
 <button data-tab="relationships">Relationships</button>
 <button data-tab="kinship">Relationship Finder</button>
-<button data-tab="chart">Wall Chart</button>
+<button data-tab="chart">Wall Chart</button><button data-tab="reports">Reports</button>
 <button data-tab="gedcom">GEDCOM</button>
 <button data-tab="backup">Backup</button>
 <button data-tab="sync">Cloud</button>
@@ -76,6 +76,12 @@ main{padding:14px}.grid{display:grid;grid-template-columns:1.25fr .95fr;gap:14px
 <div id="treebox" class="treewrap"><div class="muted">Generate a chart to begin.</div></div>
 </div></section>
 
+<section id="reports" class="tab hidden"><div class="panel">
+<h2>Reports & Printing</h2><p class="muted">Ancestry Quest-style reports generated from the same family data used by the archive.</p>
+<div class="formgrid"><div><label>Report type</label><select id="reportType"><option value="individual">Individual report</option><option value="family">Family group sheet</option><option value="ancestors">Ancestor report</option><option value="descendants">Descendant report</option><option value="relationship">Relationship to Alan</option></select></div><div><label>Starting person</label><select id="reportPerson"></select></div><div><label>Generations</label><select id="reportDepth"><option>3</option><option selected>4</option><option>5</option><option>6</option><option>8</option></select></div></div>
+<div class="actions"><button class="primary" id="generateReport">Generate report</button><button id="printReport">Print / Save PDF</button></div><div id="reportPreview" class="pathbox">Choose a report and generate it.</div>
+</div></section>
+
 <section id="gedcom" class="tab hidden"><div class="panel"><h2>GEDCOM</h2><p class="muted">Export the archive in a GEDCOM-compatible format.</p><button class="primary" id="exportGedcom">Export GEDCOM</button></div></section>
 
 <section id="backup" class="tab hidden"><div class="panel">
@@ -90,8 +96,8 @@ main{padding:14px}.grid{display:grid;grid-template-columns:1.25fr .95fr;gap:14px
 <div id="migrationTools" class="hidden">
 <h3>Master Fleury chart</h3>
 <p class="muted">The supplied family charts have been assembled into the expanded master archive. This installs the bundled names and relationships into private Firestore.</p>
-<div class="actions"><button id="installMasterBtn" class="primary">Install expanded master chart</button></div>
-<div id="masterStatus" class="notice">The master package contains 137 people and 183 recorded relationships.</div>
+<div class="actions"><button id="installMasterBtn" class="primary">Install Ancestral Quest master database</button></div>
+<div id="masterStatus" class="notice">The master package contains 17,984 people and 30,029 recorded relationships after conservative duplicate cleanup.</div>
 <hr>
 <h3>Other JSON backup</h3>
 <p class="muted">Import a different Fleury JSON backup if required.</p>
@@ -169,42 +175,6 @@ async function handleUser(user){
 
     db=await firebaseApi.loadDatabase();
 
-    // Restore the two-parent links represented in the supplied Fleury charts.
-    // Only missing links are added; existing records are left untouched.
-    if(currentRole==='admin'){
-      const chartParentGroups=[
-        ['GEORGE-LOUIS-FLEURY','ISABELLA-WEEKES',['RICHARD-CHENEVIX','HENRY-FRANCIS-DOWNES','ELIZABETH-MELESINA','GEORGE-ALEXANDER','ROBERT-ANTOINE','ISABELLA-JULIA','CHARLES-MARLAY','MARY-ANNE','JOHN-FRANQUEFORT']],
-        ['HENRY-FRANCIS-DOWNES','ELLEN-COOKE',['JOHN-CHENEVIX-CHILD','ISABELLA-CHILD','EDWARD-CHILD','GEORGE-CHILD','CAESAR-CHILD','CHARLES-CHILD','ELIZABETH-CHILD','OTHERS-HF']],
-        ['ELIZABETH-MELESINA','HENRY-MCCLINTOCK',['LOUIS-MCCLINTOCK','ALFRED-MCCLINTOCK','SIR-FRANCIS-LEOPOLD','ERNEST-MCCLINTOCK','CAROLINE-MCCLINTOCK','ISABELLA-MCCLINTOCK','FLORENCE-MCCLINTOCK','ROSA-MCCLINTOCK','EMMA-MCCLINTOCK','EMILY-MCCLINTOCK','CHARLES-FORTESCUE-MCCLINTOCK','UNRECOVERED-MCCLINTOCK']],
-        ['CAESAR-CHILD','AGNUS-MCKECHNIE',['ROBERT-FLEURY','CHARLES-EDWARD','RICHARD-FLEURY','JONATHAN-FLEURY','DAVID-FLEURY']],
-        ['CHARLES-EDWARD','SHEILA-ANN-HARRISON',['GRAHAM-FLEURY','ALAN-FLEURY','DEBORAH-FLEURY']],
-        ['ISABELLA-JULIA','RICHARD-HOPKINS-RYLAND',['RYLAND-RICHARD-RYLAND','RYLAND-GEORGE-HENRY-RYLAND','RYLAND-CHARLES-THOMAS-RYLAND','RYLAND-REV-JOHN-FREDERICK-RYLAND','RYLAND-THEODORE-RYLAND','RYLAND-MARY-RYLAND','RYLAND-EMILY-RYLAND','RYLAND-ANOTHER-DAUGHTER']],
-        ['CHARLES-MARLAY','EMMA-BARKER',['MARLAY-ANNA-KATE','MARLAY-LOUIS','MARLAY-ARTHUR-T','MARLAY-GERTRUDE-ALBINA','MARLAY-ALFRED-EDWARD','CHARLES-WILLIAM-MARLAY']],
-        ['CHARLES-MARLAY','MARY-ISOBEL-REID',['REID-ARTHUR-THOMAS-JOHN-FLEURY','REID-ANNE-MARY','REID-CHARLES-DENNIS-ADRIAN','REID-JOHN-ARTHUR-THOMAS','REID-PAUL-ANTHONY','REID-BRIAN-TERENCE-GERARD','REID-JACQUELINE-ISABELLA-VERONICA']],
-        ['ARTHUR-THOMAS-JOHN','VERONICA-OCALLAGHAN',['ARTHUR-CHILD-ANNE-MARY','ARTHUR-CHILD-CHARLES-DENNIS-ADRIAN','ARTHUR-CHILD-JOHN-ARTHUR-THOMAS','ARTHUR-CHILD-PAUL-ANTHONY','ARTHUR-CHILD-BRIAN-TERENCE-GERARD','ARTHUR-CHILD-JACQUELINE-ISABELLA-VERONICA']],
-        ['JOHN-FRANQUEFORT','ALBINA-NEWMAN',['FRANQUEFORT-GEORGE-CHARLES','FRANQUEFORT-JOHN-ZACHARIAS','FRANQUEFORT-MARTHA','FRANQUEFORT-LOUIS-RICHARD']]
-      ];
-      let repaired=false;
-      for(const [parentA,parentB,children] of chartParentGroups){
-        if(!person(parentA)||!person(parentB)) continue;
-        for(const child of children){
-          if(!person(child)) continue;
-          const exists=db.relationships.some(r=>r.type==='parent'&&r.person1===parentB&&r.person2===child);
-          if(!exists){
-            db.relationships.push({
-              id:uid(),
-              type:'parent',
-              person1:parentB,
-              person2:child,
-              sourceIds:'Fleury family chart',
-              notes:'Second-parent link restored from the supplied family chart.'
-            });
-            repaired=true;
-          }
-        }
-      }
-      if(repaired) await firebaseApi.saveDatabase(db);
-    }
 
     cloudReady=true;
     renderAll();
@@ -219,7 +189,7 @@ async function handleUser(user){
 
 async function save(){
   if(!cloudReady||!canEdit()){alert('You need editor or admin access to change family data.');renderAll();return;}
-  db.meta={...(db.meta||{}),updatedAt:new Date().toISOString(),version:'4.0'};
+  db.meta={...(db.meta||{}),updatedAt:new Date().toISOString(),version:'5.0'};
   renderAll();
   try{await firebaseApi.saveDatabase(db);setStatus('Saved to the private family database.');}
   catch(e){console.error(e);setStatus('Cloud save failed: '+e.message);}
@@ -230,6 +200,7 @@ function personOptions(selectedId=''){
 }
 
 function renderAll(){
+  refreshAlanRelationships();
   $('#stats').innerHTML='<span class="stat">'+db.people.length+' people</span><span class="stat">'+db.relationships.length+' links</span><span class="stat">Updated '+esc((db.meta?.updatedAt||'').slice(0,10)||'—')+'</span>';
   renderPeopleList();renderPeopleTable();renderRelationships();renderSelects();renderData();
   if(selected&&person(selected)) showDetail(selected);
@@ -291,13 +262,43 @@ function editRel(){
 }
 
 function renderSelects(){
-  const a=$('#kinA'),b=$('#kinB'),c=$('#chartPerson');if(!a||!b||!c)return;
-  const av=a.value,bv=b.value,cv=c.value;
-  a.innerHTML=personOptions(av);b.innerHTML=personOptions(bv);c.innerHTML=personOptions(cv);
+  const a=$('#kinA'),b=$('#kinB'),c=$('#chartPerson'),d=$('#reportPerson');if(!a||!b||!c||!d)return;
+  const av=a.value,bv=b.value,cv=c.value,dv=d.value;
+  a.innerHTML=personOptions(av);b.innerHTML=personOptions(bv);c.innerHTML=personOptions(cv);d.innerHTML=personOptions(dv);
   if(!a.value&&db.people[0])a.value=db.people[0]['Person ID'];
   if(!b.value&&db.people[1])b.value=db.people[1]['Person ID'];
   if(!c.value&&person('ALA'))c.value='ALA';
 }
+
+function alanId(){
+  return db.people.find(p=>String(p.Name||'').trim().toLowerCase()==='alan fleury' && String(p.Birth||'').startsWith('3 APR 1969'))?.['Person ID'] || db.people.find(p=>String(p.Name||'').trim().toLowerCase()==='alan fleury')?.['Person ID'];
+}
+function sideFromAlan(ancestorId){
+  const a=alanId(); if(!a||ancestorId===a)return '';
+  const q=[[a,[]]],seen=new Set([a]);
+  while(q.length){const [cur,path]=q.shift(); for(const par of parentsOf(cur)){ if(seen.has(par))continue; const np=[...path,par]; if(par===ancestorId){ const first=np[0], g=person(first); return g?.Gender==='M'?'paternal':g?.Gender==='F'?'maternal':''; } seen.add(par); q.push([par,np]); }}
+  return '';
+}
+function relationLabelForAlan(id){
+  const a=alanId(); if(!a||id===a)return id===a?'Self':'';
+  const aa=ancestorDistances(a), bb=ancestorDistances(id);
+  if(aa.has(id)){
+    const d=aa.get(id), side=sideFromAlan(id); const t=d===1?(person(id)?.Gender==='M'?'father':'mother'):d===2?(person(id)?.Gender==='M'?'grandfather':'grandmother'):'great-'.repeat(Math.max(0,d-3))+(person(id)?.Gender==='M'?'grandfather':'grandmother');
+    return side ? `${side} ${t}` : t;
+  }
+  if(bb.has(a)){
+    const d=bb.get(a); return d===1?'son/daughter':d===2?'grandchild':'great-'.repeat(Math.max(0,d-2))+'grandchild';
+  }
+  const common=[...aa.keys()].filter(k=>bb.has(k)).sort((u,v)=>(aa.get(u)+bb.get(u))-(aa.get(v)+bb.get(v)))[0];
+  if(!common)return '';
+  const da=aa.get(common), dbb=bb.get(common), side=sideFromAlan(common);
+  let label='';
+  if(da===1){ label=dbb===1?'sibling':dbb===2?'niece/nephew':dbb>2?'great-'.repeat(dbb-2)+'niece/nephew':''; }
+  else if(dbb===1){ label=da===2?'aunt/uncle':da>2?'great-'.repeat(da-2)+'aunt/uncle':''; }
+  else { const deg=Math.min(da,dbb)-1; const names=['','1st','2nd','3rd']; const c=names[deg]||deg+'th'; const rem=Math.abs(da-dbb); label=c+' cousin'+(rem?` ${rem} time${rem===1?'':'s'} removed`:''); }
+  return side && label ? `${label} — ${side} side` : label;
+}
+function refreshAlanRelationships(){ db.people.forEach(p=>{ p['Relationship to Alan']=relationLabelForAlan(p['Person ID']); }); }
 
 function ancestorDistances(id){
   const m=new Map([[id,0]]),q=[id];
@@ -368,6 +369,18 @@ function exportGedcom(){
   db.people.forEach(p=>{const id=p['Person ID'];lines.push('0 @I'+id+'@ INDI','1 NAME '+String(p.Name||'').replace(/[\/]/g,''));if(p.Gender)lines.push('1 SEX '+p.Gender[0].toUpperCase());if(p.Birth)lines.push('1 BIRT','2 DATE '+p.Birth);if(p.Death)lines.push('1 DEAT','2 DATE '+p.Death);if(p.Notes)lines.push('1 NOTE '+p.Notes);});
   lines.push('0 TRLR');download('fleury-family-archive.ged',lines.join('\n'),'text/plain');
 }
+function reportRows(ids){ return ids.filter(Boolean).map(id=>{const p=person(id);return p?`<tr><td>${esc(p.Name)}</td><td>${esc(p.Birth||'')}</td><td>${esc(p.Death||'')}</td><td>${esc(p['Relationship to Alan']||'')}</td></tr>`:''}).join(''); }
+function generateReport(){
+ const id=$('#reportPerson').value,type=$('#reportType').value,depth=Number($('#reportDepth').value)||4,p=person(id); if(!p)return;
+ let html='';
+ if(type==='individual'){ html=`<h1>${esc(p.Name)}</h1><p class="small">Fleury Family Archive · ${esc(p['Person ID'])}</p><table><tr><th>Birth</th><td>${esc(p.Birth||'—')}</td></tr><tr><th>Death</th><td>${esc(p.Death||'—')}</td></tr><tr><th>Relationship to Alan</th><td>${esc(p['Relationship to Alan']||'—')}</td></tr><tr><th>Parents</th><td>${parentsOf(id).map(nameOf).join(', ')||'—'}</td></tr><tr><th>Spouse(s)</th><td>${spousesOf(id).map(nameOf).join(', ')||'—'}</td></tr><tr><th>Children</th><td>${childrenOf(id).map(nameOf).join(', ')||'—'}</td></tr><tr><th>Places</th><td>${esc(p.Places||'—')}</td></tr><tr><th>Sources</th><td>${esc(p['Source IDs']||'—')}</td></tr><tr><th>Notes</th><td>${esc(p.Notes||'—')}</td></tr></table>`; }
+ else if(type==='family'){ html=`<h1>Family Group: ${esc(p.Name)}</h1><h2>Parents</h2><p>${parentsOf(id).map(nameOf).join(', ')||'—'}</p><h2>Spouse(s)</h2><p>${spousesOf(id).map(nameOf).join(', ')||'—'}</p><h2>Children</h2><table><tr><th>Name</th><th>Birth</th><th>Death</th><th>Relationship to Alan</th></tr>${reportRows(childrenOf(id))}</table>`; }
+ else if(type==='ancestors'){ const ids=levels(id,'ancestors',depth).flat(); html=`<h1>Ancestors of ${esc(p.Name)}</h1><p>Generations: ${depth}</p><table><tr><th>Name</th><th>Birth</th><th>Death</th><th>Relationship to Alan</th></tr>${reportRows(ids)}</table>`; }
+ else if(type==='descendants'){ const ids=levels(id,'descendants',depth).flat(); html=`<h1>Descendants of ${esc(p.Name)}</h1><p>Generations: ${depth}</p><table><tr><th>Name</th><th>Birth</th><th>Death</th><th>Relationship to Alan</th></tr>${reportRows(ids)}</table>`; }
+ else { const a=alanId(); if(!a){html='<p>No Alan Fleury record was found.</p>'; } else { const aa=ancestorDistances(a),bb=ancestorDistances(id),common=[...aa.keys()].filter(k=>bb.has(k)).sort((u,v)=>(aa.get(u)+bb.get(u))-(aa.get(v)+bb.get(v)))[0]; const pa=common?parentPath(a,common):null,pb=common?parentPath(id,common):null; html=`<h1>Relationship to Alan Fleury</h1><h2>${esc(p.Name)}</h2><p><strong>${esc(p['Relationship to Alan']||'Not established')}</strong></p><p>Common ancestor: ${esc(common?nameOf(common):'Not found')}</p><p>${esc((pa||[]).map(nameOf).join(' → ')+(pb?' → '+pb.slice().reverse().map(nameOf).join(' → '):''))}</p>`; }}
+ $('#reportPreview').innerHTML=html;
+}
+
 function renderData(){ $('#dataSummary').innerHTML='<div class="stats"><span class="stat">'+db.people.length+' people</span><span class="stat">'+db.relationships.length+' relationships</span></div><p class="muted">Last update: '+esc(db.meta?.updatedAt||'not recorded')+'</p>'; }
 
 function openTab(id){$$('.tab').forEach(x=>x.classList.toggle('hidden',x.id!==id));$$('nav button').forEach(x=>x.classList.toggle('active',x.dataset.tab===id));}
@@ -402,6 +415,9 @@ function bind(){
   $('#sortPeople').onclick=()=>{sortAZ=!sortAZ;renderPeopleTable();};
   $('#newRel').onclick=editRel;
   $('#findKinship').onclick=findKinship;
+  $('#generateReport').onclick=generateReport;
+  $('#printReport').onclick=()=>{ const html=$('#reportPreview').innerHTML; const w=window.open('','_blank'); if(!w)return; w.document.write('<!doctype html><html><head><title>Fleury Family Archive Report</title><style>body{font-family:Georgia,serif;margin:28px;color:#222}h1,h2{font-family:Georgia,serif}table{border-collapse:collapse;width:100%}td,th{padding:6px;border-bottom:1px solid #ccc;text-align:left}.small{color:#666}</style></head><body>'+html+'</body></html>'); w.document.close(); w.focus(); setTimeout(()=>w.print(),250); };
+
   $('#generateChart').onclick=generateChart;
   $('#downloadSvg').onclick=exportSvg;
   $('#exportJson').onclick=exportJson;
@@ -429,7 +445,7 @@ function bind(){
 
   $('#installMasterBtn').onclick=async()=>{
     if(!canAdmin())return alert('Admin access required.');
-    if(!confirm('Install the expanded master Fleury chart into the private database? This replaces the current people and relationship records with the bundled master package.'))return;
+    if(!confirm('Install the cleaned Ancestral Quest database into the new private archive? This writes the v5 database and leaves the old database untouched.'))return;
     const status=$('#masterStatus');
     status.textContent='Installing the expanded master chart…';
     try{
@@ -440,7 +456,7 @@ function bind(){
       await firebaseApi.saveDatabase(x);
       db=x;
       renderAll();
-      status.textContent='Installed '+x.people.length+' people and '+x.relationships.length+' relationships into private Firestore.';
+      status.textContent='Installed '+x.people.length+' people and '+x.relationships.length+' relationships into the new private v5 database.';
       setStatus('Expanded master chart installed successfully.');
     }catch(e){
       console.error(e);
