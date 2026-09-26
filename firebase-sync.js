@@ -1,5 +1,5 @@
 import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js';
-import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence } from 'https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence } from 'https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js';
 import { getFirestore, doc, getDoc, collection, getDocs, writeBatch, setDoc } from 'https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js';
 import { firebaseConfig } from './firebase-config.js';
 
@@ -17,14 +17,13 @@ export async function initAuth(callback){
   auth=getAuth(app);
   try{await setPersistence(auth,browserLocalPersistence)}catch(e){console.warn('Auth persistence unavailable:',e)}
   store=getFirestore(app);
-  try{await getRedirectResult(auth)}catch(e){if(e?.code!=='auth/no-auth-event')console.warn('Google redirect result:',e)}
   return onAuthStateChanged(auth,callback);
 }
 export async function signInWithGoogle(){
   if(!auth) throw new Error('Firebase authentication is not ready.');
   const provider=new GoogleAuthProvider();
   provider.setCustomParameters({prompt:'select_account'});
-  await signInWithRedirect(auth,provider);
+  await signInWithPopup(auth,provider);
 }
 export async function signOutUser(){if(auth) await signOut(auth)}
 export async function getMyRole(uid){
