@@ -67,7 +67,7 @@ nav,.tabs,.tabbar,.nav-tabs{overflow-x:auto;white-space:nowrap;-webkit-overflow-
 <main id="appMain" class="hidden">
 <section id="explore" class="tab">
 <div class="grid">
-<div class="panel"><h2>Family Explorer</h2><input id="search" class="search" placeholder="Search names, notes, places or IDsâ€¦"><div id="stats" class="stats"></div><div id="peopleList" class="people-list"></div></div>
+<div class="panel"><h2>Family Explorer</h2><input id="search" class="search" placeholder="Search names, notes, places or IDs…"><div id="stats" class="stats"></div><div id="peopleList" class="people-list"></div></div>
 <div class="panel"><div id="detail"><p class="muted">Select a person.</p></div></div>
 </div>
 </section>
@@ -485,7 +485,7 @@ nav,.tabs,.tabbar,.nav-tabs{overflow-x:auto;white-space:nowrap;-webkit-overflow-
     if(!canAdmin())return alert('Admin access required.');
     if(!confirm('Install the cleaned Ancestral Quest database into the new private archive? This writes the v5 database and leaves the old database untouched.'))return;
     const status=$('#masterStatus');
-    status.textContent='Installing the expanded master chartâ€¦';
+    status.textContent='Installing the expanded master chart…';
     try{
       const response=await fetch('./archive-seed.json',{cache:'no-store'});
       if(!response.ok)throw new Error('The bundled master chart could not be loaded.');
