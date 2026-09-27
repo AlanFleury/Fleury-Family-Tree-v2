@@ -287,7 +287,16 @@ function renderSelects(){
   if(!a.value&&db.people[0])a.value=db.people[0]['Person ID'];
   if(!b.value&&db.people[1])b.value=db.people[1]['Person ID'];
   if(!c.value&&person('ALA'))c.value='ALA';
+}function refreshAlanRelationships(){
+  const a=alanId();
+  if(!a)return;
+
+  db.people.forEach(p=>{
+    const id=p['Person ID'];
+    p['Relationship to Alan']=relationLabelForAlan(id)||'';
+  });
 }
+
 
 function alanId(){
   return db.people.find(p=>String(p.Name||'').trim().toLowerCase()==='alan fleury' && String(p.Birth||'').startsWith('3 APR 1969'))?.['Person ID'] || db.people.find(p=>String(p.Name||'').trim().toLowerCase()==='alan fleury')?.['Person ID'];
