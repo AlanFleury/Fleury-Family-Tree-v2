@@ -298,26 +298,152 @@ function sideFromAlan(ancestorId){
   while(q.length){const [cur,path]=q.shift(); for(const par of parentsOf(cur)){ if(seen.has(par))continue; const np=[...path,par]; if(par===ancestorId){ const first=np[0], g=person(first); return g?.Gender==='M'?'paternal':g?.Gender==='F'?'maternal':''; } seen.add(par); q.push([par,np]); }}
   return '';
 }
-function relationLabelForAlan(id){
-  const a=alanId(); if(!a||id===a)return id===a?'Self':'';
-  const aa=ancestorDistances(a), bb=ancestorDistances(id);
-  if(aa.has(id)){
-    const d=aa.get(id), side=sideFromAlan(id); const t=d===1?(person(id)?.Gender==='M'?'father':'mother'):d===2?(person(id)?.Gender==='M'?'grandfather':'grandmother'):'great-'.repeat(Math.max(0,d-3))+(person(id)?.Gender==='M'?'grandfather':'grandmother');
-    return side ? `${side} ${t}` : t;
-  }
-  if(bb.has(a)){
-    const d=bb.get(a); return d===1?'son/daughter':d===2?'grandchild':'great-'.repeat(Math.max(0,d-2))+'grandchild';
-  }
-  const common=[...aa.keys()].filter(k=>bb.has(k)).sort((u,v)=>(aa.get(u)+bb.get(u))-(aa.get(v)+bb.get(v)))[0];
-  if(!common)return '';
-  const da=aa.get(common), dbb=bb.get(common), side=sideFromAlan(common);
-  let label='';
-  if(da===1){ label=dbb===1?'sibling':dbb===2?'niece/nephew':dbb>2?'great-'.repeat(dbb-2)+'niece/nephew':''; }
-  else if(dbb===1){ label=da===2?'aunt/uncle':da>2?'great-'.repeat(da-2)+'aunt/uncle':''; }
-  else { const deg=Math.min(da,dbb)-1; const names=['','1st','2nd','3rd']; const c=names[deg]||deg+'th'; const rem=Math.abs(da-dbb); label=c+' cousin'+(rem?` ${rem} time${rem===1?'':'s'} removed`:''); }
-  return side && label ? `${label} - ${side} side` : label;
+function ordinalGreat(n){
+  if(n===1) return 'great';
+  if(n===2) return '2nd great';
+  if(n===3) return '3rd great';
+  return n+'th great';
 }
-function refreshAlanRelationships(){ db.people.forEach(p=>{ p['Relationship to Alan']=relationLabelForAlan(p['Person ID']); }); }
+
+function ancestorRelationship(d, gender){
+  const male = gender === 'M';
+  const female = gender === 'F';
+
+  if(d===1) return male ? 'father' : female ? 'mother' : 'parent';
+  if(d===2) return male ? 'grandfather' : female ? 'grandmother' : 'grandparent';
+
+  const greatNumber = d - 2;
+  const prefix = ordinalGreat(greatNumber);
+
+  return prefix + '-' + (male ? 'grandfather' : female ? 'grandmother' : 'grandparent');
+}
+
+function descendantRelationship(d, gender){
+  const male = gender === 'M';
+  const female = gender === 'F';
+
+  if(d===1) return male ? 'son' : female ? 'daughter' : 'child';
+  if(d===2) return male ? 'grandson' : female ? 'granddaughter' : 'grandchild';
+
+  const greatNumber = d - 2;
+  const prefix = ordinalGreat(greatNumber);
+
+  return prefix + '-' + (male ? 'grandson' : female ? 'granddaughter' : 'grandchild');
+}
+
+function auntUncleRelationship(d, gender){
+  const male = gender === 'M';
+  const female = gender === 'F';
+
+  if(d===2) return male ? 'uncle' : female ? 'aunt' : 'aunt/uncle';
+
+  const greatNumber = d - 2;
+  const prefix = ordinalGreat(greatNumber);
+
+  return prefix + '-' + (male ? 'uncle' : female ? 'aunt' : 'aunt/uncle');
+}
+
+function cousinRelationship(da, db){
+  const degree = Math.min(da, db) - 1;
+  const removed = Math.abs(da - db);
+
+  let ordinal;
+
+  if(degree===1) ordinal='1st';
+  else if(degree===2) ordinal='2nd';
+  else if(degree===3) ordinal='3rd';
+  else ordinal=degree+'th';
+
+  let result = ordinal + ' cousin';
+
+  if(removed===1){
+    result += ' once removed';
+  }else if(removed===2){
+    result += ' twice removed';
+  }else if(removed>2){
+    result += ' '+removed+' times removed';
+  }
+
+  return result;
+}
+
+function relationLabelForAlan(id){
+  const a = alanId();
+
+  if(!a) return '';
+  if(id===a) return 'Self';
+
+  const aa = ancestorDistances(a);
+  const bb = ancestorDistances(id);
+
+  // Direct ancestor of Alan
+  if(aa.has(id)){
+    const d = aa.get(id);
+    const p = person(id);
+    const side = sideFromAlan(id);
+
+    const label = ancestorRelationship(d, p?.Gender);
+
+    return side ? side+' '+label : label;
+  }
+
+  // Direct descendant of Alan
+  if(bb.has(a)){
+    const d = bb.get(a);
+    const p = person(id);
+
+    return descendantRelationship(d, p?.Gender);
+  }
+
+  // Find closest common ancestor
+  const common = [...aa.keys()]
+    .filter(k => bb.has(k))
+    .sort((u,v) =>
+      (aa.get(u)+bb.get(u)) -
+      (aa.get(v)+bb.get(v))
+    )[0];
+
+  if(!common) return '';
+
+  const da = aa.get(common);
+  const dbb = bb.get(common);
+  const side = sideFromAlan(common);
+
+  let label = '';
+
+  // Siblings / niece / nephew
+  if(da===1){
+    if(dbb===1){
+      label = 'sibling';
+    }else if(dbb===2){
+      const p = person(id);
+      label = p?.Gender==='M' ? 'nephew' :
+              p?.Gender==='F' ? 'niece' :
+              'niece/nephew';
+    }else{
+      const p = person(id);
+      label = ordinalGreat(dbb-2)+'-'+
+        (p?.Gender==='M' ? 'nephew' :
+         p?.Gender==='F' ? 'niece' :
+         'niece/nephew');
+    }
+  }
+
+  // Aunt / uncle
+  else if(dbb===1){
+    const p = person(id);
+    label = auntUncleRelationship(da, p?.Gender);
+  }
+
+  // Cousins
+  else{
+    label = cousinRelationship(da, dbb);
+  }
+
+  return side && label
+    ? label+' - '+side+' side'
+    : label;
+}
 
 function ancestorDistances(id){
   const m=new Map([[id,0]]),q=[id];
