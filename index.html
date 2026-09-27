@@ -168,7 +168,7 @@ function updateAuthUI(){
   $('#signInBtn').classList.toggle('hidden',!!currentUser);
   $('#signOutBtn').classList.toggle('hidden',!currentUser);
   if(authorized){
-    $('#authState').innerHTML='<strong>'+esc(currentUser.displayName||currentUser.email||'Signed in')+'</strong><div class="small muted">'+esc(currentUser.email||'')+' Â· <span class="role">'+esc(currentRole)+'</span></div>';
+    $('#authState').innerHTML='<strong>'+esc(currentUser.displayName||currentUser.email||'Signed in')+'</strong><div class="small muted">'+esc(currentUser.email||'')+' · <span class="role">'+esc(currentRole)+'</span></div>';
   }else if(currentUser){
     $('#authState').innerHTML='<strong>Access pending</strong><div class="small muted">'+esc(currentUser.email||'')+' is signed in but is not approved.</div>';
   }else{
@@ -392,7 +392,7 @@ function reportRows(ids){ return ids.filter(Boolean).map(id=>{const p=person(id)
 function generateReport(){
  const id=$('#reportPerson').value,type=$('#reportType').value,depth=Number($('#reportDepth').value)||4,p=person(id); if(!p)return;
  let html='';
- if(type==='individual'){ html=`<h1>${esc(p.Name)}</h1><p class="small">Fleury Family Archive Â· ${esc(p['Person ID'])}</p><table><tr><th>Birth</th><td>${esc(p.Birth||'-')}</td></tr><tr><th>Death</th><td>${esc(p.Death||'-')}</td></tr><tr><th>Relationship to Alan</th><td>${esc(p['Relationship to Alan']||'-')}</td></tr><tr><th>Parents</th><td>${parentsOf(id).map(nameOf).join(', ')||'-'}</td></tr><tr><th>Spouse(s)</th><td>${spousesOf(id).map(nameOf).join(', ')||'-'}</td></tr><tr><th>Children</th><td>${childrenOf(id).map(nameOf).join(', ')||'-'}</td></tr><tr><th>Places</th><td>${esc(p.Places||'-')}</td></tr><tr><th>Sources</th><td>${esc(p['Source IDs']||'-')}</td></tr><tr><th>Notes</th><td>${esc(p.Notes||'-')}</td></tr></table>`; }
+ if(type==='individual'){ html=`<h1>${esc(p.Name)}</h1><p class="small">Fleury Family Archive · ${esc(p['Person ID'])}</p><table><tr><th>Birth</th><td>${esc(p.Birth||'-')}</td></tr><tr><th>Death</th><td>${esc(p.Death||'-')}</td></tr><tr><th>Relationship to Alan</th><td>${esc(p['Relationship to Alan']||'-')}</td></tr><tr><th>Parents</th><td>${parentsOf(id).map(nameOf).join(', ')||'-'}</td></tr><tr><th>Spouse(s)</th><td>${spousesOf(id).map(nameOf).join(', ')||'-'}</td></tr><tr><th>Children</th><td>${childrenOf(id).map(nameOf).join(', ')||'-'}</td></tr><tr><th>Places</th><td>${esc(p.Places||'-')}</td></tr><tr><th>Sources</th><td>${esc(p['Source IDs']||'-')}</td></tr><tr><th>Notes</th><td>${esc(p.Notes||'-')}</td></tr></table>`; }
  else if(type==='family'){ html=`<h1>Family Group: ${esc(p.Name)}</h1><h2>Parents</h2><p>${parentsOf(id).map(nameOf).join(', ')||'-'}</p><h2>Spouse(s)</h2><p>${spousesOf(id).map(nameOf).join(', ')||'-'}</p><h2>Children</h2><table><tr><th>Name</th><th>Birth</th><th>Death</th><th>Relationship to Alan</th></tr>${reportRows(childrenOf(id))}</table>`; }
  else if(type==='ancestors'){ const ids=levels(id,'ancestors',depth).flat(); html=`<h1>Ancestors of ${esc(p.Name)}</h1><p>Generations: ${depth}</p><table><tr><th>Name</th><th>Birth</th><th>Death</th><th>Relationship to Alan</th></tr>${reportRows(ids)}</table>`; }
  else if(type==='descendants'){ const ids=levels(id,'descendants',depth).flat(); html=`<h1>Descendants of ${esc(p.Name)}</h1><p>Generations: ${depth}</p><table><tr><th>Name</th><th>Birth</th><th>Death</th><th>Relationship to Alan</th></tr>${reportRows(ids)}</table>`; }
