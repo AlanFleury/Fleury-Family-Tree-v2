@@ -346,7 +346,7 @@ function findKinship(){
   $('#kinResult').classList.remove('hidden');
   if(!common.length){$('#kinResult').innerHTML='<div class="notice">No common recorded ancestor was found.</div>';return;}
   const anc=common[0],da=aa.get(anc),dbb=bb.get(anc),pa=parentPath(a,anc),pb=parentPath(b,anc);
-  $('#kinResult').innerHTML='<div class="notice"><h3>'+esc(nameOf(a))+' and '+esc(nameOf(b))+'</h3><p><strong>Relationship:</strong> '+esc(kinLabel(da,dbb))+'</p><p><strong>Common ancestor:</strong> '+esc(nameOf(anc))+'</p><div class="pathbox">'+esc((pa||[]).map(nameOf).join(' â†’ ')+' â†’ '+(pb||[]).reverse().map(nameOf).join(' â†’ '))+'</div></div>';
+  $('#kinResult').innerHTML='<div class="notice"><h3>'+esc(nameOf(a))+' and '+esc(nameOf(b))+'</h3><p><strong>Relationship:</strong> '+esc(kinLabel(da,dbb))+'</p><p><strong>Common ancestor:</strong> '+esc(nameOf(anc))+'</p><div class="pathbox">'+esc((pa||[]).map(nameOf).join(' → ')+' → '+(pb||[]).reverse().map(nameOf).join(' → '))+'</div></div>';
 }
 
 function levels(root,mode,depth){
@@ -396,7 +396,7 @@ function generateReport(){
  else if(type==='family'){ html=`<h1>Family Group: ${esc(p.Name)}</h1><h2>Parents</h2><p>${parentsOf(id).map(nameOf).join(', ')||'-'}</p><h2>Spouse(s)</h2><p>${spousesOf(id).map(nameOf).join(', ')||'-'}</p><h2>Children</h2><table><tr><th>Name</th><th>Birth</th><th>Death</th><th>Relationship to Alan</th></tr>${reportRows(childrenOf(id))}</table>`; }
  else if(type==='ancestors'){ const ids=levels(id,'ancestors',depth).flat(); html=`<h1>Ancestors of ${esc(p.Name)}</h1><p>Generations: ${depth}</p><table><tr><th>Name</th><th>Birth</th><th>Death</th><th>Relationship to Alan</th></tr>${reportRows(ids)}</table>`; }
  else if(type==='descendants'){ const ids=levels(id,'descendants',depth).flat(); html=`<h1>Descendants of ${esc(p.Name)}</h1><p>Generations: ${depth}</p><table><tr><th>Name</th><th>Birth</th><th>Death</th><th>Relationship to Alan</th></tr>${reportRows(ids)}</table>`; }
- else { const a=alanId(); if(!a){html='<p>No Alan Fleury record was found.</p>'; } else { const aa=ancestorDistances(a),bb=ancestorDistances(id),common=[...aa.keys()].filter(k=>bb.has(k)).sort((u,v)=>(aa.get(u)+bb.get(u))-(aa.get(v)+bb.get(v)))[0]; const pa=common?parentPath(a,common):null,pb=common?parentPath(id,common):null; html=`<h1>Relationship to Alan Fleury</h1><h2>${esc(p.Name)}</h2><p><strong>${esc(p['Relationship to Alan']||'Not established')}</strong></p><p>Common ancestor: ${esc(common?nameOf(common):'Not found')}</p><p>${esc((pa||[]).map(nameOf).join(' â†’ ')+(pb?' â†’ '+pb.slice().reverse().map(nameOf).join(' â†’ '):''))}</p>`; }}
+ else { const a=alanId(); if(!a){html='<p>No Alan Fleury record was found.</p>'; } else { const aa=ancestorDistances(a),bb=ancestorDistances(id),common=[...aa.keys()].filter(k=>bb.has(k)).sort((u,v)=>(aa.get(u)+bb.get(u))-(aa.get(v)+bb.get(v)))[0]; const pa=common?parentPath(a,common):null,pb=common?parentPath(id,common):null; html=`<h1>Relationship to Alan Fleury</h1><h2>${esc(p.Name)}</h2><p><strong>${esc(p['Relationship to Alan']||'Not established')}</strong></p><p>Common ancestor: ${esc(common?nameOf(common):'Not found')}</p><p>${esc((pa||[]).map(nameOf).join(' → ')+(pb?' → '+pb.slice().reverse().map(nameOf).join(' → '):''))}</p>`; }}
  $('#reportPreview').innerHTML=html;
 }
 
