@@ -583,8 +583,8 @@ start();
     }
     if(g===1)return '1st generation - Grandparents';
     if(g===2)return '2nd generation - Great-grandparents';
-    if(g===3)return '3rd generation - 2Ã— great-grandparents';
-    return g+'th generation - '+(g-1)+'Ã— great-grandparents';
+    if(g===3)return '3rd generation - 2× great-grandparents';
+    return g+'th generation - '+(g-1)+'× great-grandparents';
   }
 
   function genLevels(root,mode,depth){
@@ -619,7 +619,7 @@ start();
     section.innerHTML=`
       <div class="panel">
         <h2>Generations - Grandparents & Beyond</h2>
-        <p class="muted">Ancestors: grandparents are the 1st generation, great-grandparents the 2nd, 2Ã— great-grandparents the 3rd, and onward. Descendants: children are the 1st generation, grandchildren the 2nd, great-grandchildren the 3rd, and onward.</p>
+        <p class="muted">Ancestors: grandparents are the 1st generation, great-grandparents the 2nd, 2× great-grandparents the 3rd, and onward. Descendants: children are the 1st generation, grandchildren the 2nd, great-grandchildren the 3rd, and onward.</p>
         <div class="formgrid">
           <div><label>Starting person</label><select id="generationPerson"></select></div>
           <div><label>Direction</label><select id="generationMode"><option value="ancestors">Ancestors</option><option value="descendants">Descendants</option></select></div>
