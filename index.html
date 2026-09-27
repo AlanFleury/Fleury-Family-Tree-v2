@@ -73,7 +73,7 @@ nav,.tabs,.tabbar,.nav-tabs{overflow-x:auto;white-space:nowrap;-webkit-overflow-
 </section>
 
 <section id="people" class="tab hidden"><div class="grid">
-<div class="panel"><h2>People</h2><div class="actions"><button class="primary" id="newPerson">+ Add person</button><button id="sortPeople">Sort Aâ€“Z</button></div><div id="peopleTable" class="tablewrap"></div></div>
+<div class="panel"><h2>People</h2><div class="actions"><button class="primary" id="newPerson">+ Add person</button><button id="sortPeople">Sort A–Z</button></div><div id="peopleTable" class="tablewrap"></div></div>
 <div class="panel"><div id="personEditor"><h2>Add or edit a person</h2><p class="muted">Permanent IDs keep relationships intact.</p></div></div>
 </div></section>
 
@@ -363,7 +363,7 @@ function levels(root,mode,depth){
 function nodeHtml(id,root){
   const p=person(id);if(!p)return '';
   const ev=String(p['Evidence Status']||'').toLowerCase(),unc=ev.includes('verify')||ev.includes('uncertain');
-  return '<div class="node '+(id===root?'self ':'')+(unc?'uncertain':'')+'" data-person-link="'+esc(id)+'" tabindex="0" role="button"><strong>'+esc(p.Name)+'</strong><div class="small">'+esc(p.Birth||'')+(p.Death?' â€“ '+esc(p.Death):'')+'</div><div class="small muted">'+esc(id)+'</div></div>';
+  return '<div class="node '+(id===root?'self ':'')+(unc?'uncertain':'')+'" data-person-link="'+esc(id)+'" tabindex="0" role="button"><strong>'+esc(p.Name)+'</strong><div class="small">'+esc(p.Birth||'')+(p.Death?' – '+esc(p.Death):'')+'</div><div class="small muted">'+esc(id)+'</div></div>';
 }
 function generateChart(){
   const root=$('#chartPerson').value;if(!root)return;
