@@ -2065,35 +2065,31 @@ function ancestorsWithDistance(id){
     if(cur !== id)
       out.set(cur,d);
 
-    for(
-      const p of parentsOf(cur)
-    ){
+       $('#kinResult').innerHTML =
+      '<h3>No common blood ancestor found in the recorded tree</h3>' +
+      '<p>There is no recorded common ancestor using the parent links currently in the database.</p>' +
+      (
+        mixed
+          ? `<div class="pathbox">${
+              esc(
+                mixed
+                  .map(
+                    x =>
+                      x.type === 'spouse'
+                        ? `${name(x.from)} — spouse of — ${name(x.to)}`
+                        : name(x.from) +
+                          ' → ' +
+                          name(x.to)
+                  )
+                  .join('\n')
+              )
+            }</div>`
+          : ''
+      );
 
-      if(seen.has(p))
-        continue;
-
-      seen.add(p);
-
-      q.push([
-        p,
-        d + 1
-      ]);
-
-    }
+    return;
 
   }
-
-  return out;
-
-}
-    return null;
-
-}
-
-function ancestorsWithDistance(id){
-
-  let m = new Map([[id,0]]);
-  let q = [id];
 
   while(q.length){
 
