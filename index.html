@@ -2048,56 +2048,23 @@ function parentPathToAncestor(id,ancestor){
 
 function ancestorsWithDistance(id){
 
-  const out =
-    new Map();
+  let m =
+    new Map([[id,0]]);
 
   let q =
-    [[id,0]];
-
-  const seen =
-    new Set([id]);
+    [id];
 
   while(q.length){
 
-    const [cur,d] =
+    let cur =
       q.shift();
 
-    if(cur !== id)
-      out.set(cur,d);
+    let d =
+      m.get(cur);
 
-       $('#kinResult').innerHTML =
-      '<h3>No common blood ancestor found in the recorded tree</h3>' +
-      '<p>There is no recorded common ancestor using the parent links currently in the database.</p>' +
-      (
-        mixed
-          ? `<div class="pathbox">${
-              esc(
-                mixed
-                  .map(
-                    x =>
-                      x.type === 'spouse'
-                        ? `${name(x.from)} — spouse of — ${name(x.to)}`
-                        : name(x.from) +
-                          ' → ' +
-                          name(x.to)
-                  )
-                  .join('\n')
-              )
-            }</div>`
-          : ''
-      );
-
-    return;
-
-  }
-
-  while(q.length){
-
-    let cur = q.shift();
-
-    let d = m.get(cur);
-
-    for(const p of parentsOf(cur)){
+    for(
+      const p of parentsOf(cur)
+    ){
 
       if(!m.has(p)){
 
