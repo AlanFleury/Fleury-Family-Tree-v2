@@ -3863,71 +3863,17 @@ function editPerson(id){
   if(id){
 
     $('#deletePerson').onclick =
-      () => {
-
-        if(
-          !confirm(
-            `Delete ${p.Name}? This does not automatically remove relationship records.`
-          )
-        )
-          return;
-
-        db.people =
-          db.people.filter(
-            x =>
-              x['Person ID'] !== id
-          );
-
-        selected =
-          null;
-
-        save();
-
-        $('#personEditor').innerHTML =
-          '<h2>Person deleted</h2>';
-
-      };
-
-  }
-
-}
     if(id){
 
-    $('#deletePerson').onclick =
-      () => {
+  $('#deletePerson').onclick =
+    () => {
 
-        if(
-          !confirm(
-            'Delete this person and all relationship links?'
-          )
+      if(
+        !confirm(
+          'Delete this person and all relationship links?'
         )
-          return;
-
-        db.people =
-          db.people.filter(
-            x =>
-              x['Person ID'] !== id
-          );
-
-        db.relationships =
-          db.relationships.filter(
-            r =>
-              r.person1 !== id &&
-              r.person2 !== id
-          );
-
-        selected = null;
-
-        save();
-
-      };
-
-  }
-
-}
-
-function renderRels(){
-
+      )
+        return; 
   const rq = String($('#relSearch')?.value || '').toLowerCase().trim();
 
   let rows =
