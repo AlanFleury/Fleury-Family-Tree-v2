@@ -3862,23 +3862,54 @@ function editPerson(id){
 
   if(id){
 
-    $('#deletePerson').onclick =
-    if(id){
-
   $('#deletePerson').onclick =
     () => {
 
       if(
         !confirm(
-          'Delete this person and all relationship links?'
+          `Delete ${p.Name}? This does not automatically remove relationship records.`
         )
       )
-        return; 
-  const rq = String($('#relSearch')?.value || '').toLowerCase().trim();
+        return;
+
+      db.people =
+        db.people.filter(
+          x =>
+            x['Person ID'] !== id
+        );
+
+      selected =
+        null;
+
+      save();
+
+      $('#personEditor').innerHTML =
+        '<h2>Person deleted</h2>';
+
+    };
+
+  }
+
+}
+
+function renderRels(){
+
+  const rq =
+    String(
+      $('#relSearch')?.value || ''
+    )
+    .toLowerCase()
+    .trim();
 
   let rows =
     db.relationships
-      .filter(r => !rq || `${r.id} ${r.type} ${name(r.person1)} ${name(r.person2)} ${r.sourceIds || ''} ${r.notes || ''}`.toLowerCase().includes(rq))
+      .filter(
+        r =>
+          !rq ||
+          `${r.id} ${r.type} ${name(r.person1)} ${name(r.person2)} ${r.sourceIds || ''} ${r.notes || ''}`
+            .toLowerCase()
+            .includes(rq)
+      )
       .map(
         r =>
           `<tr>
