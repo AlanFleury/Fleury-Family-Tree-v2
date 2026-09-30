@@ -722,57 +722,133 @@ start();
     return g+'th generation - '+(g-1)+'× great-grandparents';
   }
 
-  function genLevels(root,mode,depth){
-    const dir=mode==='ancestors'?parentsOf:childrenOf;
+function genLevels(root,mode,depth){
+  if(mode==='extended'){
     const result=[];
-    let current=[root], seen=new Set([root]);
-    for(let g=1;g<=depth;g++){
-      const next=[];
-      current.forEach(id=>dir(id).forEach(x=>{
-        if(!seen.has(x)){seen.add(x);next.push(x);}
-      }));
-      if(!next.length)break;
-      result.push({generation:g,ids:next});
-      current=next;
+    const seen=new Set([root]);
+
+    function ancestorDistances(start){
+      const map=new Map([[start,0]]);
+      let current=[start];
+      for(let d=1;d<=depth;d++){
+        const next=[];
+        current.forEach(id=>{
+          parentsOf(id).forEach(p=>{
+            if(!map.has(p)){
+              map.set(p,d);
+              next.push(p);
+            }
+          });
+        });
+        if(!next.length)break;
+        current=next;
+      }
+      return map;
     }
-    return result;
+
+    function descendants(start,maxDepth){
+      const out=[];
+      let current=[start];
+      const localSeen=new Set([start]);
+      for(let d=1;d<=maxDepth;d++){
+        const next=[];
+        current.forEach(id=>{
+          childrenOf(id).forEach(c=>{
+            if(!localSeen.has(c)){
+              localSeen.add(c);
+              next.push(c);
+            }
+          });
+        });
+        if(!next.length)break;
+        out.push({depth:d,ids:next});
+        current=next;
+      }
+      return out;
+    }
+
+    const ancestors=ancestorDistances(root);
+
+    ancestors.forEach((ancestor,ancestorDepth)=>{
+      if(ancestorDepth===0)return;
+
+      parentsOf(ancestor).forEach(grandparent=>{
+        parentsOf(grandparent).forEach(sibling=>{
+          if(sibling===ancestor)return;
+
+          if(ancestorDepth===1){
+            if(!seen.has(sibling)){
+              seen.add(sibling);
+              result.push({
+                generation:1,
+                ids:[sibling],
+                label:'Aunts & Uncles'
+              });
+            }
+            return;
+          }
+
+          descendants(sibling,depth).forEach(group=>{
+            group.ids.forEach(id=>{
+              if(seen.has(id))return;
+              seen.add(id);
+
+              const cousinDegree=ancestorDepth-1;
+              const otherDistance=group.depth+1;
+              const removal=Math.abs(otherDistance-ancestorDepth);
+
+              result.push({
+                generation:ancestorDepth,
+                ids:[id],
+                label:
+                  cousinDegree===1 ? '1st cousin' :
+                  cousinDegree===2 ? '2nd cousin' :
+                  cousinDegree===3 ? '3rd cousin' :
+                  cousinDegree+'th cousin',
+                removal
+              });
+            });
+          });
+        });
+      });
+    });
+
+    const groups={};
+    result.forEach(r=>{
+      let label=r.label||'Aunts & Uncles';
+      if(r.removal){
+        label+=r.removal===1?' once removed':r.removal+' times removed';
+      }
+      if(!groups[label])groups[label]=[];
+      groups[label].push(...r.ids);
+    });
+
+    return Object.entries(groups).map(([label,ids])=>({
+      generation:0,
+      ids,
+      label
+    }));
   }
 
-  function makeGenerationUI(){
-    if($('#generations')) return;
-    const nav=$('#mainNav');
-    const chartBtn=nav?.querySelector('[data-tab="chart"]');
-    if(!nav || !chartBtn) return;
+  const dir=mode==='ancestors'?parentsOf:childrenOf;
+  const result=[];
+  let current=[root], seen=new Set([root]);
 
-    const b=document.createElement('button');
-    b.type='button'; b.dataset.tab='generations'; b.textContent='Generations';
-    chartBtn.insertAdjacentElement('afterend',b);
+  for(let g=1;g<=depth;g++){
+    const next=[];
+    current.forEach(id=>dir(id).forEach(x=>{
+      if(!seen.has(x)){
+        seen.add(x);
+        next.push(x);
+      }
+    }));
+    if(!next.length)break;
+    result.push({generation:g,ids:next});
+    current=next;
+  }
 
-    const section=document.createElement('section');
-    section.id='generations';
-    section.className='tab hidden';
-    section.innerHTML=`
-      <div class="panel">
-        <h2>Generations - Grandparents & Beyond</h2>
-        <p class="muted">Ancestors: grandparents are the 1st generation, great-grandparents the 2nd, 2× great-grandparents the 3rd, and onward. Descendants: children are the 1st generation, grandchildren the 2nd, great-grandchildren the 3rd, and onward.</p>
-        <div class="formgrid">
-          <div><label>Starting person</label><select id="generationPerson"></select></div>
-          <div><label>Direction</label><select id="generationMode"><option value="ancestors">Ancestors</option><option value="descendants">Descendants</option><option value="extended">Aunts, Uncles & Cousins</option></select></div>
-          <div><label>Generations</label><select id="generationDepth"><option>3</option><option>4</option><option>5</option><option>6</option><option>8</option><option>10</option><option>12</option><option>15</option><option>20</option><option>25</option><option selected>30</option></select></div>
-        </div>
-        <div class="actions"><button class="primary" id="showGenerations">Show generations</button></div>
-        <div id="generationResult" class="pathbox">Choose a person and generate the generation list.</div>
-      </div>`;
-    $('#appMain').appendChild(section);
-
-    const syncPeople=()=>{
-      const s=$('#generationPerson'); if(!s) return;
-      const old=s.value;
-      s.innerHTML=personOptions(old);
-      if(old && person(old)) s.value=old;
-      else if(selected && person(selected)) s.value=selected;
-      else if(person('ALA')) s.value='ALA';
-    };
+  return result;
+}
 
     $('#showGenerations').onclick=()=>{
       const root=$('#generationPerson').value;
