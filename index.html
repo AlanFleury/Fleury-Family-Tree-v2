@@ -709,118 +709,46 @@ start();
     };
   }
 
-  function genTitle(mode,g){
-    if(mode==='descendants'){
-      if(g===1)return '1st generation - Children';
-      if(g===2)return '2nd generation - Grandchildren';
-      if(g===3)return '3rd generation - Great-grandchildren';
-      return g+'th generation - '+('Great-'.repeat(g-2))+'grandchildren';
-    }
-    if(g===1)return '1st generation - Grandparents';
-    if(g===2)return '2nd generation - Great-grandparents';
-    if(g===3)return '3rd generation - 2× great-grandparents';
-    return g+'th generation - '+(g-1)+'× great-grandparents';
-  }
-
 function genLevels(root,mode,depth){
   if(mode==='extended'){
-    const result=[];
-    const seen=new Set([root]);
-
-    function ancestorDistances(start){
-      const map=new Map([[start,0]]);
-      let current=[start];
-      for(let d=1;d<=depth;d++){
-        const next=[];
-        current.forEach(id=>{
-          parentsOf(id).forEach(p=>{
-            if(!map.has(p)){
-              map.set(p,d);
-              next.push(p);
-            }
-          });
-        });
-        if(!next.length)break;
-        current=next;
-      }
-      return map;
-    }
-
-    function descendants(start,maxDepth){
-      const out=[];
-      let current=[start];
-      const localSeen=new Set([start]);
-      for(let d=1;d<=maxDepth;d++){
-        const next=[];
-        current.forEach(id=>{
-          childrenOf(id).forEach(c=>{
-            if(!localSeen.has(c)){
-              localSeen.add(c);
-              next.push(c);
-            }
-          });
-        });
-        if(!next.length)break;
-        out.push({depth:d,ids:next});
-        current=next;
-      }
-      return out;
-    }
-
-    const ancestors=ancestorDistances(root);
-
-    ancestors.forEach((ancestor,ancestorDepth)=>{
-      if(ancestorDepth===0)return;
-
-      parentsOf(ancestor).forEach(grandparent=>{
-        parentsOf(grandparent).forEach(sibling=>{
-          if(sibling===ancestor)return;
-
-          if(ancestorDepth===1){
-            if(!seen.has(sibling)){
-              seen.add(sibling);
-              result.push({
-                generation:1,
-                ids:[sibling],
-                label:'Aunts & Uncles'
-              });
-            }
-            return;
-          }
-
-          descendants(sibling,depth).forEach(group=>{
-            group.ids.forEach(id=>{
-              if(seen.has(id))return;
-              seen.add(id);
-
-              const cousinDegree=ancestorDepth-1;
-              const otherDistance=group.depth+1;
-              const removal=Math.abs(otherDistance-ancestorDepth);
-
-              result.push({
-                generation:ancestorDepth,
-                ids:[id],
-                label:
-                  cousinDegree===1 ? '1st cousin' :
-                  cousinDegree===2 ? '2nd cousin' :
-                  cousinDegree===3 ? '3rd cousin' :
-                  cousinDegree+'th cousin',
-                removal
-              });
-            });
-          });
-        });
-      });
-    });
-
     const groups={};
-    result.forEach(r=>{
-      let label=r.label||'Aunts & Uncles';
-      if(r.removal){
-        label+=r.removal===1?' once removed':r.removal+' times removed';
+
+    db.people.forEach(p=>{
+      const id=p['Person ID'];
+      if(!id || id===root)return;
+
+      const aa=ancestorDistances(root);
+      const bb=ancestorDistances(id);
+
+      const common=[...aa.keys()]
+        .filter(x=>bb.has(x))
+        .sort((x,y)=>
+          (aa.get(x)+bb.get(x))-
+          (aa.get(y)+bb.get(y))
+        );
+
+      if(!common.length)return;
+
+      const anc=common[0];
+      const da=aa.get(anc);
+      const dbb=bb.get(anc);
+
+      let label='';
+
+      if(da===1 && dbb===1){
+        label='Sibling';
+      }else if(dbb===1){
+        const g=p.Gender;
+        label=g==='M'?'Aunt / Uncle - Uncle':'Aunt / Uncle - Aunt';
+      }else if(da===1){
+        const g=p.Gender;
+        label=g==='M'?'Nephew':'Niece';
+      }else{
+        label=cousinRelationship(da,dbb);
       }
+
       if(!groups[label])groups[label]=[];
-      groups[label].push(...r.ids);
+      groups[label].push(id);
     });
 
     return Object.entries(groups).map(([label,ids])=>({
@@ -836,14 +764,23 @@ function genLevels(root,mode,depth){
 
   for(let g=1;g<=depth;g++){
     const next=[];
-    current.forEach(id=>dir(id).forEach(x=>{
-      if(!seen.has(x)){
-        seen.add(x);
-        next.push(x);
-      }
-    }));
+
+    current.forEach(id=>{
+      dir(id).forEach(x=>{
+        if(!seen.has(x)){
+          seen.add(x);
+          next.push(x);
+        }
+      });
+    });
+
     if(!next.length)break;
-    result.push({generation:g,ids:next});
+
+    result.push({
+      generation:g,
+      ids:next
+    });
+
     current=next;
   }
 
