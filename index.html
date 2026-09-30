@@ -2847,7 +2847,14 @@ function showGenerations(){
         break;
 
       levels.push({
-        title:
+  title:
+    g === 1
+      ? 'Children'
+      : g === 2
+        ? 'Grandchildren'
+        : `${'great-'.repeat(g-2)}great-grandchildren`,
+  ids:next
+});
          
   if(!groups.length)
 
