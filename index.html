@@ -2848,35 +2848,7 @@ function showGenerations(){
 
       levels.push({
         title:
-          g === 1
-            ? 'Children'
-            : g === 2
-              ? 'Grandchildren'
-              : `${'great-'.repeat(g-2)}great-grandchildren`,
-        ids:next
-      });
-
-      cur =
-        next;
-
-    }
-
-    groups =
-      levels;
-
-  }else{
-
-    groups =
-      collateralBranches(
-        root,
-        depth
-      );
-
-  }
-
-  let html =
-    `<h3>${esc(p.Name)}</h3>`;
-
+         
   if(!groups.length)
 
     html +=
