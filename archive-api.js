@@ -8,8 +8,8 @@ let auth0Client=null;
 let user=null;
 async function init(){
   const c=cfg();
-  if(!window.createAuth0Client) throw new Error('Auth0 browser SDK did not load.');
-  auth0Client=await window.createAuth0Client({domain:c.AUTH0_DOMAIN,clientId:c.AUTH0_CLIENT_ID,authorizationParams:{audience:c.AUTH0_AUDIENCE,redirect_uri:window.location.origin+window.location.pathname}});
+  if(!window.auth0 || !window.auth0.createAuth0Client) throw new Error('Auth0 browser SDK did not load.');
+  auth0Client=await window.auth0.createAuth0Client({domain:c.AUTH0_DOMAIN,clientId:c.AUTH0_CLIENT_ID,authorizationParams:{audience:c.AUTH0_AUDIENCE,redirect_uri:window.location.origin+window.location.pathname}});
   if(window.location.search.includes('code=') && window.location.search.includes('state=')){
     await auth0Client.handleRedirectCallback();
     history.replaceState({},document.title,window.location.pathname);
