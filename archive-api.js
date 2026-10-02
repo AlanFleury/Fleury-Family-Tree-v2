@@ -20,7 +20,22 @@ async function init(){
 async function initAuth(handleUser){ await init(); await handleUser(user); }
 async function signInWithEmail(){
   const c=cfg();
-  await auth0Client.loginWithRedirect({authorizationParams:{audience:c.AUTH0_AUDIENCE,scope:'openid profile email',screen_hint:'login'}});
+
+  if(!auth0Client){
+    await init();
+  }
+
+  if(!auth0Client){
+    throw new Error('Auth0 could not be initialized.');
+  }
+
+  await auth0Client.loginWithRedirect({
+    authorizationParams:{
+      audience:c.AUTH0_AUDIENCE,
+      scope:'openid profile email',
+      screen_hint:'login'
+    }
+  });
 }
 async function signOutUser(){ await auth0Client.logout({logoutParams:{returnTo:window.location.origin+window.location.pathname}}); }
 async function token(){ return auth0Client.getTokenSilently({authorizationParams:{audience:cfg().AUTH0_AUDIENCE}}); }
