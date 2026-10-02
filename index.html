@@ -2222,9 +2222,9 @@ function fillPersonSelect(id, query, preferred=''){
   const arr = q
     ? db.people.filter(p => `${p.Name || ''} ${p['Person ID'] || ''}`.toLowerCase().includes(q))
     : db.people;
-  el.innerHTML = arr.slice().sort((a,b)=>a.Name.localeCompare(b.Name)).map(p=>
-    `<option value="${esc(p['Person ID'])}">${esc(p.Name)} [${esc(p['Person ID'])}]</option>`
-  ).join('');
+ el.innerHTML = arr.slice().sort((a,b)=>a.Name.localeCompare(b.Name)).map(p=>
+  `<option value="${esc(p['Person ID'])}">${esc(p.Name)}</option>`
+).join('');
   if(old && arr.some(p=>p['Person ID']===old)) el.value=old;
   else if(currentPersonId && arr.some(p=>p['Person ID']===currentPersonId)) el.value=currentPersonId;
   else if(person('ALAN-FLEURY') && arr.some(p=>p['Person ID']==='ALAN-FLEURY')) el.value='ALAN-FLEURY';
