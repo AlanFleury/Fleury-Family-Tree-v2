@@ -1663,7 +1663,7 @@ function renderPersonMappingUI(){
 
   const q = String($('#personMapSearch')?.value || '').toLowerCase().trim();
   const arr = q ? db.people.filter(p => `${p.Name || ''} ${p['Person ID'] || ''}`.toLowerCase().includes(q)) : db.people;
-  select.innerHTML = arr.slice().sort((a,b)=>a.Name.localeCompare(b.Name)).map(p => `<option value="${esc(p['Person ID'])}">${esc(p.Name)} [${esc(p['Person ID'])}]</option>`).join('');
+  select.innerHTML = arr.slice().sort((a,b)=>a.Name.localeCompare(b.Name)).map(p => `<option value="${esc(p['Person ID'])}">${esc(p.Name)}</option>`).join('');
 
 }
 
