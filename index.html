@@ -1834,9 +1834,9 @@ function renderKinshipSelects(){
   let av = a.value;
   let bv = b.value;
 
-  const q = String($('#kinSearch')?.value || '').toLowerCase().trim();
+ const q = String($('#kinSearch')?.value || '').toLowerCase().trim();
   const arr = q ? db.people.filter(p => `${p.Name || ''} ${p['Person ID'] || ''}`.toLowerCase().includes(q)) : db.people;
-  const opts = arr.slice().sort((x,y)=>x.Name.localeCompare(y.Name)).map(p => `<option value="${esc(p['Person ID'])}">${esc(p.Name)} [${esc(p['Person ID'])}]</option>`).join('');
+  const opts = arr.slice().sort((x,y)=>x.Name.localeCompare(y.Name)).map(p => `<option value="${esc(p['Person ID'])}">${esc(p.Name)}</option>`).join('');
 
   a.innerHTML = opts;
   b.innerHTML = opts;
