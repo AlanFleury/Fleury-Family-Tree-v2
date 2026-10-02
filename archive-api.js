@@ -36,3 +36,4 @@ async function loadDatabase(){ return api('/api/archive'); }
 async function saveDatabase(db){ return api('/api/archive',{method:'PUT',body:JSON.stringify(db)}); }
 async function savePersonMapping(email,personId){ return api('/api/mapping',{method:'PUT',body:JSON.stringify({email,personId})}); }
 window.archiveApi={initAuth,signInWithEmail,signOutUser,getMyRole,loadDatabase,saveDatabase,savePersonMapping};
+export {initAuth,signInWithEmail,signOutUser,getMyRole,loadDatabase,saveDatabase,savePersonMapping};
