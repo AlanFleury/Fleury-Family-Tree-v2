@@ -2574,12 +2574,10 @@ function renderPeopleTable(){
             .map(
               p =>
                 `<tr>
-                  <td>${esc(p['Person ID'])}</td>
                   <td>${esc(p.Name)}</td>
-                  <td>${esc(p.Birth || '')}</td>
-                  <td>${esc(p.Death || '')}</td>
-                  <td>${esc(p['Evidence Status'] || '')}</td>
-
+<td>${esc(p.Birth || '')}</td>
+<td>${esc(p.Death || '')}</td>
+<td>${esc(p['Evidence Status'] || '')}</td>
                   <td>
                     ${
                       canEdit()
