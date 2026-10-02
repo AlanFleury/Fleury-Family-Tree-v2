@@ -4,826 +4,3899 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#6b4f2a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Fleury Archive">
 <title>Fleury Family Archive</title>
+
 <style>
-:root{--bg:#f4efe5;--panel:#fffaf0;--ink:#2f281f;--muted:#756b5d;--line:#d9cbb6;--accent:#6b4f2a;--accent2:#a37a43;--danger:#8c3d32;--ok:#496b4d}
-*{box-sizing:border-box}body{margin:0;background:linear-gradient(#efe4d0,#f8f3ea);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
-header,main,.authbar{max-width:1200px;margin:auto}header{padding:18px 16px 10px}h1,h2{font-family:Georgia,serif}h1{margin:0;color:#49351f;font-size:clamp(24px,5vw,38px)}.subtitle,.muted{color:var(--muted)}
-nav{display:flex;gap:6px;overflow:auto;padding:8px 12px;position:sticky;top:0;background:rgba(244,239,229,.97);border-bottom:1px solid var(--line);z-index:4}
-button,input,select,textarea{font:inherit}button{min-height:44px;padding:9px 13px;border:1px solid var(--line);border-radius:10px;background:#fffdf8;color:var(--ink);cursor:pointer}button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}button.danger{background:var(--danger);color:#fff;border-color:var(--danger)}button.active{outline:2px solid var(--accent2)}
-main{padding:14px}.grid{display:grid;grid-template-columns:1.25fr .95fr;gap:14px}.panel{background:rgba(255,250,240,.95);border:1px solid var(--line);border-radius:14px;padding:14px;box-shadow:0 3px 12px rgba(80,50,20,.06)}
-.actions,.toolbar,.stats,.legend{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.search{width:100%;min-height:44px;border:1px solid var(--line);border-radius:10px;padding:10px;background:#fff}.stat,.badge,.role{padding:6px 9px;border:1px solid var(--line);border-radius:999px;background:#fffdf8;font-size:13px}
-.people-list{max-height:60vh;overflow:auto;border:1px solid var(--line);border-radius:10px}.person{padding:10px;border-bottom:1px solid #eadfce;cursor:pointer}.person:hover{background:#f8f1e6}.small{font-size:12px}
-.tablewrap{overflow:auto}.table{width:100%;border-collapse:collapse;min-width:720px}.table th,.table td{padding:8px;border-bottom:1px solid #eadfce;text-align:left;vertical-align:top}
-.formgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.full{grid-column:1/-1}label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}input,select,textarea{width:100%;border:1px solid var(--line);border-radius:9px;padding:9px;background:#fff}
-.notice{padding:11px;border-left:4px solid var(--accent2);background:#f8f0e2;border-radius:8px;margin:10px 0}.hidden{display:none!important}
-.authpanel{margin:0 14px 10px;background:#fffaf0;border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}.authuser{display:flex;gap:10px;align-items:center}.avatar{width:36px;height:36px;border-radius:50%;object-fit:cover;border:1px solid var(--line)}
-.treewrap{overflow:auto;padding:12px;border:1px solid var(--line);border-radius:12px;background:#f5ead8}.tree{min-width:900px}.level{display:flex;justify-content:center;gap:14px;margin:10px 0}.node{width:190px;min-height:78px;padding:10px;border:2px solid #9d7b58;border-radius:12px;background:#fffaf0;text-align:center;box-shadow:0 2px 5px rgba(70,40,10,.08)}.node.self{border-color:#6b4f2a;background:#f5e5c8}.node.uncertain{border-style:dashed}
-.pathbox{white-space:pre-wrap;background:#f8f0e2;border:1px solid var(--line);padding:12px;border-radius:10px;margin-top:10px}
-@media(max-width:800px){.grid,.formgrid{grid-template-columns:1fr}.panel{padding:12px}.people-list{max-height:40vh}}
-.person-link{display:inline;padding:0;border:0;background:transparent;color:var(--accent);text-decoration:underline;text-underline-offset:2px;min-height:0;cursor:pointer}.person-link:hover{color:var(--accent2)}.node[role="button"]{cursor:pointer}.node[role="button"]:focus{outline:2px solid var(--accent2);outline-offset:2px}</style>
-<style id="fleury-mobile-fresh">
-html{-webkit-text-size-adjust:100%}
-body{margin:0;min-width:0}
-button,input,select,textarea{font:inherit}
-button,.button,[role="button"]{min-height:44px}
-nav,.tabs,.tabbar,.nav-tabs{overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch}
-@media(max-width:900px){
-  main,.shell,.app,.page,.content,.layout{width:100%;max-width:100%;box-sizing:border-box}
-  .grid,.columns,.two-column,.three-column{grid-template-columns:1fr!important}
-  table{min-width:680px}
-  .table-wrap,.table-container,.report-table{overflow-x:auto;max-width:100%;-webkit-overflow-scrolling:touch}
+:root{
+  --bg:#f4efe5;
+  --panel:#fffaf0;
+  --ink:#2f281f;
+  --muted:#756b5d;
+  --line:#d9cbb6;
+  --accent:#6b4f2a;
+  --accent2:#a37a43;
+  --danger:#8c3d32;
+  --ok:#496b4d
 }
-@media(max-width:600px){
-  body{font-size:16px}
-  header,.header,.toolbar{padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right))}
-  button,.button,[role="button"],input,select{min-height:46px}
-  .card,.panel,.section{margin-left:8px;margin-right:8px}
-  .modal,.dialog{width:calc(100vw - 16px)!important;max-width:none!important}
+
+*{box-sizing:border-box}
+
+body{
+  margin:0;
+  background:linear-gradient(#efe4d0,#f8f3ea);
+  color:var(--ink);
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif
 }
-</style></head>
+
+header{
+  padding:18px 16px 10px;
+  max-width:1200px;
+  margin:auto
+}
+
+h1{
+  font-family:Georgia,serif;
+  margin:0;
+  color:#49351f;
+  font-size:clamp(24px,5vw,38px)
+}
+
+h2{
+  font-family:Georgia,serif;
+  margin-top:0
+}
+
+.subtitle{
+  color:var(--muted)
+}
+
+nav{
+  display:flex;
+  gap:6px;
+  overflow:auto;
+  padding:8px 12px;
+  position:sticky;
+  top:0;
+  background:rgba(244,239,229,.96);
+  border-bottom:1px solid var(--line);
+  z-index:4
+}
+
+button,select,input,textarea{
+  font:inherit
+}
+
+button{
+  min-height:44px;
+  padding:9px 13px;
+  border:1px solid var(--line);
+  border-radius:10px;
+  background:#fffdf8;
+  color:var(--ink);
+  cursor:pointer
+}
+
+button.primary{
+  background:var(--accent);
+  color:white;
+  border-color:var(--accent)
+}
+
+button.danger{
+  background:var(--danger);
+  color:#fff;
+  border-color:var(--danger)
+}
+
+button.ok{
+  background:var(--ok);
+  color:#fff;
+  border-color:var(--ok)
+}
+
+button.active{
+  outline:2px solid var(--accent2)
+}
+
+.navhistory{
+  display:flex;
+  gap:4px;
+  flex:0 0 auto;
+  padding-right:4px;
+  border-right:1px solid var(--line)
+}
+
+.navhistory button{
+  min-width:44px;
+  padding:8px 10px
+}
+
+.navhistory button:disabled{
+  opacity:.45;
+  cursor:not-allowed
+}
+
+.familybox{
+  margin-top:14px;
+  padding:12px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:#f8f0e2
+}
+
+.sibling-list{
+  max-height:220px;
+  overflow:auto;
+  border:1px solid var(--line);
+  border-radius:9px;
+  background:#fff
+}
+
+.sibling-row{
+  display:flex;
+  gap:8px;
+  align-items:center;
+  padding:8px 10px;
+  border-bottom:1px solid #eadfce
+}
+
+.sibling-row:last-child{
+  border-bottom:0
+}
+
+.sibling-row input{
+  width:auto
+}
+
+main{
+  max-width:1200px;
+  margin:auto;
+  padding:14px
+}
+
+.tab.hidden{
+  display:none
+}
+
+.grid{
+  display:grid;
+  grid-template-columns:1.25fr .95fr;
+  gap:14px
+}
+
+.panel{
+  background:rgba(255,250,240,.92);
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:14px;
+  box-shadow:0 3px 12px rgba(80,50,20,.06)
+}
+
+.actions,.toolbar{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin:10px 0
+}
+
+.search{
+  width:100%;
+  min-height:44px;
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:10px;
+  background:white
+}
+
+.stats{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap
+}
+
+.stat{
+  display:inline-block;
+  padding:6px 9px;
+  border:1px solid var(--line);
+  border-radius:999px;
+  background:#fffdf8;
+  font-size:13px
+}
+
+.people-list{
+  max-height:60vh;
+  overflow:auto;
+  border:1px solid var(--line);
+  border-radius:10px
+}
+
+.person{
+  padding:10px;
+  border-bottom:1px solid #eadfce;
+  cursor:pointer
+}
+
+.person:last-child{
+  border-bottom:0
+}
+
+.person:hover{
+  background:#f8f1e6
+}
+
+.muted{
+  color:var(--muted)
+}
+
+.small{
+  font-size:12px
+}
+
+.tablewrap{
+  overflow:auto
+}
+
+.table{
+  width:100%;
+  border-collapse:collapse;
+  min-width:720px
+}
+
+.table th,.table td{
+  padding:8px;
+  border-bottom:1px solid #eadfce;
+  text-align:left;
+  vertical-align:top
+}
+
+.formgrid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px
+}
+
+.formgrid .full{
+  grid-column:1/-1
+}
+
+label{
+  display:block;
+  font-size:12px;
+  color:var(--muted);
+  margin-bottom:4px
+}
+
+input,select,textarea{
+  width:100%;
+  border:1px solid var(--line);
+  border-radius:9px;
+  padding:9px;
+  background:#fff
+}
+
+.notice{
+  padding:11px;
+  border-left:4px solid var(--accent2);
+  background:#f8f0e2;
+  border-radius:8px;
+  margin:10px 0
+}
+
+.treewrap{
+  overflow:auto;
+  padding:12px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:#f5ead8
+}
+
+.tree{
+  min-width:900px
+}
+
+.level{
+  display:flex;
+  justify-content:center;
+  gap:14px;
+  margin:10px 0;
+  position:relative
+}
+
+.node{
+  width:190px;
+  min-height:78px;
+  padding:10px;
+  border:2px solid #9d7b58;
+  border-radius:12px;
+  background:#fffaf0;
+  text-align:center;
+  box-shadow:0 2px 5px rgba(70,40,10,.08)
+}
+
+.node.self{
+  border-color:#6b4f2a;
+  background:#f5e5c8
+}
+
+.node.uncertain{
+  border-style:dashed
+}
+
+.legend{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  font-size:12px
+}
+
+.badge{
+  padding:4px 7px;
+  border-radius:999px;
+  border:1px solid var(--line);
+  background:white
+}
+
+.success{
+  color:#315c38
+}
+
+.warn{
+  color:#7b5a1c
+}
+
+.footer{
+  margin-top:20px;
+  color:var(--muted);
+  font-size:12px
+}
+
+.install{
+  background:#eee5d5;
+  border-radius:10px;
+  padding:10px
+}
+
+.file{
+  padding:8px;
+  border:1px solid var(--line);
+  border-radius:9px;
+  margin:6px 0;
+  background:#fff
+}
+
+.hidden{
+  display:none!important
+}
+
+.authbar{
+  max-width:1200px;
+  margin:0 auto 10px;
+  padding:0 14px
+}
+
+.authpanel{
+  background:#fffaf0;
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:12px;
+  display:flex;
+  gap:10px;
+  align-items:center;
+  justify-content:space-between;
+  flex-wrap:wrap
+}
+
+.authuser{
+  display:flex;
+  gap:10px;
+  align-items:center
+}
+
+.avatar{
+  width:36px;
+  height:36px;
+  border-radius:50%;
+  object-fit:cover;
+  border:1px solid var(--line)
+}
+
+.role{
+  padding:4px 8px;
+  border-radius:999px;
+  background:#eee5d5;
+  font-size:12px
+}
+
+.locked{
+  padding:28px;
+  text-align:center
+}
+
+.pathbox{
+  white-space:pre-wrap;
+  background:#f8f0e2;
+  border:1px solid var(--line);
+  padding:12px;
+  border-radius:10px;
+  margin-top:10px
+}
+
+.relresult{
+  border-left:4px solid var(--accent2);
+  padding:12px;
+  background:#f8f0e2;
+  border-radius:8px;
+  margin-top:12px
+}
+
+.relresult h3{
+  margin-top:0
+}
+
+@media(max-width:800px){
+  .grid{
+    grid-template-columns:1fr
+  }
+
+  .formgrid{
+    grid-template-columns:1fr
+  }
+
+  .panel{
+    padding:12px
+  }
+
+  nav{
+    top:0
+  }
+
+  .people-list{
+    max-height:40vh
+  }
+}
+</style>
+<script src="https://cdn.auth0.com/js/auth0-spa-js/2.2/auth0-spa-js.production.js"></script>
+<script src="config.js"></script>
+</head>
+
 <body>
+
 <header>
-<h1>Fleury Family Archive</h1>
-<div class="subtitle">Private shared genealogy database for the family.</div>
+  <h1>Fleury Family Archive</h1>
+  <div class="subtitle">
+    A private, shared genealogy database for Windows, iPhone and Android.
+  </div>
 </header>
 
-<div class="authbar"><div class="authpanel">
-<div id="authState"><strong>Private family database</strong><div class="small muted">Sign in with Google to access the archive.</div></div>
-<div class="actions" style="margin:0"><button id="signInBtn" class="primary">Sign in with Google</button><button id="signOutBtn" class="hidden">Sign out</button></div>
-</div></div>
+<div class="authbar">
+  <div class="authpanel">
+
+    <div id="authState">
+      <strong>Private family database</strong>
+      <div class="small muted">
+        Sign in with your family email address and password.
+      </div>
+    </div>
+
+    <div class="actions" style="margin:0">
+      <button id="signInBtn" class="primary">
+        Sign in with email & password
+      </button>
+
+      <button id="signOutBtn" class="hidden">
+        Sign out
+      </button>
+    </div>
+
+  </div>
+</div>
 
 <nav id="mainNav" class="hidden">
-<button class="active" data-tab="explore">Explore</button>
-<button data-tab="people">People</button>
-<button data-tab="relationships">Relationships</button>
-<button data-tab="kinship">Relationship Finder</button>
-<button data-tab="chart">Wall Chart</button><button data-tab="reports">Reports</button>
-<button data-tab="gedcom">GEDCOM</button>
-<button data-tab="backup">Backup</button>
-<button data-tab="sync">Cloud</button>
+  <div class="navhistory" aria-label="Page navigation">
+    <button id="navBack" title="Previous page" aria-label="Previous page">← Back</button>
+    <button id="navForward" title="Next page" aria-label="Next page">Forward →</button>
+  </div>
+  <button class="active" data-tab="explore">Explore</button>
+  <button data-tab="people">People</button>
+  <button data-tab="relationships">Relationships</button>
+  <button data-tab="kinship">Relationship Finder</button>
+  <button data-tab="chart">Wall Chart</button>
+<button data-tab="generations">Generations</button>
+  <button data-tab="gedcom">GEDCOM</button>
+  <button data-tab="backup">Backup</button>
+  <button data-tab="sync">Free Cloud Sync</button>
 </nav>
 
 <main id="appMain" class="hidden">
+
 <section id="explore" class="tab">
-<div class="grid">
-<div class="panel"><h2>Family Explorer</h2><input id="search" class="search" placeholder="Search names, notes, places or IDs…"><div id="stats" class="stats"></div><div id="peopleList" class="people-list"></div></div>
-<div class="panel"><div id="detail"><p class="muted">Select a person.</p></div></div>
-</div>
+  <div class="grid">
+
+    <div class="panel">
+      <h2>Family Explorer</h2>
+
+      <input
+        id="search"
+        class="search"
+        placeholder="Search names, notes, places or IDs…"
+      >
+
+      <div id="stats" class="stats" style="margin:10px 0"></div>
+
+      <div id="peopleList" class="people-list"></div>
+    </div>
+
+    <div class="panel">
+      <div id="detail">
+        <p class="muted">Select a person.</p>
+      </div>
+    </div>
+
+  </div>
 </section>
 
-<section id="people" class="tab hidden"><div class="grid">
-<div class="panel"><h2>People</h2><div class="actions"><button class="primary" id="newPerson">+ Add person</button><button id="sortPeople">Sort A–Z</button></div><div id="peopleTable" class="tablewrap"></div></div>
-<div class="panel"><div id="personEditor"><h2>Add or edit a person</h2><p class="muted">Permanent IDs keep relationships intact.</p></div></div>
-</div></section>
+<section id="people" class="tab hidden">
+  <div class="grid">
 
-<section id="relationships" class="tab hidden"><div class="grid">
-<div class="panel"><h2>Relationships</h2><button class="primary" id="newRel">+ Add relationship</button><div id="relTable" class="tablewrap"></div></div>
-<div class="panel"><div id="relEditor"><h2>Add relationship</h2><p class="muted">Parent and spouse links use Person IDs.</p></div></div>
-</div></section>
+    <div class="panel">
+      <h2>People</h2>
 
-<section id="kinship" class="tab hidden"><div class="panel">
-<h2>Relationship Finder</h2><p class="muted">Choose two people to calculate their recorded blood relationship.</p>
-<div class="formgrid"><div><label>Person A</label><select id="kinA"></select></div><div><label>Person B</label><select id="kinB"></select></div></div>
-<div class="actions"><button class="primary" id="findKinship">Calculate relationship</button></div><div id="kinResult" class="hidden"></div>
-</div></section>
+      <div class="actions">
+        <button class="primary" id="newPerson">+ Add person</button>
+        <button id="sortPeople">Sort A–Z</button>
+      </div>
 
-<section id="chart" class="tab hidden"><div class="panel">
-<h2>Automatic Wall Chart</h2><p class="muted">Generate an ancestry/descendant chart from the recorded parent links.</p>
-<div class="toolbar"><select id="chartPerson"></select><select id="chartMode"><option value="both">Ancestors + descendants</option><option value="ancestors">Ancestors</option><option value="descendants">Descendants</option></select><select id="chartDepth"><option>3</option><option selected>4</option><option>5</option><option>6</option></select><button class="primary" id="generateChart">Generate</button><button id="downloadSvg">Download SVG</button></div>
-<div class="legend"><span class="badge">Solid = recorded</span><span class="badge">Dashed = verify</span><span class="badge">Centre = selected</span></div>
-<div id="treebox" class="treewrap"><div class="muted">Generate a chart to begin.</div></div>
-</div></section>
+      <input id="peopleSearch" class="search" placeholder="Search people by name, ID, dates, places or notes…">
 
-<section id="reports" class="tab hidden"><div class="panel">
-<h2>Reports & Printing</h2><p class="muted">Ancestry Quest-style reports generated from the same family data used by the archive.</p>
-<div class="formgrid"><div><label>Report type</label><select id="reportType"><option value="individual">Individual report</option><option value="family">Family group sheet</option><option value="ancestors">Ancestor report</option><option value="descendants">Descendant report</option><option value="relationship">Relationship to Alan</option></select></div><div><label>Starting person</label><select id="reportPerson"></select></div><div><label>Generations</label><select id="reportDepth"><option>3</option><option selected>4</option><option>5</option><option>6</option><option>8</option></select></div></div>
-<div class="actions"><button class="primary" id="generateReport">Generate report</button><button id="printReport">Print / Save PDF</button></div><div id="reportPreview" class="pathbox">Choose a report and generate it.</div>
-</div></section>
+      <div class="tablewrap" id="peopleTable"></div>
+    </div>
 
-<section id="gedcom" class="tab hidden"><div class="panel"><h2>GEDCOM</h2><p class="muted">Export the archive in a GEDCOM-compatible format.</p><button class="primary" id="exportGedcom">Export GEDCOM</button></div></section>
+    <div class="panel">
+      <div id="personEditor">
+        <h2>Add or edit a person</h2>
+        <p class="muted">
+          Permanent IDs keep relationships intact when names are corrected.
+        </p>
+      </div>
+    </div>
 
-<section id="backup" class="tab hidden"><div class="panel">
-<h2>Backup & portability</h2><div class="notice">Export a dated JSON backup after major research sessions.</div>
-<div class="actions"><button class="primary" id="exportJson">Export JSON</button><button id="importJson">Import JSON</button><button id="exportCsv">Export CSV</button><input id="fileInput" type="file" accept="application/json" class="hidden"></div>
-<div id="dataSummary"></div>
-</div></section>
+  </div>
+</section>
 
-<section id="sync" class="tab hidden"><div class="panel">
-<h2>Private Cloud & Family Access</h2><div id="cloudStatus" class="notice">Sign in to connect.</div>
-<div id="adminTools" class="hidden"><h3>Administrator</h3><p class="muted">Your Firestore user document controls access.</p></div>
-<div id="migrationTools" class="hidden">
-<h3>Master Fleury chart</h3>
-<p class="muted">The supplied family charts have been assembled into the expanded master archive. This installs the bundled names and relationships into private Firestore.</p>
-<div class="actions"><button id="installMasterBtn" class="primary">Install Ancestral Quest master database</button></div>
-<div id="masterStatus" class="notice">The master package contains 17,984 people and 30,029 recorded relationships after conservative duplicate cleanup.</div>
-<hr>
-<h3>Other JSON backup</h3>
-<p class="muted">Import a different Fleury JSON backup if required.</p>
-<div class="actions"><input id="migrationFile" type="file" accept="application/json"><button id="migrateBtn">Import JSON to private cloud</button></div>
-<div id="migrationStatus" class="notice">Waiting for a JSON file.</div>
-</div>
-</div></section>
+<section id="relationships" class="tab hidden">
+  <div class="grid">
+
+    <div class="panel">
+      <h2>Relationships</h2>
+
+      <button class="primary" id="newRel">
+        + Add relationship
+      </button>
+
+      <input id="relSearch" class="search" placeholder="Search relationships by person, type, ID or source…">
+
+      <div class="tablewrap" id="relTable"></div>
+    </div>
+
+    <div class="panel">
+      <div id="relEditor">
+        <h2>Add relationship</h2>
+        <p class="muted">
+          Parent and spouse links use Person IDs.
+        </p>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section id="kinship" class="tab hidden">
+
+  <div class="panel">
+
+    <h2>Relationship Finder</h2>
+
+    <p class="muted">
+      Choose any two people. The first person defaults to the signed-in family member,
+      and the app calculates the relationship from that person's point of view.
+      Spouse links are
+      also included in the path when relevant.
+    </p>
+
+    <input id="kinSearch" class="search" placeholder="Type a name or ID to narrow the people below…">
+
+    <div class="formgrid">
+
+      <div>
+        <label>I am…</label>
+        <select id="kinA"></select>
+      </div>
+
+      <div>
+        <label>Compare with…</label>
+        <select id="kinB"></select>
+      </div>
+
+    </div>
+
+    <div class="actions">
+      <button class="primary" id="findKinship">
+        Calculate relationship
+      </button>
+    </div>
+
+    <div id="kinResult" class="relresult hidden"></div>
+
+  </div>
+
+</section>
+
+<section id="chart" class="tab hidden">
+
+  <div class="panel">
+
+    <h2>Automatic Wall Chart</h2>
+
+    <p class="muted">
+      Choose a person and the program builds a cascading
+      ancestry/descendant chart from the database.
+    </p>
+
+    <div class="toolbar">
+
+      <input id="chartSearch" class="search" style="min-width:240px" placeholder="Search starting person…">
+      <select id="chartPerson"></select>
+
+      <select id="chartMode">
+        <option value="both">Ancestors + descendants</option>
+        <option value="ancestors">Ancestors</option>
+        <option value="descendants">Descendants</option>
+      </select>
+
+      <select id="chartDepth">
+        <option>3</option>
+        <option selected>4</option>
+        <option>5</option>
+        <option>6</option>
+        <option>7</option>
+      </select>
+
+      <button class="primary" id="generateChart">
+        Generate
+      </button>
+
+      <button id="downloadSvg">
+        Download SVG
+      </button>
+
+    </div>
+
+    <div class="legend">
+      <span class="badge">Solid border = recorded</span>
+      <span class="badge">Dashed border = verify/uncertain</span>
+      <span class="badge">Centre = selected person</span>
+    </div>
+
+    <div class="treewrap" id="treebox">
+      <div class="muted">
+        Generate a chart to begin.
+      </div>
+    </div>
+
+  </div>
+
+</section>
+
+<section id="generations" class="tab hidden">
+
+  <div class="panel">
+
+    <h2>Generations & Family Branches</h2>
+
+    <p class="muted">
+      Follow ancestors and descendants, or show the side branches of the family — including aunts, uncles and cousins — from any starting person.
+    </p>
+
+    <input id="generationSearch" class="search" placeholder="Search for a starting person…">
+
+    <div class="formgrid">
+      <div>
+        <label>Starting person</label>
+        <select id="generationPerson"></select>
+      </div>
+      <div>
+        <label>View</label>
+        <select id="generationMode">
+          <option value="ancestors">Ancestors</option>
+          <option value="descendants">Descendants</option>
+          <option value="branches">Aunts, uncles & cousins</option>
+        </select>
+      </div>
+      <div>
+        <label>Generations</label>
+        <select id="generationDepth">
+          <option>3</option><option>4</option><option>5</option><option>6</option>
+          <option>8</option><option>10</option><option>12</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="primary" id="showGenerations">Show generations</button>
+    </div>
+
+    <div id="generationResult" class="pathbox">Choose a person and generate the family view.</div>
+
+  </div>
+
+</section>
+
+<section id="gedcom" class="tab hidden">
+
+  <div class="panel">
+
+    <h2>GEDCOM</h2>
+
+    <p class="muted">
+      Export a standards-style GEDCOM 5.5.1 file for use with other
+      genealogy software. Import can be added later without changing
+      your internal IDs.
+    </p>
+
+    <button class="primary" id="exportGedcom">
+      Export GEDCOM
+    </button>
+
+    <div class="notice">
+      Your Fleury Archive remains the master database.
+      GEDCOM is an interoperability copy.
+    </div>
+
+  </div>
+
+</section>
+
+<section id="backup" class="tab hidden">
+
+  <div class="panel">
+
+    <h2>Backup & portability</h2>
+
+    <div class="notice">
+      <strong>Recommended:</strong>
+      keep a dated JSON backup after every significant research session.
+      Exported backups contain the complete family database and should
+      be stored securely.
+    </div>
+
+    <div class="actions">
+
+      <button class="primary" id="exportJson">
+        Export complete JSON
+      </button>
+
+      <button id="importJson">
+        Import JSON
+      </button>
+
+      <button id="exportCsv">
+        Export people CSV
+      </button>
+
+      <input
+        id="fileInput"
+        type="file"
+        accept="application/json"
+        class="hidden"
+      >
+
+    </div>
+
+    <h3>Current database</h3>
+
+    <div id="dataSummary"></div>
+
+  </div>
+
+</section>
+
+<section id="sync" class="tab hidden">
+
+  <div class="panel">
+
+    <h2>Private Cloud & Family Access</h2>
+
+    <div id="cloudStatus" class="notice">
+      Sign in to connect to the private family database.
+    </div>
+
+    <div id="adminTools" class="hidden">
+
+      <h3>Family access</h3>
+
+      <p class="muted">
+        Administrators can manage family-member roles in the private archive service.
+        The app uses three roles:
+        <strong>admin</strong>,
+        <strong>editor</strong>,
+        and <strong>viewer</strong>.
+      </p>
+
+      <p class="small">
+        For the first setup, create your own
+        Create your administrator account in the private archive service with the <code>admin</code> role.
+        After that, the app can be used to manage the family database.
+      </p>
+
+    </div>
+
+    <div id="personMappingTools" class="hidden">
+
+      <h3>Family-member identity</h3>
+
+      <p class="muted">
+        Link an approved family email address to the person it represents in the family tree.
+        Relationships will then be calculated from that person's point of view.
+      </p>
+
+      <div class="formgrid">
+        <div>
+          <label>Family email</label>
+          <input id="personMapEmail" type="email" placeholder="family.member@example.com">
+        </div>
+        <div>
+          <label>Family person</label>
+          <select id="personMapPerson"></select>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="savePersonMapping" class="primary">
+          Save family-member identity
+        </button>
+      </div>
+
+      <div id="personMappingStatus" class="notice">
+        Enter an approved family member's email address and select their person record.
+      </div>
+
+    </div>
+
+    <div id="migrationTools" class="hidden">
+
+      <h3>Private archive import</h3>
+
+      <p>
+        Choose your existing Fleury JSON backup to upload the
+        existing Fleury JSON backup into the private archive.
+        This file is used only for migration and is not stored
+        on the public website.
+      </p>
+
+      <div class="actions">
+
+        <input
+          id="migrationFile"
+          type="file"
+          accept="application/json"
+        >
+
+        <button id="migrateBtn" class="primary">
+          Import selected JSON to private cloud
+        </button>
+
+      </div>
+
+      <div id="migrationStatus" class="install">
+        Waiting for a JSON file.
+      </div>
+
+    </div>
+
+    <div class="notice">
+      <strong>Important:</strong>
+      the public GitHub website should contain only the app code.
+      Your family data is stored in the private archive API and is never embedded in the public website.
+    </div>
+
+  </div>
+
+</section>
+
 </main>
 
 <script>
-const $ = s => document.querySelector(s);
-const $$ = s => [...document.querySelectorAll(s)];
-const esc = s => String(s ?? '').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-const uid = () => crypto.randomUUID ? crypto.randomUUID() : 'R' + Date.now() + Math.random().toString(16).slice(2);
 
-let db = {people:[],relationships:[],meta:{}};
-let firebaseApi = null;
+let seed = {};
+let db = {
+  people: [],
+  relationships: [],
+  meta: {}
+};
+
+let selected = null;
+let currentSort = false;
+let archiveApi = null;
 let currentUser = null;
 let currentRole = null;
+let currentPersonId = null;
 let cloudReady = false;
-let selected = null;
-let sortAZ = false;
+let tabHistory = ['explore'];
+let tabHistoryIndex = 0;
+let familyEditPersonId = null;
 
-const isWeb = location.protocol === 'http:' || location.protocol === 'https:';
-const canEdit = () => ['editor','admin'].includes(currentRole);
-const canAdmin = () => currentRole === 'admin';
-const person = id => db.people.find(p => p['Person ID'] === id);
-const nameOf = id => person(id)?.Name || id;
-const personLink = (id, label = nameOf(id)) =>
-  '<button type="button" class="person-link" data-person-link="'+esc(id)+'">'+esc(label)+'</button>';
-const parentsOf = id => db.relationships.filter(r=>r.type==='parent'&&r.person2===id).map(r=>r.person1);
-const childrenOf = id => db.relationships.filter(r=>r.type==='parent'&&r.person1===id).map(r=>r.person2);
-const spousesOf = id => db.relationships.filter(r=>r.type==='spouse'&&(r.person1===id||r.person2===id)).map(r=>r.person1===id?r.person2:r.person1);
+const $ = s => document.querySelector(s);
 
-function setStatus(message){ const el=$('#cloudStatus'); if(el) el.textContent=message; }
+const $$ = s => [...document.querySelectorAll(s)];
 
-function download(name,text,type){
-  const blob=new Blob([text],{type});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();
-  setTimeout(()=>URL.revokeObjectURL(url),1000);
+const esc = s =>
+  String(s ?? '').replace(
+    /[&<>"']/g,
+    m => ({
+      '&':'&amp;',
+      '<':'&lt;',
+      '>':'&gt;',
+      '"':'&quot;',
+      "'":'&#39;'
+    }[m])
+  );
+
+function canEdit(){
+  return currentRole === 'admin' || currentRole === 'editor';
+}
+
+function canAdmin(){
+  return currentRole === 'admin';
+}
+
+function save(){
+
+  if(!currentUser || !currentRole || !cloudReady){
+
+    setCloudStatus(
+      'Sign in with an approved family account before changing data.'
+    );
+
+    return;
+  }
+
+  db.meta = {
+    ...(db.meta || {}),
+    updatedAt:new Date().toISOString(),
+    version:'3.0'
+  };
+
+  renderAll();
+
+  if(canEdit()){
+
+    archiveApi.saveDatabase(db)
+      .catch(e =>
+        setCloudStatus(
+          'Cloud save failed: ' + e.message
+        )
+      );
+
+  }
+
+}
+
+async function init(){
+
+  db = {
+    people:[],
+    relationships:[],
+    meta:{}
+  };
+
+  renderAll();
+
+  /*
+   * Hosted authentication and the private archive API
+   * require a real web origin. Opening this file directly from
+   * Downloads creates a file:// URL with an opaque "null" origin,
+   * which browsers intentionally block.
+   */
+
+  const webOrigin =
+    location.protocol === 'http:' ||
+    location.protocol === 'https:';
+
+  if(!webOrigin){
+
+    setCloudStatus(
+      'Local file preview only. Open the GitHub Pages website ' +
+      'to sign in and use the private family database.'
+    );
+
+    const status = $('#authState');
+
+    if(status){
+
+      status.innerHTML =
+        '<strong>Open the published website</strong>' +
+        '<div class="small muted">' +
+        'Do not open index.html directly from Downloads. ' +
+        'Use the published HTTPS website for secure family sign-in.' +
+        '</div>';
+
+    }
+
+    return;
+  }
+
+  /*
+   * Only attach PWA resources when running from HTTP/HTTPS.
+   * This also prevents manifest errors when someone previews
+   * the downloaded HTML file locally.
+   */
+
+  const manifest =
+    document.createElement('link');
+
+  manifest.rel = 'manifest';
+  manifest.href = 'manifest.webmanifest';
+  document.head.appendChild(manifest);
+
+  const appleIcon =
+    document.createElement('link');
+
+  appleIcon.rel = 'apple-touch-icon';
+  appleIcon.href = 'icon-192.svg';
+  document.head.appendChild(appleIcon);
+
+  if(
+    'serviceWorker' in navigator &&
+    window.isSecureContext
+  ){
+
+    navigator.serviceWorker
+      .register('sw.js')
+      .catch(e =>
+        console.warn(
+          'Service worker registration failed:',
+          e
+        )
+      );
+
+  }
+
+  try{
+
+    archiveApi =
+      await import('./archive-api.js');
+
+    /* Bind the family button immediately after authentication service loads.
+       Do not wait for the auth-state listener to finish, otherwise
+       a slow/stalled auth initialisation can leave the button dead. */
+    bindAuth();
+
+    await archiveApi.initAuth(handleUser);
+
+  }catch(e){
+
+    console.error(
+      'Authentication initialization failed:',
+      e
+    );
+
+    setCloudStatus(
+      'Private archive connection failed: ' +
+      e.message
+    );
+
+  }
+
+}
+
+function person(id){
+
+  return db.people.find(
+    p => p['Person ID'] === id
+  );
+
+}
+
+function name(id){
+
+  return person(id)?.Name || id;
+
+}
+
+function parentsOf(id){
+
+  return db.relationships
+    .filter(
+      r =>
+        r.type === 'parent' &&
+        r.person2 === id
+    )
+    .map(r => r.person1);
+
+}
+
+function childrenOf(id){
+
+  return db.relationships
+    .filter(
+      r =>
+        r.type === 'parent' &&
+        r.person1 === id
+    )
+    .map(r => r.person2);
+
+}
+
+function spousesOf(id){
+
+  return db.relationships
+    .filter(
+      r =>
+        r.type === 'spouse' &&
+        (
+          r.person1 === id ||
+          r.person2 === id
+        )
+    )
+    .map(
+      r =>
+        r.person1 === id
+          ? r.person2
+          : r.person1
+    );
+
+}
+
+function normalizePersonName(value){
+
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g,' ')
+    .trim();
+
+}
+
+function resolveCurrentPersonId(){
+
+  if(!currentUser)
+    return null;
+
+  const map =
+    db.meta?.userPersonMap || {};
+
+  const byUid =
+    map[currentUser.uid];
+
+  if(byUid && person(byUid))
+    return byUid;
+
+  const email =
+    String(currentUser.email || '')
+      .toLowerCase()
+      .trim();
+
+  if(email && map[email] && person(map[email]))
+    return map[email];
+
+  const display =
+    normalizePersonName(currentUser.displayName);
+
+  if(display){
+
+    const match =
+      db.people.find(
+        p =>
+          normalizePersonName(p.Name) === display
+      );
+
+    if(match)
+      return match['Person ID'];
+
+  }
+
+  // Backward-compatible default for the original archive owner.
+  if(person('ALAN-FLEURY'))
+    return 'ALAN-FLEURY';
+
+  return null;
+
+}
+
+function genderOf(id){
+
+  const g =
+    String(person(id)?.Gender || '')
+      .toUpperCase();
+
+  return g === 'F' || g === 'FEMALE'
+    ? 'F'
+    : g === 'M' || g === 'MALE'
+      ? 'M'
+      : '';
+
+}
+
+function sideOfAncestor(root,ancestor){
+
+  if(!root || !ancestor || root === ancestor)
+    return '';
+
+  const parents = parentsOf(root);
+
+  if(!parents.length)
+    return '';
+
+  for(let i=0;i<parents.length;i++){
+
+    const path =
+      parentPathToAncestor(
+        parents[i],
+        ancestor
+      );
+
+    if(path)
+      return i === 0
+        ? 'paternal'
+        : 'maternal';
+
+  }
+
+  return '';
+
+}
+
+function descendantTerm(root,target,distance){
+
+  const g = genderOf(target);
+
+  if(distance === 1)
+    return g === 'F' ? 'daughter' : g === 'M' ? 'son' : 'child';
+
+  if(distance === 2)
+    return g === 'F' ? 'granddaughter' : g === 'M' ? 'grandson' : 'grandchild';
+
+  const base =
+    g === 'F' ? 'daughter' :
+    g === 'M' ? 'son' :
+    'child';
+
+  return `${'great-'.repeat(distance-2)}grand${base}`;
+
+}
+
+function ancestorTerm(distance){
+
+  if(distance === 1)
+    return 'parent';
+
+  if(distance === 2)
+    return 'grandparent';
+
+  return `${'great-'.repeat(distance-2)}grandparent`;
+
+}
+
+function siblingSide(root,target){
+
+  const targetParents = parentsOf(target);
+  const rootParents = parentsOf(root);
+
+  for(const rp of rootParents){
+    if(targetParents.includes(rp))
+      return sideOfAncestor(root,rp);
+  }
+
+  return '';
+
+}
+
+function relationshipToViewer(target){
+
+  const root = currentPersonId;
+
+  if(!root || !person(root) || !person(target))
+    return person(target)?.['Relationship to Alan'] || 'Recorded relative';
+
+  if(root === target)
+    return 'you';
+
+  // Direct spouse relationship.
+  if(spousesOf(root).includes(target)){
+    const g = genderOf(target);
+    return g === 'F' ? 'wife' : g === 'M' ? 'husband' : 'spouse';
+  }
+
+  const aa = ancestorsWithDistance(root);
+  const bb = ancestorsWithDistance(target);
+
+  // target is an ancestor/descendant of the viewer.
+  if(aa.has(target)){
+    const d = aa.get(target);
+    const side = sideOfAncestor(root,target);
+    const term = ancestorTerm(d);
+    return side ? `${side} ${term}` : term;
+  }
+
+  if(bb.has(root)){
+    const d = bb.get(root);
+    return descendantTerm(root,target,d);
+  }
+
+  const common =
+    [...aa.keys()]
+      .filter(x => bb.has(x));
+
+  if(!common.length)
+    return 'Recorded relative';
+
+  common.sort(
+    (a,b) =>
+      (aa.get(a)+bb.get(a)) -
+      (aa.get(b)+bb.get(b))
+  );
+
+  const anc = common[0];
+  const da = aa.get(anc);
+  const dbb = bb.get(anc);
+  const side = sideOfAncestor(root,anc);
+
+  // Siblings.
+  if(da === 1 && dbb === 1){
+    const g = genderOf(target);
+    const term = g === 'F' ? 'sister' : g === 'M' ? 'brother' : 'sibling';
+    return side ? `${side} ${term}` : term;
+  }
+
+  // Aunts/uncles and nieces/nephews.
+  if(da === 1 && dbb >= 2){
+    const g = genderOf(target);
+    const term = dbb === 2
+      ? (g === 'F' ? 'aunt' : g === 'M' ? 'uncle' : 'aunt/uncle')
+      : `${'great-'.repeat(dbb-2)}${g === 'F' ? 'aunt' : g === 'M' ? 'uncle' : 'aunt/uncle'}`;
+    return side ? `${side} ${term}` : term;
+  }
+
+  if(dbb === 1 && da >= 2){
+    const g = genderOf(target);
+    const term = da === 2
+      ? (g === 'F' ? 'niece' : g === 'M' ? 'nephew' : 'niece/nephew')
+      : `${'great-'.repeat(da-2)}${g === 'F' ? 'niece' : g === 'M' ? 'nephew' : 'niece/nephew'}`;
+    return term;
+  }
+
+  const degree = Math.min(da,dbb) - 1;
+  const cousin =
+    degree === 1 ? '1st cousin' :
+    degree === 2 ? '2nd cousin' :
+    degree === 3 ? '3rd cousin' :
+    `${degree}th cousin`;
+  const removed = Math.abs(da-dbb);
+  const label = removed
+    ? `${cousin}, ${removed} time${removed===1?'':'s'} removed`
+    : cousin;
+
+  return side ? `${side} ${label}` : label;
+
+}
+
+function relationshipPath(root,target){
+
+  const old = currentPersonId;
+  currentPersonId = root;
+  const label = relationshipToViewer(target);
+  currentPersonId = old;
+  return label;
+
+}
+
+function setCloudStatus(msg){
+
+  let el = $('#cloudStatus');
+
+  if(el)
+    el.textContent = msg;
+
 }
 
 function updateAuthUI(){
-  const authorized=!!currentUser&&!!currentRole;
-  $('#mainNav').classList.toggle('hidden',!authorized);
-  $('#appMain').classList.toggle('hidden',!authorized);
-  $('#signInBtn').classList.toggle('hidden',!!currentUser);
-  $('#signOutBtn').classList.toggle('hidden',!currentUser);
-  if(authorized){
-    $('#authState').innerHTML='<strong>'+esc(currentUser.displayName||currentUser.email||'Signed in')+'</strong><div class="small muted">'+esc(currentUser.email||'')+' · <span class="role">'+esc(currentRole)+'</span></div>';
-  }else if(currentUser){
-    $('#authState').innerHTML='<strong>Access pending</strong><div class="small muted">'+esc(currentUser.email||'')+' is signed in but is not approved.</div>';
-  }else{
-    $('#authState').innerHTML='<strong>Private family database</strong><div class="small muted">Sign in with Google to access the archive.</div>';
-  }
-}
 
-async function handleUser(user){
-  currentUser=user; currentRole=null; cloudReady=false; updateAuthUI();
-  if(!user){
-    db={people:[],relationships:[],meta:{}};
-    renderAll();
-    setStatus('Sign in to connect to the private family database.');
-    return;
-  }
-  try{
-    currentRole=await firebaseApi.getMyRole(user.uid);
-    updateAuthUI();
-    if(!currentRole){
-      setStatus('Signed in, but this Google account has not been approved for family access.');
-      return;
+  let state = $('#authState');
+  let nav = $('#mainNav');
+  let main = $('#appMain');
+
+  let authorized =
+    !!currentUser &&
+    !!currentRole;
+
+  if(authorized){
+
+    nav.classList.remove('hidden');
+
+    main.classList.remove('hidden');
+
+    $('#signInBtn').classList.add('hidden');
+
+    $('#signOutBtn').classList.remove('hidden');
+
+    state.innerHTML = `
+      <div class="authuser">
+
+        <img
+          class="avatar"
+          src="${esc(currentUser.photoURL || '')}"
+          onerror="this.style.display='none'"
+        >
+
+        <div>
+
+          <strong>
+            ${esc(
+              currentUser.displayName ||
+              currentUser.email ||
+              'Signed in'
+            )}
+          </strong>
+
+          <div class="small muted">
+
+            ${esc(currentUser.email || '')}
+
+            ·
+
+            <span class="role">
+              ${esc(currentRole)}
+            </span>
+
+          </div>
+
+        </div>
+
+      </div>
+    `;
+
+  }else{
+
+    nav.classList.add('hidden');
+
+    main.classList.add('hidden');
+
+    $('#signInBtn')
+      .classList
+      .remove('hidden');
+
+    $('#signOutBtn')
+      .classList
+      .toggle(
+        'hidden',
+        !currentUser
+      );
+
+    if(currentUser && !currentRole){
+
+      state.innerHTML = `
+        <strong>Access pending</strong>
+
+        <div class="small muted">
+          ${esc(currentUser.email || 'This account')}
+          is signed in, but has not been approved
+          for the family archive.
+        </div>
+      `;
+
+    }else{
+
+      state.innerHTML =
+        '<strong>Private family database</strong>' +
+        '<div class="small muted">' +
+        'Sign in with your family email address and password.' +
+        '</div>';
+
     }
 
-    db=await firebaseApi.loadDatabase();
+  }
 
+}
 
-    cloudReady=true;
-    renderAll();
-    setStatus('Connected to the private family database.');
-    $('#adminTools').classList.toggle('hidden',!canAdmin());
-    $('#migrationTools').classList.toggle('hidden',!canAdmin());
+function inviteLinkActive(){
+  try{
+    return new URLSearchParams(location.search).has('invite');
   }catch(e){
-    console.error(e);
-    setStatus('Private database connection error: '+e.message);
+    return false;
   }
 }
 
-async function save(){
-  if(!cloudReady||!canEdit()){alert('You need editor or admin access to change family data.');renderAll();return;}
-  db.meta={...(db.meta||{}),updatedAt:new Date().toISOString(),version:'5.0'};
-  renderAll();
-  try{await firebaseApi.saveDatabase(db);setStatus('Saved to the private family database.');}
-  catch(e){console.error(e);setStatus('Cloud save failed: '+e.message);}
+function inviteAttempted(){
+  try{
+    return sessionStorage.getItem('fleury-invite-auth-started') === '1';
+  }catch(e){
+    return false;
+  }
 }
 
-function personOptions(selectedId=''){
-  return db.people.slice().sort((a,b)=>String(a.Name||'').localeCompare(String(b.Name||''))).map(p=>'<option value="'+esc(p['Person ID'])+'" '+(p['Person ID']===selectedId?'selected':'')+'>'+esc(p.Name)+' ['+esc(p['Person ID'])+']</option>').join('');
+function markInviteAttempted(){
+  try{
+    sessionStorage.setItem('fleury-invite-auth-started','1');
+  }catch(e){}
+}
+
+function clearInviteAttempt(){
+  try{
+    sessionStorage.removeItem('fleury-invite-auth-started');
+  }catch(e){}
+}
+
+async function startInviteAuthentication(){
+  if(!inviteLinkActive() || inviteAttempted() || currentUser || !archiveApi) return;
+  markInviteAttempted();
+  setCloudStatus('This is a family invitation. Opening secure family sign-in…');
+  try{ await archiveApi.signInWithEmail(); }catch(e){
+    console.error('Invite sign-in failed:',e);
+    setCloudStatus('Family sign-in could not be started: '+(e?.message||e));
+  }
+}
+
+
+async function handleUser(user){
+
+  currentUser = user;
+  currentRole = null;
+  currentPersonId = null;
+  cloudReady = false;
+
+  if(user)
+    clearInviteAttempt();
+
+  updateAuthUI();
+
+  if(!user){
+
+    db = {
+      people:[],
+      relationships:[],
+      meta:{}
+    };
+
+    currentPersonId = null;
+    renderAll();
+
+    setCloudStatus(
+      inviteLinkActive()
+        ? 'Preparing your family invitation…'
+        : 'Sign in to connect to the private family database.'
+    );
+
+    await startInviteAuthentication();
+
+    return;
+
+  }
+
+  try{
+
+    currentRole =
+      await archiveApi.getMyRole(
+        user.uid
+      );
+
+    if(!currentRole){
+
+      db = {
+        people:[],
+        relationships:[],
+        meta:{}
+      };
+
+      setCloudStatus(
+        'Your family account is signed in, but it has not been approved for family access yet.'
+      );
+
+      updateAuthUI();
+
+      return;
+
+    }
+
+    updateAuthUI();
+
+    db =
+      await archiveApi.loadDatabase();
+
+    currentPersonId =
+      resolveCurrentPersonId();
+
+    cloudReady = true;
+
+    renderAll();
+
+    setCloudStatus(
+      'Connected to the private family database.'
+    );
+
+    $('#adminTools')
+      .classList
+      .toggle(
+        'hidden',
+        !canAdmin()
+      );
+
+    $('#migrationTools')
+      .classList
+      .toggle(
+        'hidden',
+        !canAdmin()
+      );
+
+    $('#personMappingTools')
+      .classList
+      .toggle(
+        'hidden',
+        !canAdmin()
+      );
+
+    renderPersonMappingUI();
+
+  }catch(e){
+
+    console.error(
+      'Private database connection error:',
+      e
+    );
+
+    setCloudStatus(
+      'Private database connection error: ' +
+      e.message
+    );
+
+  }
+
+}
+
+function renderPersonMappingUI(){
+
+  const select = $('#personMapPerson');
+
+  if(!select)
+    return;
+
+  const q = String($('#personMapSearch')?.value || '').toLowerCase().trim();
+  const arr = q ? db.people.filter(p => `${p.Name || ''} ${p['Person ID'] || ''}`.toLowerCase().includes(q)) : db.people;
+  select.innerHTML = arr.slice().sort((a,b)=>a.Name.localeCompare(b.Name)).map(p => `<option value="${esc(p['Person ID'])}">${esc(p.Name)} [${esc(p['Person ID'])}]</option>`).join('');
+
+}
+
+function savePersonMapping(){
+
+  if(!canAdmin())
+    return;
+
+  const email =
+    String($('#personMapEmail')?.value || '')
+      .toLowerCase()
+      .trim();
+
+  const personId =
+    $('#personMapPerson')?.value || '';
+
+  if(!email || !email.includes('@')){
+    $('#personMappingStatus').textContent =
+      'Enter a valid family email address.';
+    return;
+  }
+
+  if(!person(personId)){
+    $('#personMappingStatus').textContent =
+      'Select a family person.';
+    return;
+  }
+
+  db.meta = {
+    ...(db.meta || {}),
+    userPersonMap: {
+      ...(db.meta?.userPersonMap || {}),
+      [email]: personId
+    }
+  };
+
+  save();
+
+  $('#personMappingStatus').textContent =
+    `${email} is now linked to ${name(personId)}.`;
+
+  if(
+    currentUser?.email?.toLowerCase() === email
+  ){
+    currentPersonId = personId;
+    renderAll();
+  }
+
+}
+
+function bindAuth(){
+
+  $('#signInBtn').onclick = async () => {
+
+    try{
+
+      if(!archiveApi){
+
+        setCloudStatus(
+          'Authentication is still starting. Please try again in a moment.'
+        );
+
+        return;
+      }
+
+      await archiveApi.signInWithEmail();
+
+    }catch(e){
+
+      console.error(
+        'Email/password sign-in failed:',
+        e
+      );
+
+      alert(
+        'Email/password sign-in failed: ' +
+        e.message
+      );
+
+    }
+
+  };
+
+  $('#signOutBtn').onclick =
+    async () => {
+
+      await archiveApi.signOutUser();
+
+    };
+
+  $('#findKinship').onclick =
+    findKinship;
+
+  $('#savePersonMapping').onclick =
+    savePersonMapping;
+
+  $('#migrationFile').onchange =
+    () => {
+
+      $('#migrationStatus').textContent =
+        $('#migrationFile').files[0]
+          ? $('#migrationFile').files[0].name +
+            ' selected.'
+          : 'Waiting for a JSON file.';
+
+    };
+
+  $('#migrateBtn').onclick =
+    async () => {
+
+      if(!canAdmin())
+        return alert(
+          'Admin access required.'
+        );
+
+      let f =
+        $('#migrationFile').files[0];
+
+      if(!f)
+        return alert(
+          'Choose the existing JSON backup first.'
+        );
+
+      try{
+
+        let x =
+          JSON.parse(
+            await f.text()
+          );
+
+        if(
+          !Array.isArray(x.people) ||
+          !Array.isArray(x.relationships)
+        )
+          throw Error(
+            'Invalid archive JSON'
+          );
+
+        await archiveApi.saveDatabase(x);
+
+        db = x;
+
+        renderAll();
+
+        $('#migrationStatus').textContent =
+          `Imported ${x.people.length} people and ${x.relationships.length} relationships into private archive.`;
+
+      }catch(e){
+
+        $('#migrationStatus').textContent =
+          'Import failed: ' +
+          e.message;
+
+      }
+
+    };
+
+}
+
+function renderKinshipSelects(){
+
+  let a = $('#kinA');
+  let b = $('#kinB');
+
+  if(!a || !b)
+    return;
+
+  let av = a.value;
+  let bv = b.value;
+
+  const q = String($('#kinSearch')?.value || '').toLowerCase().trim();
+  const arr = q ? db.people.filter(p => `${p.Name || ''} ${p['Person ID'] || ''}`.toLowerCase().includes(q)) : db.people;
+  const opts = arr.slice().sort((x,y)=>x.Name.localeCompare(y.Name)).map(p => `<option value="${esc(p['Person ID'])}">${esc(p.Name)} [${esc(p['Person ID'])}]</option>`).join('');
+
+  a.innerHTML = opts;
+  b.innerHTML = opts;
+
+  if(person(av))
+    a.value = av;
+  else if(currentPersonId && person(currentPersonId))
+    a.value = currentPersonId;
+  else if(person('ALAN-FLEURY'))
+    a.value = 'ALAN-FLEURY';
+
+  if(person(bv))
+    b.value = bv;
+  else if(db.people.length > 1)
+    b.value =
+      db.people[1]['Person ID'];
+
+}
+
+function parentPathToAncestor(id,ancestor){
+
+  if(id === ancestor)
+    return [id];
+
+  let q = [[id,[id]]];
+
+  let seen = new Set([id]);
+
+  while(q.length){
+
+    let [cur,path] = q.shift();
+
+    for(const p of parentsOf(cur)){
+
+      if(seen.has(p))
+        continue;
+
+      if(p === ancestor)
+        return [...path,p];
+
+      seen.add(p);
+
+      q.push([
+        p,
+        [...path,p]
+      ]);
+
+    }
+
+  }
+
+  return null;
+
+}
+
+function ancestorsWithDistance(id){
+
+  let m = new Map([[id,0]]);
+
+  let q = [id];
+
+  while(q.length){
+
+    let cur = q.shift();
+
+    let d = m.get(cur);
+
+    for(const p of parentsOf(cur)){
+
+      if(!m.has(p)){
+
+        m.set(
+          p,
+          d + 1
+        );
+
+        q.push(p);
+
+      }
+
+    }
+
+  }
+
+  return m;
+
+}
+
+function relationshipLabel(da,db){
+
+  if(da === 0 && db === 0)
+    return 'the same person';
+
+  if(da === 0)
+    return ancestorLabel(db,true);
+
+  if(db === 0)
+    return ancestorLabel(da,false);
+
+  if(da === 1 && db === 1)
+    return 'siblings';
+
+  let min =
+    Math.min(da,db);
+
+  let max =
+    Math.max(da,db);
+
+  if(min === 1){
+
+    let base =
+      max === 2
+        ? 'aunt/uncle'
+        : `${'great-'.repeat(
+            Math.max(0,max-2)
+          )}aunt/uncle`;
+
+    return base.replace(
+      'great-aunt/uncle',
+      'great-aunt/uncle'
+    );
+
+  }
+
+  let degree =
+    min - 1;
+
+  let cousin =
+    degree === 1
+      ? '1st cousin'
+      : degree === 2
+        ? '2nd cousin'
+        : degree === 3
+          ? '3rd cousin'
+          : `${degree}th cousin`;
+
+  let rem =
+    Math.abs(da-db);
+
+  return rem
+    ? `${cousin}, ${rem} time${rem===1?'':'s'} removed`
+    : cousin;
+
+}
+
+function ancestorLabel(d,reverse){
+
+  let term =
+    d === 1
+      ? 'parent'
+      : d === 2
+        ? 'grandparent'
+        : `${'great-'.repeat(
+            d-2
+          )}grandparent`;
+
+  return reverse
+    ? `their ${term}`
+    : `your ${term}`;
+
+}
+
+function pathText(path,forward){
+
+  return path
+    .map(
+      (id,i) =>
+        i
+          ? `${forward?'child of':'parent of'} ${name(id)}`
+          : name(id)
+    )
+    .join(' → ');
+
+}
+
+function findKinship(){
+
+  let a = $('#kinA').value;
+  let b = $('#kinB').value;
+
+  if(!a || !b || a === b){
+
+    $('#kinResult')
+      .classList
+      .remove('hidden');
+
+    $('#kinResult').innerHTML =
+      '<h3>Same person</h3>' +
+      '<p>You selected the same person twice.</p>';
+
+    return;
+
+  }
+
+  let aa =
+    ancestorsWithDistance(a);
+
+  let bb =
+    ancestorsWithDistance(b);
+
+  let common =
+    [...aa.keys()]
+      .filter(x => bb.has(x));
+
+  if(!common.length){
+
+    let mixed =
+      shortestMixedPath(a,b);
+
+    $('#kinResult')
+      .classList
+      .remove('hidden');
+
+    $('#kinResult').innerHTML =
+      '<h3>No common blood ancestor found in the recorded tree</h3>' +
+      '<p>There is no recorded common ancestor using the parent links currently in the database.</p>' +
+      (
+        mixed
+          ? `<div class="pathbox">${
+              esc(
+                mixed
+                  .map(
+                    x =>
+                      x.type === 'spouse'
+                        ? `${name(x.from)} — spouse of — ${name(x.to)}`
+                        : name(x.from) +
+                          ' → ' +
+                          name(x.to)
+                  )
+                  .join('\n')
+              )
+            }</div>`
+          : ''
+      );
+
+    return;
+
+  }
+
+  common.sort(
+    (x,y) =>
+      (aa.get(x)+bb.get(x)) -
+      (aa.get(y)+bb.get(y))
+  );
+
+  let anc =
+    common[0];
+
+  let da =
+    aa.get(anc);
+
+  let dbb =
+    bb.get(anc);
+
+  let pa =
+    parentPathToAncestor(
+      a,
+      anc
+    );
+
+  let pb =
+    parentPathToAncestor(
+      b,
+      anc
+    );
+
+  let label =
+    relationshipLabel(
+      da,
+      dbb
+    );
+
+  let commonName =
+    name(anc);
+
+  let left =
+    pa
+      ? pa.map(name).join(' → ')
+      : '';
+
+  let right =
+    pb
+      ? pb.map(name).reverse().join(' → ')
+      : '';
+
+  $('#kinResult')
+    .classList
+    .remove('hidden');
+
+  $('#kinResult').innerHTML =
+    `<h3>${esc(name(a))} and ${esc(name(b))}</h3>` +
+    `<p><strong>Relationship:</strong> ${esc(label)}</p>` +
+    `<p><strong>Common ancestor:</strong> ${esc(commonName)}</p>` +
+    `<p><strong>Generations from common ancestor:</strong> ${esc(String(da))} and ${esc(String(dbb))}</p>` +
+    `<div class="pathbox"><strong>Complete recorded family path</strong>\n${esc(left)} → ${esc(right)}</div>`;
+
+}
+
+function shortestMixedPath(a,b){
+
+  let q = [[a,[]]];
+
+  let seen =
+    new Set([a]);
+
+  while(q.length){
+
+    let [cur,path] =
+      q.shift();
+
+    if(cur === b)
+      return path;
+
+    let next = [
+      ...parentsOf(cur)
+        .map(
+          x => ({
+            to:x,
+            type:'parent',
+            from:cur
+          })
+        ),
+
+      ...childrenOf(cur)
+        .map(
+          x => ({
+            to:x,
+            type:'child',
+            from:cur
+          })
+        ),
+
+      ...spousesOf(cur)
+        .map(
+          x => ({
+            to:x,
+            type:'spouse',
+            from:cur
+          })
+        )
+    ];
+
+    for(const e of next){
+
+      if(!seen.has(e.to)){
+
+        seen.add(e.to);
+
+        q.push([
+          e.to,
+          [
+            ...path,
+            {
+              from:e.from,
+              to:e.to,
+              type:e.type
+            }
+          ]
+        ]);
+
+      }
+
+    }
+
+  }
+
+  return null;
+
+}
+
+
+function filterPeopleArray(query){
+  const q = String(query || '').toLowerCase().trim();
+  if(!q) return [...db.people];
+  return db.people.filter(p => Object.values(p).join(' ').toLowerCase().includes(q));
+}
+
+function fillPersonSelect(id, query, preferred=''){
+  const el = $('#'+id);
+  if(!el) return;
+  const old = preferred || el.value || '';
+  const q = String(query || '').toLowerCase().trim();
+  const arr = q
+    ? db.people.filter(p => `${p.Name || ''} ${p['Person ID'] || ''}`.toLowerCase().includes(q))
+    : db.people;
+  el.innerHTML = arr.slice().sort((a,b)=>a.Name.localeCompare(b.Name)).map(p=>
+    `<option value="${esc(p['Person ID'])}">${esc(p.Name)} [${esc(p['Person ID'])}]</option>`
+  ).join('');
+  if(old && arr.some(p=>p['Person ID']===old)) el.value=old;
+  else if(currentPersonId && arr.some(p=>p['Person ID']===currentPersonId)) el.value=currentPersonId;
+  else if(person('ALAN-FLEURY') && arr.some(p=>p['Person ID']==='ALAN-FLEURY')) el.value='ALAN-FLEURY';
+  else if(el.options.length) el.selectedIndex=0;
+}
+
+function renderGenerationsSelect(){
+  fillPersonSelect('generationPerson', $('#generationSearch')?.value || '');
+}
+
+function ancestorDistanceMap(root){
+  const m = new Map([[root,0]]), q=[root];
+  while(q.length){
+    const cur=q.shift(), d=m.get(cur);
+    for(const p of parentsOf(cur)) if(!m.has(p)){m.set(p,d+1);q.push(p);}
+  }
+  return m;
+}
+
+function siblingPeople(id){
+  const out=new Set();
+  for(const p of parentsOf(id)) for(const c of childrenOf(p)) if(c!==id) out.add(c);
+  return [...out];
+}
+
+function collateralBranches(root, depth){
+  const result=[];
+  const ancestorMap=ancestorDistanceMap(root);
+  for(let g=1; g<=depth; g++){
+    const ancestors=[...ancestorMap.entries()].filter(([id,d])=>d===g).map(([id])=>id);
+    const side=new Set();
+    ancestors.forEach(a=>siblingPeople(a).forEach(x=>side.add(x)));
+    const label = g===1 ? 'Aunts & uncles' : `${'great-'.repeat(g-1)}aunts & uncles`;
+    if(side.size) result.push({title:label, ids:[...side], generation:g});
+    const cousin1=new Set();
+    side.forEach(a=>childrenOf(a).forEach(x=>{ if(x!==root) cousin1.add(x); }));
+    if(cousin1.size) result.push({title:g===1 ? 'Cousins' : `Cousins from ${label.toLowerCase()}`, ids:[...cousin1], generation:g});
+    let frontier=[...cousin1], seen=new Set(frontier);
+    for(let r=2; r<=Math.max(2, depth-g+1); r++){
+      const next=new Set();
+      frontier.forEach(x=>childrenOf(x).forEach(c=>{if(c!==root && !seen.has(c)){seen.add(c);next.add(c);}}));
+      if(!next.size) break;
+      result.push({title:`${g===1?'Cousins': 'Collateral descendants'} — ${r-1} generation${r-1===1?'':'s'} removed`, ids:[...next], generation:g});
+      frontier=[...next];
+    }
+  }
+  const seen=new Set();
+  return result.map(r=>({...r,ids:r.ids.filter(id=>{if(seen.has(id)) return false; seen.add(id); return true;})})).filter(r=>r.ids.length);
+}
+
+function showGenerations(){
+  const root=$('#generationPerson')?.value;
+  const mode=$('#generationMode')?.value || 'ancestors';
+  const depth=Number($('#generationDepth')?.value)||5;
+  const p=person(root);
+  if(!p) return;
+  let groups=[];
+  if(mode==='ancestors'){
+    const levels=[]; let cur=[root], seen=new Set([root]);
+    for(let g=1;g<=depth;g++){
+      const next=[]; cur.forEach(id=>parentsOf(id).forEach(x=>{if(!seen.has(x)){seen.add(x);next.push(x);}}));
+      if(!next.length) break; levels.push({title:g===1?'Parents':g===2?'Grandparents':`${'great-'.repeat(g-2)}great-grandparents`,ids:next}); cur=next;
+    }
+    groups=levels;
+  } else if(mode==='descendants'){
+    const levels=[]; let cur=[root], seen=new Set([root]);
+    for(let g=1;g<=depth;g++){
+      const next=[]; cur.forEach(id=>childrenOf(id).forEach(x=>{if(!seen.has(x)){seen.add(x);next.push(x);}}));
+      if(!next.length) break; levels.push({title:g===1?'Children':g===2?'Grandchildren':`${'great-'.repeat(g-2)}great-grandchildren`,ids:next}); cur=next;
+    }
+    groups=levels;
+  } else groups=collateralBranches(root,depth);
+  let html=`<h3>${esc(p.Name)}</h3>`;
+  if(!groups.length) html+='<div class="notice">No recorded family members were found for this view.</div>';
+  groups.forEach(g=>{
+    html+=`<div class="notice"><strong>${esc(g.title)}</strong><div class="actions">${g.ids.map(id=>`<button data-jump="${esc(id)}">${esc(name(id))}</button>`).join(' ')}</div><div class="small muted">${g.ids.length} recorded person${g.ids.length===1?'':'s'}</div></div>`;
+  });
+  $('#generationResult').innerHTML=html;
+  $$('[data-jump]').forEach(b=>b.onclick=()=>{selected=b.dataset.jump;showDetail(selected);});
 }
 
 function renderAll(){
-  refreshAlanRelationships();
-  $('#stats').innerHTML='<span class="stat">'+db.people.length+' people</span><span class="stat">'+db.relationships.length+' links</span><span class="stat">Updated '+esc((db.meta?.updatedAt||'').slice(0,10)||'-')+'</span>';
-  renderPeopleList();renderPeopleTable();renderRelationships();renderSelects();renderData();
-  if(selected&&person(selected)) showDetail(selected);
+
+  $('#stats').innerHTML =
+    `<span class="stat">${db.people.length} people</span>` +
+    `<span class="stat">${db.relationships.length} links</span>` +
+    `<span class="stat">Updated ${
+      esc(
+        (db.meta?.updatedAt || '')
+          .slice(0,10) || '—'
+      )
+    }</span>`;
+
+  renderPeopleList();
+  renderPeopleTable();
+  renderRels();
+  renderChartSelect();
+  renderKinshipSelects();
+  renderGenerationsSelect();
+  renderData();
+
+  if(selected && person(selected))
+    showDetail(selected);
+
 }
 
 function renderPeopleList(){
-  const q=($('#search')?.value||'').toLowerCase();
-  const arr=db.people.filter(p=>Object.values(p).join(' ').toLowerCase().includes(q)).sort((a,b)=>String(a.Name||'').localeCompare(String(b.Name||'')));
-  $('#peopleList').innerHTML=arr.map(p=>'<div class="person" data-id="'+esc(p['Person ID'])+'"><strong>'+personLink(p['Person ID'],p.Name)+'</strong><span class="muted"> - '+esc(p['Relationship to Alan']||'')+'</span><div class="small muted">'+esc(p['Person ID'])+'</div></div>').join('')||'<p class="muted" style="padding:10px">No matches.</p>';
-  $$('#peopleList .person').forEach(el=>el.onclick=()=>{selected=el.dataset.id;showDetail(selected);});
+
+  let q =
+    ($('#search')?.value || '')
+      .toLowerCase();
+
+  let arr =
+    db.people
+      .filter(
+        p =>
+          Object.values(p)
+            .join(' ')
+            .toLowerCase()
+            .includes(q)
+      )
+      .sort(
+        (a,b) =>
+          a.Name.localeCompare(b.Name)
+      );
+
+  $('#peopleList').innerHTML =
+    arr
+      .map(
+        p =>
+          `<div class="person" data-id="${esc(p['Person ID'])}">
+            <strong>${esc(p.Name)}</strong>
+            <span class="muted">
+              — ${esc(relationshipToViewer(p['Person ID']))}
+            </span>
+            <div class="small muted">
+              ${esc(p['Person ID'])}
+            </div>
+          </div>`
+      )
+      .join('') ||
+      '<p class="muted" style="padding:10px">No matches.</p>';
+
+  $$('#peopleList .person')
+    .forEach(
+      el =>
+        el.onclick = () => {
+          selected =
+            el.dataset.id;
+
+          showDetail(selected);
+        }
+    );
+
 }
 
 function showDetail(id){
-  const p=person(id);if(!p)return;
-  const buttons=ids=>ids.map(x=>personLink(x)).join(' ')||'-';
-  $('#detail').innerHTML='<h2>'+esc(p.Name)+'</h2><p class="muted">ID: '+esc(p['Person ID'])+'</p><div class="formgrid"><div><strong>Birth</strong><br>'+esc(p.Birth||'-')+'</div><div><strong>Death</strong><br>'+esc(p.Death||'-')+'</div><div><strong>Relationship to Alan</strong><br>'+esc(p['Relationship to Alan']||'-')+'</div><div><strong>Evidence</strong><br>'+esc(p['Evidence Status']||'-')+'</div><div><strong>Parents</strong><br>'+buttons(parentsOf(id))+'</div><div><strong>Spouse(s)</strong><br>'+buttons(spousesOf(id))+'</div><div class="full"><strong>Children</strong><br>'+buttons(childrenOf(id))+'</div><div class="full"><strong>Places</strong><br>'+esc(p.Places||'-')+'</div><div class="full"><strong>Sources</strong><br>'+esc(p['Source IDs']||'-')+'</div><div class="full"><strong>Notes</strong><br>'+esc(p.Notes||'-')+'</div></div><div class="actions"><button class="primary" id="detailChart">Chart this person</button><button id="detailEdit">Edit</button></div>';
-  $$('[data-jump]').forEach(b=>b.onclick=()=>{selected=b.dataset.jump;showDetail(selected);});
-  $('#detailChart').onclick=()=>{openTab('chart');$('#chartPerson').value=id;generateChart();};
-  $('#detailEdit').onclick=()=>{openTab('people');editPerson(id);};
+
+  let p = person(id);
+
+  if(!p)
+    return;
+
+  let ps =
+    parentsOf(id);
+
+  let cs =
+    childrenOf(id);
+
+  let ss =
+    spousesOf(id);
+
+  $('#detail').innerHTML =
+    `<h2>${esc(p.Name)}</h2>` +
+    `<p class="muted">ID: ${esc(p['Person ID'])}</p>` +
+    `<div class="formgrid">` +
+
+    `<div>
+      <strong>Birth</strong><br>
+      ${esc(p.Birth || '—')}
+    </div>` +
+
+    `<div>
+      <strong>Death</strong><br>
+      ${esc(p.Death || '—')}
+    </div>` +
+
+    `<div>
+      <strong>Relationship to you</strong><br>
+      ${esc(
+        relationshipToViewer(id)
+      )}
+    </div>` +
+
+    `<div>
+      <strong>Evidence</strong><br>
+      ${esc(p['Evidence Status'] || '—')}
+    </div>` +
+
+    `<div>
+      <strong>Parents</strong><br>
+      ${
+        ps
+          .map(
+            x =>
+              `<button data-jump="${esc(x)}">
+                ${esc(name(x))}
+              </button>`
+          )
+          .join(' ') || '—'
+      }
+    </div>` +
+
+    `<div>
+      <strong>Spouse(s)</strong><br>
+      ${
+        ss
+          .map(
+            x =>
+              `<button data-jump="${esc(x)}">
+                ${esc(name(x))}
+              </button>`
+          )
+          .join(' ') || '—'
+      }
+    </div>` +
+
+    `<div class="full">
+      <strong>Children</strong><br>
+      ${
+        cs
+          .map(
+            x =>
+              `<button data-jump="${esc(x)}">
+                ${esc(name(x))}
+              </button>`
+          )
+          .join(' ') || '—'
+      }
+    </div>` +
+
+    `<div class="full">
+      <strong>Places</strong><br>
+      ${esc(p.Places || '—')}
+    </div>` +
+
+    `<div class="full">
+      <strong>Sources</strong><br>
+      ${esc(p['Source IDs'] || '—')}
+    </div>` +
+
+    `<div class="full">
+      <strong>Notes</strong><br>
+      ${esc(p.Notes || '—')}
+    </div>` +
+
+    `</div>` +
+
+    `<div class="actions">
+      <button class="primary" id="detailChart">
+        Chart this person
+      </button>
+      <button id="detailEdit">
+        Edit
+      </button>
+    </div>`;
+
+  $$('[data-jump]')
+    .forEach(
+      b =>
+        b.onclick = () => {
+          selected =
+            b.dataset.jump;
+
+          showDetail(selected);
+        }
+    );
+
+  $('#detailChart').onclick =
+    () => {
+
+      openTab('chart');
+
+      $('#chartPerson').value =
+        id;
+
+      generateChart();
+
+    };
+
+  $('#detailEdit').onclick =
+    () => {
+
+      openTab('people');
+
+      editPerson(id);
+
+    };
+
 }
 
-const personFields=['Person ID','Name','Aliases','Gender','Birth','Death','Marriage(s)','Places','Relationship to Alan','Connection / Common Ancestor','Relationship Type','Evidence Status','Source IDs','Notes'];
-
-function editPerson(id=''){
-  if(!canEdit()){alert('You have view-only access.');return;}
-  const p=id?person(id):Object.fromEntries(personFields.map(k=>[k,k==='Evidence Status'?'New / unverified':'']));
-  $('#personEditor').innerHTML='<h2>'+(id?'Edit':'Add')+' person</h2><div class="formgrid">'+personFields.filter(k=>k!=='Notes').map(k=>'<div><label>'+esc(k)+'</label><input id="f_'+esc(k)+'" value="'+esc(p[k])+'" '+(k==='Person ID'&&id?'readonly':'')+'></div>').join('')+'<div class="full"><label>Notes</label><textarea id="f_Notes">'+esc(p.Notes)+'</textarea></div></div><div class="actions"><button class="primary" id="savePerson">Save</button>'+(id?'<button class="danger" id="deletePerson">Delete</button>':'')+'</div>';
-  $('#savePerson').onclick=()=>{
-    const obj={...p};personFields.forEach(k=>{const el=$('#f_'+CSS.escape(k));if(el)obj[k]=el.value.trim();});
-    if(!obj['Person ID']||!obj.Name){alert('Person ID and Name are required.');return;}
-    if(!id&&person(obj['Person ID'])){alert('That Person ID already exists.');return;}
-    if(id) db.people[db.people.findIndex(x=>x['Person ID']===id)]=obj; else db.people.push(obj);
-    selected=obj['Person ID'];save();
-  };
-  if(id)$('#deletePerson').onclick=()=>{if(!confirm('Delete this person and all relationship links?'))return;db.people=db.people.filter(x=>x['Person ID']!==id);db.relationships=db.relationships.filter(r=>r.person1!==id&&r.person2!==id);selected=null;save();};
-}
+const personFields = [
+  'Person ID',
+  'Name',
+  'Aliases',
+  'Gender',
+  'Birth',
+  'Death',
+  'Marriage(s)',
+  'Places',
+  'Relationship to Alan',
+  'Connection / Common Ancestor',
+  'Relationship Type',
+  'Evidence Status',
+  'Source IDs',
+  'Notes'
+];
 
 function renderPeopleTable(){
-  const arr=[...db.people].sort((a,b)=>sortAZ ? String(a.Name||'').localeCompare(String(b.Name||'')) : String(a['Person ID']||'').localeCompare(String(b['Person ID']||'')));
-  $('#peopleTable').innerHTML='<table class="table"><thead><tr><th>ID</th><th>Name</th><th>Birth</th><th>Death</th><th>Evidence</th><th></th></tr></thead><tbody>'+arr.map(p=>'<tr><td>'+esc(p['Person ID'])+'</td><td>'+personLink(p['Person ID'],p.Name)+'</td><td>'+esc(p.Birth||'')+'</td><td>'+esc(p.Death||'')+'</td><td>'+esc(p['Evidence Status']||'')+'</td><td>'+(canEdit()?'<button data-edit="'+esc(p['Person ID'])+'">Edit</button>':'View only')+'</td></tr>').join('')+'</tbody></table>';
-  $$('[data-edit]').forEach(b=>b.onclick=()=>editPerson(b.dataset.edit));
+
+  let arr =
+    filterPeopleArray($('#peopleSearch')?.value || '')
+      .sort(
+        (a,b) =>
+          currentSort
+            ? a.Name.localeCompare(b.Name)
+            : a['Person ID'].localeCompare(
+                b['Person ID']
+              )
+      );
+
+  $('#peopleTable').innerHTML =
+    `<table class="table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th>Birth</th>
+          <th>Death</th>
+          <th>Evidence</th>
+          <th></th>
+        </tr>
+      </thead>
+
+      <tbody>
+
+        ${
+          arr
+            .map(
+              p =>
+                `<tr>
+                  <td>${esc(p['Person ID'])}</td>
+                  <td>${esc(p.Name)}</td>
+                  <td>${esc(p.Birth || '')}</td>
+                  <td>${esc(p.Death || '')}</td>
+                  <td>${esc(p['Evidence Status'] || '')}</td>
+
+                  <td>
+                    ${
+                      canEdit()
+                        ? `<button data-edit="${esc(p['Person ID'])}">
+                            Edit
+                          </button>`
+                        : '<span class="muted">View only</span>'
+                    }
+                  </td>
+
+                </tr>`
+            )
+            .join('')
+        }
+
+      </tbody>
+    </table>`;
+
+  $$('[data-edit]')
+    .forEach(
+      b =>
+        b.onclick =
+          () =>
+            editPerson(
+              b.dataset.edit
+            )
+    );
+
 }
 
-function renderRelationships(){
-  $('#relTable').innerHTML='<table class="table"><thead><tr><th>ID</th><th>Type</th><th>Person 1</th><th>Person 2</th><th>Sources</th><th></th></tr></thead><tbody>'+db.relationships.map(r=>'<tr><td>'+esc(r.id)+'</td><td>'+esc(r.type)+'</td><td>'+personLink(r.person1)+'</td><td>'+personLink(r.person2)+'</td><td>'+esc(r.sourceIds||'')+'</td><td>'+(canEdit()?'<button data-delrel="'+esc(r.id)+'">Delete</button>':'')+'</td></tr>').join('')+'</tbody></table>';
-  $$('[data-delrel]').forEach(b=>b.onclick=()=>{db.relationships=db.relationships.filter(r=>r.id!==b.dataset.delrel);save();});
+function nextRelationshipId(){
+  return 'R' + String(
+    Math.max(
+      0,
+      ...db.relationships.map(r =>
+        Number(String(r.id).replace(/\D/g,'')) || 0
+      )
+    ) + 1
+  ).padStart(5,'0');
 }
 
-function editRel(){
-  if(!canEdit()){alert('You have view-only access.');return;}
-  $('#relEditor').innerHTML='<h2>Add relationship</h2><label>Type</label><select id="r_type"><option value="parent">Parent of</option><option value="spouse">Spouse of</option></select><label>Person 1</label><select id="r_a">'+personOptions()+'</select><label>Person 2</label><select id="r_b">'+personOptions()+'</select><label>Sources</label><input id="r_src"><label>Notes</label><textarea id="r_notes"></textarea><div class="actions"><button class="primary" id="saveRel">Save relationship</button></div>';
-  $('#saveRel').onclick=()=>{
-    const a=$('#r_a').value,b=$('#r_b').value,t=$('#r_type').value;
-    if(!a||!b||a===b){alert('Choose two different people.');return;}
-    const exists=db.relationships.some(r=>r.type===t&&((t==='spouse'&&((r.person1===a&&r.person2===b)||(r.person1===b&&r.person2===a)))||(t!=='spouse'&&r.person1===a&&r.person2===b)));
-    if(exists){alert('That relationship already exists.');return;}
-    db.relationships.push({id:uid(),type:t,person1:a,person2:b,sourceIds:$('#r_src').value.trim(),notes:$('#r_notes').value.trim()});save();
-  };
-}
+function renderFamilySiblingChoices(){
+  const box = $('#familySiblings');
+  if(!box || !familyEditPersonId) return;
+  const q = String($('#familySiblingSearch')?.value || '').toLowerCase().trim();
+  const parents = parentsOf(familyEditPersonId);
+  const currentSiblings = new Set(siblingPeople(familyEditPersonId));
+  const arr = db.people
+    .filter(p => p['Person ID'] !== familyEditPersonId)
+    .filter(p => !q || `${p.Name || ''} ${p['Person ID'] || ''}`.toLowerCase().includes(q))
+    .sort((a,b) => a.Name.localeCompare(b.Name));
 
-function renderSelects(){
-  const a=$('#kinA'),b=$('#kinB'),c=$('#chartPerson'),d=$('#reportPerson');if(!a||!b||!c||!d)return;
-  const av=a.value,bv=b.value,cv=c.value,dv=d.value;
-  a.innerHTML=personOptions(av);b.innerHTML=personOptions(bv);c.innerHTML=personOptions(cv);d.innerHTML=personOptions(dv);
-  if(!a.value&&db.people[0])a.value=db.people[0]['Person ID'];
-  if(!b.value&&db.people[1])b.value=db.people[1]['Person ID'];
-  if(!c.value&&person('ALA'))c.value='ALA';
-}function refreshAlanRelationships(){
-  const a=alanId();
-  if(!a)return;
+  box.innerHTML = arr.length ? arr.map(p => `
+    <label class="sibling-row">
+      <input type="checkbox" class="familySibling" value="${esc(p['Person ID'])}" ${currentSiblings.has(p['Person ID']) ? 'checked' : ''}>
+      <span><strong>${esc(p.Name)}</strong><span class="small muted"> — ${esc(p['Person ID'])}</span></span>
+    </label>
+  `).join('') : '<div class="muted" style="padding:10px">No matching people.</div>';
 
-  db.people.forEach(p=>{
-    const id=p['Person ID'];
-    p['Relationship to Alan']=relationLabelForAlan(id)||'';
-  });
-}
-
-
-function alanId(){
-  return db.people.find(p=>String(p.Name||'').trim().toLowerCase()==='alan fleury' && String(p.Birth||'').startsWith('3 APR 1969'))?.['Person ID'] || db.people.find(p=>String(p.Name||'').trim().toLowerCase()==='alan fleury')?.['Person ID'];
-}
-function sideFromAlan(ancestorId){
-  const a=alanId(); if(!a||ancestorId===a)return '';
-  const q=[[a,[]]],seen=new Set([a]);
-  while(q.length){const [cur,path]=q.shift(); for(const par of parentsOf(cur)){ if(seen.has(par))continue; const np=[...path,par]; if(par===ancestorId){ const first=np[0], g=person(first); return g?.Gender==='M'?'paternal':g?.Gender==='F'?'maternal':''; } seen.add(par); q.push([par,np]); }}
-  return '';
-}
-function ordinalGreat(n){
-  if(n===1) return 'great';
-  if(n===2) return '2nd great';
-  if(n===3) return '3rd great';
-  return n+'th great';
-}
-
-function ancestorRelationship(d, gender){
-  const male = gender === 'M';
-  const female = gender === 'F';
-
-  if(d===1) return male ? 'father' : female ? 'mother' : 'parent';
-  if(d===2) return male ? 'grandfather' : female ? 'grandmother' : 'grandparent';
-
-  const greatNumber = d - 2;
-  const prefix = ordinalGreat(greatNumber);
-
-  return prefix + '-' + (male ? 'grandfather' : female ? 'grandmother' : 'grandparent');
-}
-
-function descendantRelationship(d, gender){
-  const male = gender === 'M';
-  const female = gender === 'F';
-
-  if(d===1) return male ? 'son' : female ? 'daughter' : 'child';
-  if(d===2) return male ? 'grandson' : female ? 'granddaughter' : 'grandchild';
-
-  const greatNumber = d - 2;
-  const prefix = ordinalGreat(greatNumber);
-
-  return prefix + '-' + (male ? 'grandson' : female ? 'granddaughter' : 'grandchild');
-}
-
-function auntUncleRelationship(d, gender){
-  const male = gender === 'M';
-  const female = gender === 'F';
-
-  if(d===2) return male ? 'uncle' : female ? 'aunt' : 'aunt/uncle';
-
-  const greatNumber = d - 2;
-  const prefix = ordinalGreat(greatNumber);
-
-  return prefix + '-' + (male ? 'uncle' : female ? 'aunt' : 'aunt/uncle');
-}
-
-function cousinRelationship(da, db){
-  const degree = Math.min(da, db) - 1;
-  const removed = Math.abs(da - db);
-
-  let ordinal;
-
-  if(degree===1) ordinal='1st';
-  else if(degree===2) ordinal='2nd';
-  else if(degree===3) ordinal='3rd';
-  else ordinal=degree+'th';
-
-  let result = ordinal + ' cousin';
-
-  if(removed===1){
-    result += ' once removed';
-  }else if(removed===2){
-    result += ' twice removed';
-  }else if(removed>2){
-    result += ' '+removed+' times removed';
+  const hint = $('#familyParentHint');
+  if(hint){
+    hint.textContent = parents.length
+      ? `Current parents: ${parents.map(name).join(' and ')}. Siblings checked below already share a recorded parent.`
+      : 'No parents are currently recorded. Choose one or two parents above, then select siblings below.';
   }
-
-  return result;
 }
 
-function relationLabelForAlan(id){
-  const a = alanId();
+function saveFamilyConnections(){
+  if(!familyEditPersonId || !canEdit()) return;
+  const p1 = $('#familyParent1')?.value || '';
+  const p2 = $('#familyParent2')?.value || '';
+  const parentIds = [...new Set([p1,p2].filter(Boolean))].filter(x => x !== familyEditPersonId);
+  const siblings = $$('.familySibling:checked').map(x => x.value).filter(x => x !== familyEditPersonId);
 
-  if(!a) return '';
-  if(id===a) return 'Self';
-
-  const aa = ancestorDistances(a);
-  const bb = ancestorDistances(id);
-
-  // Direct ancestor of Alan
-  if(aa.has(id)){
-    const d = aa.get(id);
-    const p = person(id);
-    const side = sideFromAlan(id);
-
-    const label = ancestorRelationship(d, p?.Gender);
-
-    return side ? side+' '+label : label;
-  }
-
-  // Direct descendant of Alan
-  if(bb.has(a)){
-    const d = bb.get(a);
-    const p = person(id);
-
-    return descendantRelationship(d, p?.Gender);
-  }
-
-  // Find closest common ancestor
-  const common = [...aa.keys()]
-    .filter(k => bb.has(k))
-    .sort((u,v) =>
-      (aa.get(u)+bb.get(u)) -
-      (aa.get(v)+bb.get(v))
-    )[0];
-
-  if(!common) return '';
-
-  const da = aa.get(common);
-  const dbb = bb.get(common);
-  const side = sideFromAlan(common);
-
-  let label = '';
-
-  // Siblings / niece / nephew
-  if(da===1){
-    if(dbb===1){
-      label = 'sibling';
-    }else if(dbb===2){
-      const p = person(id);
-      label = p?.Gender==='M' ? 'nephew' :
-              p?.Gender==='F' ? 'niece' :
-              'niece/nephew';
-    }else{
-      const p = person(id);
-      label = ordinalGreat(dbb-2)+'-'+
-        (p?.Gender==='M' ? 'nephew' :
-         p?.Gender==='F' ? 'niece' :
-         'niece/nephew');
-    }
-  }
-
-  // Aunt / uncle
-  else if(dbb===1){
-    const p = person(id);
-    label = auntUncleRelationship(da, p?.Gender);
-  }
-
-  // Cousins
-  else{
-    label = cousinRelationship(da, dbb);
-  }
-
-  return side && label
-    ? label+' - '+side+' side'
-    : label;
-}
-
-function ancestorDistances(id){
-  const m=new Map([[id,0]]),q=[id];
-  while(q.length){const cur=q.shift(),d=m.get(cur);for(const p of parentsOf(cur))if(!m.has(p)){m.set(p,d+1);q.push(p);}}
-  return m;
-}
-function parentPath(id,ancestor){
-  if(id===ancestor)return [id];
-  const q=[[id,[id]]],seen=new Set([id]);
-  while(q.length){const [cur,path]=q.shift();for(const p of parentsOf(cur)){if(seen.has(p))continue;if(p===ancestor)return [...path,p];seen.add(p);q.push([p,[...path,p]]);}}
-  return null;
-}
-function kinLabel(a,b){
-  if(a===0)return b===0?'the same person':('their '+ancestorTerm(b));
-  if(b===0)return 'your '+ancestorTerm(a);
-  if(a===1&&b===1)return 'siblings';
-  const min=Math.min(a,b),degree=min-1,rem=Math.abs(a-b);
-  let cousin=degree===1?'1st cousin':degree===2?'2nd cousin':degree===3?'3rd cousin':degree+'th cousin';
-  return rem?cousin+', '+rem+' time'+(rem===1?'':'s')+' removed':cousin;
-}
-function ancestorTerm(d){return d===1?'parent':d===2?'grandparent':'great-'.repeat(d-2)+'grandparent';}
-function findKinship(){
-  const a=$('#kinA').value,b=$('#kinB').value;if(!a||!b)return;
-  if(a===b){$('#kinResult').classList.remove('hidden');$('#kinResult').innerHTML='<div class="notice">The same person was selected twice.</div>';return;}
-  const aa=ancestorDistances(a),bb=ancestorDistances(b),common=[...aa.keys()].filter(x=>bb.has(x)).sort((x,y)=>(aa.get(x)+bb.get(x))-(aa.get(y)+bb.get(y)));
-  $('#kinResult').classList.remove('hidden');
-  if(!common.length){$('#kinResult').innerHTML='<div class="notice">No common recorded ancestor was found.</div>';return;}
-  const anc=common[0],da=aa.get(anc),dbb=bb.get(anc),pa=parentPath(a,anc),pb=parentPath(b,anc);
-  $('#kinResult').innerHTML='<div class="notice"><h3>'+esc(nameOf(a))+' and '+esc(nameOf(b))+'</h3><p><strong>Relationship:</strong> '+esc(kinLabel(da,dbb))+'</p><p><strong>Common ancestor:</strong> '+esc(nameOf(anc))+'</p><div class="pathbox">'+esc((pa||[]).map(nameOf).join(' → ')+' → '+(pb||[]).reverse().map(nameOf).join(' → '))+'</div></div>';
-}
-
-function levels(root,mode,depth){
-  const build=(dir)=>{
-    const out=[[root]],seen=new Set([root]);
-    for(let i=1;i<=depth;i++){const next=[];for(const id of out[i-1])for(const x of dir(id))if(!seen.has(x)){seen.add(x);next.push(x);}if(!next.length)break;out.push(next);}
-    return out;
-  };
-  const up=build(parentsOf),down=build(childrenOf);
-  if(mode==='ancestors')return up.reverse();
-  if(mode==='descendants')return down;
-  return [...up.reverse(),...down.slice(1)];
-}
-function nodeHtml(id,root){
-  const p=person(id);if(!p)return '';
-  const ev=String(p['Evidence Status']||'').toLowerCase(),unc=ev.includes('verify')||ev.includes('uncertain');
-  return '<div class="node '+(id===root?'self ':'')+(unc?'uncertain':'')+'" data-person-link="'+esc(id)+'" tabindex="0" role="button"><strong>'+esc(p.Name)+'</strong><div class="small">'+esc(p.Birth||'')+(p.Death?' – '+esc(p.Death):'')+'</div><div class="small muted">'+esc(id)+'</div></div>';
-}
-function generateChart(){
-  const root=$('#chartPerson').value;if(!root)return;
-  const parts=levels(root,$('#chartMode').value,Number($('#chartDepth').value)||4);
-  $('#treebox').innerHTML='<div class="tree">'+parts.map(l=>'<div class="level">'+l.map(id=>nodeHtml(id,root)).join('')+'</div>').join('')+'</div>';
-}
-function exportSvg(){
-  const root=$('#chartPerson').value,parts=levels(root,$('#chartMode').value,Number($('#chartDepth').value)||4);
-  const width=Math.max(1000,Math.max(...parts.map(x=>x.length))*220+100),height=parts.length*120+40;
-  let s='<svg xmlns="http://www.w3.org/2000/svg" width="'+width+'" height="'+height+'" viewBox="0 0 '+width+' '+height+'"><rect width="100%" height="100%" fill="#efe5d0"/>';
-  parts.forEach((l,li)=>{const gap=220,start=(width-(l.length-1)*gap)/2;l.forEach((id,i)=>{const p=person(id),x=start+i*gap-95,y=li*120+15;s+='<g><rect x="'+x+'" y="'+y+'" width="190" height="80" rx="12" fill="#fffaf0" stroke="#6b4f2a" stroke-width="2"/><text x="'+(x+95)+'" y="'+(y+27)+'" text-anchor="middle" font-family="Georgia" font-size="14">'+esc(p?.Name||id).slice(0,50)+'</text><text x="'+(x+95)+'" y="'+(y+48)+'" text-anchor="middle" font-family="Arial" font-size="11">'+esc(p?.Birth||'')+'</text><text x="'+(x+95)+'" y="'+(y+65)+'" text-anchor="middle" font-family="Arial" font-size="9">'+esc(id)+'</text></g>';});});
-  s+='</svg>';download('fleury-wall-chart.svg',s,'image/svg+xml');
-}
-function exportJson(){download('fleury-family-archive-backup.json',JSON.stringify(db,null,2),'application/json');}
-function exportCsv(){
-  const hs=['Person ID','Name','Gender','Birth','Death','Relationship to Alan','Evidence Status','Source IDs','Notes'];
-  const rows=[hs.join(',')].concat(db.people.map(p=>hs.map(h=>'"'+String(p[h]||'').replaceAll('"','""')+'"').join(',')));
-  download('fleury-people.csv',rows.join('\n'),'text/csv');
-}
-function exportGedcom(){
-  const lines=['0 HEAD','1 SOUR FLEURY FAMILY ARCHIVE','1 GEDC','2 VERS 5.5.1','1 CHAR UTF-8'];
-  db.people.forEach(p=>{const id=p['Person ID'];lines.push('0 @I'+id+'@ INDI','1 NAME '+String(p.Name||'').replace(/[\/]/g,''));if(p.Gender)lines.push('1 SEX '+p.Gender[0].toUpperCase());if(p.Birth)lines.push('1 BIRT','2 DATE '+p.Birth);if(p.Death)lines.push('1 DEAT','2 DATE '+p.Death);if(p.Notes)lines.push('1 NOTE '+p.Notes);});
-  lines.push('0 TRLR');download('fleury-family-archive.ged',lines.join('\n'),'text/plain');
-}
-function reportRows(ids){ return ids.filter(Boolean).map(id=>{const p=person(id);return p?`<tr><td>${esc(p.Name)}</td><td>${esc(p.Birth||'')}</td><td>${esc(p.Death||'')}</td><td>${esc(p['Relationship to Alan']||'')}</td></tr>`:''}).join(''); }
-function generateReport(){
- const id=$('#reportPerson').value,type=$('#reportType').value,depth=Number($('#reportDepth').value)||4,p=person(id); if(!p)return;
- let html='';
- if(type==='individual'){ html=`<h1>${esc(p.Name)}</h1><p class="small">Fleury Family Archive · ${esc(p['Person ID'])}</p><table><tr><th>Birth</th><td>${esc(p.Birth||'-')}</td></tr><tr><th>Death</th><td>${esc(p.Death||'-')}</td></tr><tr><th>Relationship to Alan</th><td>${esc(p['Relationship to Alan']||'-')}</td></tr><tr><th>Parents</th><td>${parentsOf(id).map(nameOf).join(', ')||'-'}</td></tr><tr><th>Spouse(s)</th><td>${spousesOf(id).map(nameOf).join(', ')||'-'}</td></tr><tr><th>Children</th><td>${childrenOf(id).map(nameOf).join(', ')||'-'}</td></tr><tr><th>Places</th><td>${esc(p.Places||'-')}</td></tr><tr><th>Sources</th><td>${esc(p['Source IDs']||'-')}</td></tr><tr><th>Notes</th><td>${esc(p.Notes||'-')}</td></tr></table>`; }
- else if(type==='family'){ html=`<h1>Family Group: ${esc(p.Name)}</h1><h2>Parents</h2><p>${parentsOf(id).map(nameOf).join(', ')||'-'}</p><h2>Spouse(s)</h2><p>${spousesOf(id).map(nameOf).join(', ')||'-'}</p><h2>Children</h2><table><tr><th>Name</th><th>Birth</th><th>Death</th><th>Relationship to Alan</th></tr>${reportRows(childrenOf(id))}</table>`; }
- else if(type==='ancestors'){ const ids=levels(id,'ancestors',depth).flat(); html=`<h1>Ancestors of ${esc(p.Name)}</h1><p>Generations: ${depth}</p><table><tr><th>Name</th><th>Birth</th><th>Death</th><th>Relationship to Alan</th></tr>${reportRows(ids)}</table>`; }
- else if(type==='descendants'){ const ids=levels(id,'descendants',depth).flat(); html=`<h1>Descendants of ${esc(p.Name)}</h1><p>Generations: ${depth}</p><table><tr><th>Name</th><th>Birth</th><th>Death</th><th>Relationship to Alan</th></tr>${reportRows(ids)}</table>`; }
- else { const a=alanId(); if(!a){html='<p>No Alan Fleury record was found.</p>'; } else { const aa=ancestorDistances(a),bb=ancestorDistances(id),common=[...aa.keys()].filter(k=>bb.has(k)).sort((u,v)=>(aa.get(u)+bb.get(u))-(aa.get(v)+bb.get(v)))[0]; const pa=common?parentPath(a,common):null,pb=common?parentPath(id,common):null; html=`<h1>Relationship to Alan Fleury</h1><h2>${esc(p.Name)}</h2><p><strong>${esc(p['Relationship to Alan']||'Not established')}</strong></p><p>Common ancestor: ${esc(common?nameOf(common):'Not found')}</p><p>${esc((pa||[]).map(nameOf).join(' → ')+(pb?' → '+pb.slice().reverse().map(nameOf).join(' → '):''))}</p>`; }}
- $('#reportPreview').innerHTML=html;
-}
-
-function renderData(){ $('#dataSummary').innerHTML='<div class="stats"><span class="stat">'+db.people.length+' people</span><span class="stat">'+db.relationships.length+' relationships</span></div><p class="muted">Last update: '+esc(db.meta?.updatedAt||'not recorded')+'</p>'; }
-
-function openTab(id){$$('.tab').forEach(x=>x.classList.toggle('hidden',x.id!==id));$$('nav button').forEach(x=>x.classList.toggle('active',x.dataset.tab===id));}
-
-function bind(){
-  document.addEventListener('click',e=>{
-    const el=e.target.closest('[data-person-link]');
-    if(!el)return;
-    const id=el.dataset.personLink;
-    if(!person(id))return;
-    e.preventDefault();
-    selected=id;
-    openTab('explore');
-    showDetail(id);
-  });
-
-  document.addEventListener('keydown',e=>{
-    const el=e.target.closest('[data-person-link][tabindex]');
-    if(!el || (e.key!=='Enter' && e.key!==' '))return;
-    const id=el.dataset.personLink;
-    if(person(id)){
-      e.preventDefault();
-      selected=id;
-      openTab('explore');
-      showDetail(id);
-    }
-  });
-
-  $$('nav button').forEach(b=>b.onclick=()=>openTab(b.dataset.tab));
-  $('#search').oninput=renderPeopleList;
-  $('#newPerson').onclick=()=>editPerson();
-  $('#sortPeople').onclick=()=>{sortAZ=!sortAZ;renderPeopleTable();};
-  $('#newRel').onclick=editRel;
-  $('#findKinship').onclick=findKinship;
-  $('#generateReport').onclick=generateReport;
-  $('#printReport').onclick=()=>{ const html=$('#reportPreview').innerHTML; const w=window.open('','_blank'); if(!w)return; w.document.write(`<!doctype html><html><head><title>Fleury Family Archive Report</title><style>body{font-family:Georgia,serif;margin:28px;color:#222}h1,h2{font-family:Georgia,serif}table{border-collapse:collapse;width:100%}td,th{padding:6px;border-bottom:1px solid #ccc;text-align:left}.small{color:#666}</style><style id="fleury-mobile-fresh">
-html{-webkit-text-size-adjust:100%}
-body{margin:0;min-width:0}
-button,input,select,textarea{font:inherit}
-button,.button,[role="button"]{min-height:44px}
-nav,.tabs,.tabbar,.nav-tabs{overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch}
-@media(max-width:900px){
-  main,.shell,.app,.page,.content,.layout{width:100%;max-width:100%;box-sizing:border-box}
-  .grid,.columns,.two-column,.three-column{grid-template-columns:1fr!important}
-  table{min-width:680px}
-  .table-wrap,.table-container,.report-table{overflow-x:auto;max-width:100%;-webkit-overflow-scrolling:touch}
-}
-@media(max-width:600px){
-  body{font-size:16px}
-  header,.header,.toolbar{padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right))}
-  button,.button,[role="button"],input,select{min-height:46px}
-  .card,.panel,.section{margin-left:8px;margin-right:8px}
-  .modal,.dialog{width:calc(100vw - 16px)!important;max-width:none!important}
-}
-</style></head><body>'+html+'</body></html>`); w.document.close(); w.focus(); setTimeout(()=>w.print(),250); };
-
-  $('#generateChart').onclick=generateChart;
-  $('#downloadSvg').onclick=exportSvg;
-  $('#exportJson').onclick=exportJson;
-  $('#exportCsv').onclick=exportCsv;
-  $('#exportGedcom').onclick=exportGedcom;
-  $('#importJson').onclick=()=>$('#fileInput').click();
-
-  $('#fileInput').onchange=async e=>{
-    const f=e.target.files[0];
-    if(!f)return;
-    try{
-      const x=JSON.parse(await f.text());
-      if(!Array.isArray(x.people)||!Array.isArray(x.relationships))throw new Error('Invalid archive JSON');
-      db=x;
-      await save();
-      alert('Database imported.');
-    }catch(err){alert(err.message);}
-  };
-
-  $('#signInBtn').onclick=async()=>{
-    try{await firebaseApi.signInWithGoogle();}
-    catch(e){console.error(e);alert('Google sign-in failed: '+e.message);}
-  };
-  $('#signOutBtn').onclick=()=>firebaseApi.signOutUser();
-
-  $('#installMasterBtn').onclick=async()=>{
-    if(!canAdmin())return alert('Admin access required.');
-    if(!confirm('Install the cleaned Ancestral Quest database into the new private archive? This writes the v5 database and leaves the old database untouched.'))return;
-    const status=$('#masterStatus');
-    status.textContent='Installing the expanded master chart…';
-    try{
-      const response=await fetch('./archive-seed.json',{cache:'no-store'});
-      if(!response.ok)throw new Error('The bundled master chart could not be loaded.');
-      const x=await response.json();
-      if(!Array.isArray(x.people)||!Array.isArray(x.relationships))throw new Error('The bundled master chart is invalid.');
-      await firebaseApi.saveDatabase(x);
-      db=x;
-      renderAll();
-      status.textContent='Installed '+x.people.length+' people and '+x.relationships.length+' relationships into the new private v5 database.';
-      setStatus('Expanded master chart installed successfully.');
-    }catch(e){
-      console.error(e);
-      status.textContent='Master chart installation failed: '+e.message;
-    }
-  };
-
-  $('#migrationFile').onchange=()=>{
-    const f=$('#migrationFile').files[0];
-    $('#migrationStatus').textContent=f?f.name+' selected.':'Waiting for a JSON file.';
-  };
-
-  $('#migrateBtn').onclick=async()=>{
-    if(!canAdmin())return alert('Admin access required.');
-    const f=$('#migrationFile').files[0];
-    if(!f)return alert('Choose the JSON backup first.');
-    try{
-      const x=JSON.parse(await f.text());
-      if(!Array.isArray(x.people)||!Array.isArray(x.relationships))throw new Error('Invalid archive JSON');
-      await firebaseApi.saveDatabase(x);
-      db=x;
-      renderAll();
-      $('#migrationStatus').textContent='Imported '+x.people.length+' people and '+x.relationships.length+' relationships into private Firestore.';
-    }catch(e){$('#migrationStatus').textContent='Import failed: '+e.message;}
-  };
-}
-
-async function start(){
-  bind();
-  renderAll();
-
-  if(!isWeb){
-    setStatus('Local preview mode. Google sign-in and cloud data are available only on the published HTTPS site.');
-    $('#signInBtn').disabled=true;
+  if(siblings.length && !parentIds.length){
+    alert('Choose at least one parent before adding siblings.');
     return;
   }
 
-  if('serviceWorker' in navigator && window.isSecureContext){
-    navigator.serviceWorker.register('./sw.js').catch(e=>console.warn('Optional service worker unavailable:',e));
-  }
-
-  const manifest=document.createElement('link');manifest.rel='manifest';manifest.href='./manifest.webmanifest';document.head.appendChild(manifest);
-
-  try{
-    firebaseApi=await import('./firebase-sync.js?v=github-mobile-fresh');
-    await firebaseApi.initAuth(handleUser);
-  }catch(e){
-    console.error('Firebase startup failed:',e);
-    setStatus('Firebase could not start: '+e.message);
-  }
-}
-
-start();
-
-/* FLEURY FRESH-START ADDON: generation explorer + resilient sign-in */
-(function(){
-  const waitForFirebase = async (ms=15000)=>{
-    const started=Date.now();
-    while(!firebaseApi && Date.now()-started<ms) await new Promise(r=>setTimeout(r,100));
-    if(!firebaseApi) throw new Error('Firebase is still starting. Please wait a moment and try again.');
+  const addParentLink = (parentId, childId) => {
+    if(!parentId || !childId || parentId === childId) return;
+    const exists = db.relationships.some(r => r.type === 'parent' && r.person1 === parentId && r.person2 === childId);
+    if(!exists){
+      db.relationships.push({
+        id: nextRelationshipId(),
+        type: 'parent',
+        person1: parentId,
+        person2: childId,
+        sourceIds: '',
+        notes: 'Added from Family connections editor.'
+      });
+    }
   };
 
-  const oldSignIn = $('#signInBtn');
-  if(oldSignIn){
-    oldSignIn.onclick = async ()=>{
-      const btn=$('#signInBtn');
-      btn.disabled=true;
-      try{
-        setStatus('Starting Google sign-in...');
-        await waitForFirebase();
-        await firebaseApi.signInWithGoogle();
-      }catch(e){
-        console.error('Google sign-in failed:',e);
-        setStatus('Google sign-in failed: '+(e?.code?e.code+' - ':'')+(e?.message||e));
-        alert('Google sign-in failed: '+(e?.code?e.code+' - ':'')+(e?.message||e));
-      }finally{ btn.disabled=false; }
-    };
-  }
+  parentIds.forEach(parentId => addParentLink(parentId, familyEditPersonId));
+  siblings.forEach(sibId => parentIds.forEach(parentId => addParentLink(parentId, sibId)));
 
-function genLevels(root,mode,depth){
-  if(mode==='extended'){
-    const groups={};
-
-    db.people.forEach(p=>{
-      const id=p['Person ID'];
-      if(!id || id===root)return;
-
-      const aa=ancestorDistances(root);
-      const bb=ancestorDistances(id);
-
-      const common=[...aa.keys()]
-        .filter(x=>bb.has(x))
-        .sort((x,y)=>
-          (aa.get(x)+bb.get(x))-
-          (aa.get(y)+bb.get(y))
-        );
-
-      if(!common.length)return;
-
-      const anc=common[0];
-      const da=aa.get(anc);
-      const dbb=bb.get(anc);
-
-      let label='';
-
-      if(da===1 && dbb===1){
-        label='Sibling';
-      }else if(dbb===1){
-        const g=p.Gender;
-        label=g==='M'?'Aunt / Uncle - Uncle':'Aunt / Uncle - Aunt';
-      }else if(da===1){
-        const g=p.Gender;
-        label=g==='M'?'Nephew':'Niece';
-      }else{
-        label=cousinRelationship(da,dbb);
-      }
-
-      if(!groups[label])groups[label]=[];
-      groups[label].push(id);
-    });
-
-    return Object.entries(groups).map(([label,ids])=>({
-      generation:0,
-      ids,
-      label
-    }));
-  }
-
-  const dir=mode==='ancestors'?parentsOf:childrenOf;
-  const result=[];
-  let current=[root], seen=new Set([root]);
-
-  for(let g=1;g<=depth;g++){
-    const next=[];
-
-    current.forEach(id=>{
-      dir(id).forEach(x=>{
-        if(!seen.has(x)){
-          seen.add(x);
-          next.push(x);
-        }
-      });
-    });
-
-    if(!next.length)break;
-
-    result.push({
-      generation:g,
-      ids:next
-    });
-
-    current=next;
-  }
-
-  return result;
+  save();
+  editPerson(familyEditPersonId);
 }
 
-    $('#showGenerations').onclick=()=>{
-      const root=$('#generationPerson').value;
-      const mode=$('#generationMode').value;
-      const depth=Number($('#generationDepth').value)||5;
-      const p=person(root);
-      if(!p)return;
-      const rows=genLevels(root,mode,depth);
-      let html='<h3>'+esc(p.Name)+'</h3>';
-      if(!rows.length){
-        html+='<div class="notice">No recorded '+(mode==='ancestors'?'ancestors':'descendants')+' were found.</div>';
-      }else{
-        rows.forEach(r=>{
-          html+='<div class="notice"><strong>'+esc(genTitle(mode,r.generation))+'</strong><div class="actions">'+r.ids.map(id=>personLink(id,nameOf(id))).join(' ')+'</div><div class="small muted">'+r.ids.length+' recorded person'+(r.ids.length===1?'':'s')+'</div></div>';
-        });
-      }
-      $('#generationResult').innerHTML=html;
-    };
+function editPerson(id){
 
-    b.onclick=()=>{
-      openTab('generations');
-      syncPeople();
-    };
-    const originalRenderAll=renderAll;
-    window.__fleuryOriginalRenderAll=originalRenderAll;
-    // Keep existing behavior and refresh the generation selector after data changes.
-    // renderAll is a lexical binding, so replace it in this script's scope via wrapper.
-    // Instead, refresh whenever the Generations tab is opened.
-    syncPeople();
+  if(!canEdit()){
+
+    alert(
+      'You have view-only access.'
+    );
+
+    return;
+
   }
 
-  // The main app has already called start() by this point, but the auth/data load is async.
-  // Create the UI immediately; its selector is refreshed every time the tab opens.
-  makeGenerationUI();
-})();
+  let p =
+    id
+      ? person(id)
+      : Object.fromEntries(
+          personFields.map(
+            k => [
+              k,
+              k === 'Evidence Status'
+                ? 'New / unverified'
+                : ''
+            ]
+          )
+        );
+
+  $('#personEditor').innerHTML =
+    `<h2>${id ? 'Edit' : 'Add'} person</h2>` +
+
+    `<div class="formgrid">` +
+
+    personFields
+      .filter(k => k !== 'Notes')
+      .map(
+        k =>
+          `<div>
+            <label>${esc(k)}</label>
+
+            <input
+              id="f_${esc(k)}"
+              value="${esc(p[k])}"
+              ${
+                k === 'Person ID' && id
+                  ? 'readonly'
+                  : ''
+              }
+            >
+          </div>`
+      )
+      .join('') +
+
+    `<div class="full">
+      <label>Notes</label>
+      <textarea id="f_Notes">${esc(p.Notes)}</textarea>
+    </div>` +
+
+    `</div>` +
+
+    `<div class="familybox">
+      <h3 style="margin-top:0">Family connections</h3>
+      <p class="small muted">Choose up to two parents. If you select siblings, those siblings will be given the same selected parent links. Existing family links are kept unless you deliberately remove them from the Relationships tab.</p>
+      <div class="formgrid">
+        <div>
+          <label>Parent 1</label>
+          <select id="familyParent1"></select>
+        </div>
+        <div>
+          <label>Parent 2</label>
+          <select id="familyParent2"></select>
+        </div>
+      </div>
+      <div class="actions">
+        <button type="button" id="clearFamilyParents">Clear parent selections</button>
+      </div>
+      <div id="familyParentHint" class="small muted"></div>
+      <label style="margin-top:10px">Find siblings</label>
+      <input id="familySiblingSearch" class="search" placeholder="Type a name or ID…">
+      <div id="familySiblings" class="sibling-list"></div>
+      <div class="actions">
+        <button type="button" class="primary" id="saveFamilyConnections">Apply parents & siblings</button>
+      </div>
+    </div>` +
+
+    `<div class="actions">
+
+      <button class="primary" id="savePerson">
+        Save
+      </button>
+
+      ${
+        id
+          ? '<button class="danger" id="deletePerson">Delete</button>'
+          : ''
+      }
+
+    </div>`;
+
+  familyEditPersonId = id || null;
+
+  if(id){
+    const currentParents = parentsOf(id);
+    const peopleForParent = db.people.filter(x => x['Person ID'] !== id).sort((a,b) => a.Name.localeCompare(b.Name));
+    ['familyParent1','familyParent2'].forEach((selId, index) => {
+      const sel = $('#'+selId);
+      if(!sel) return;
+      sel.innerHTML = '<option value="">— None —</option>' + peopleForParent.map(x => `<option value="${esc(x['Person ID'])}">${esc(x.Name)} [${esc(x['Person ID'])}]</option>`).join('');
+      if(currentParents[index]) sel.value = currentParents[index];
+    });
+    renderFamilySiblingChoices();
+    $('#familySiblingSearch').oninput = renderFamilySiblingChoices;
+    $('#saveFamilyConnections').onclick = saveFamilyConnections;
+    $('#clearFamilyParents').onclick = () => { $('#familyParent1').value=''; $('#familyParent2').value=''; renderFamilySiblingChoices(); };
+  }else{
+    $('#familyParent1').innerHTML = '<option value="">— None —</option>';
+    $('#familyParent2').innerHTML = '<option value="">— None —</option>';
+    $('#familySiblings').innerHTML = '<div class="muted" style="padding:10px">Save the new person first, then add parents and siblings.</div>';
+    $('#saveFamilyConnections').disabled = true;
+  }
+
+  $('#savePerson').onclick =
+    () => {
+
+      let obj = {...p};
+
+      for(let k of personFields){
+
+        let el =
+          $('#f_' + CSS.escape(k));
+
+        if(el)
+          obj[k] =
+            el.value.trim();
+
+      }
+
+      if(
+        !obj['Person ID'] ||
+        !obj.Name
+      ){
+
+        alert(
+          'Person ID and Name are required.'
+        );
+
+        return;
+
+      }
+
+      if(
+        !id &&
+        person(obj['Person ID'])
+      ){
+
+        alert(
+          'That Person ID already exists.'
+        );
+
+        return;
+
+      }
+
+      if(id){
+
+        db.people[
+          db.people.findIndex(
+            x =>
+              x['Person ID'] === id
+          )
+        ] = obj;
+
+      }else{
+
+        db.people.push(obj);
+
+      }
+
+      selected =
+        obj['Person ID'];
+
+      save();
+
+      showDetail(selected);
+
+    };
+
+  if(id){
+
+    $('#deletePerson').onclick =
+      () => {
+
+        if(
+          !confirm(
+            'Delete this person and all relationship links?'
+          )
+        )
+          return;
+
+        db.people =
+          db.people.filter(
+            x =>
+              x['Person ID'] !== id
+          );
+
+        db.relationships =
+          db.relationships.filter(
+            r =>
+              r.person1 !== id &&
+              r.person2 !== id
+          );
+
+        selected = null;
+
+        save();
+
+      };
+
+  }
+
+}
+
+function renderRels(){
+
+  const rq = String($('#relSearch')?.value || '').toLowerCase().trim();
+
+  let rows =
+    db.relationships
+      .filter(r => !rq || `${r.id} ${r.type} ${name(r.person1)} ${name(r.person2)} ${r.sourceIds || ''} ${r.notes || ''}`.toLowerCase().includes(rq))
+      .map(
+        r =>
+          `<tr>
+            <td>${esc(r.id)}</td>
+            <td>${esc(r.type)}</td>
+            <td>${esc(name(r.person1))}</td>
+            <td>${esc(name(r.person2))}</td>
+            <td>${esc(r.sourceIds || '')}</td>
+
+            <td>
+              <button data-delrel="${esc(r.id)}">
+                Delete
+              </button>
+            </td>
+
+          </tr>`
+      )
+      .join('');
+
+  $('#relTable').innerHTML =
+    `<table class="table">
+
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Type</th>
+          <th>Person 1</th>
+          <th>Person 2</th>
+          <th>Sources</th>
+          <th></th>
+        </tr>
+      </thead>
+
+      <tbody>
+        ${rows}
+      </tbody>
+
+    </table>`;
+
+  $$('[data-delrel]')
+    .forEach(
+      b =>
+        b.onclick =
+          () => {
+
+            db.relationships =
+              db.relationships.filter(
+                r =>
+                  r.id !==
+                  b.dataset.delrel
+              );
+
+            save();
+
+          }
+    );
+
+}
+
+function personOptions(sel=''){
+
+  return db.people
+    .slice()
+    .sort(
+      (a,b) =>
+        a.Name.localeCompare(b.Name)
+    )
+    .map(
+      p =>
+        `<option
+          value="${esc(p['Person ID'])}"
+          ${
+            p['Person ID'] === sel
+              ? 'selected'
+              : ''
+          }
+        >
+          ${esc(p.Name)}
+          [${esc(p['Person ID'])}]
+        </option>`
+    )
+    .join('');
+
+}
+
+function editRel(){
+
+  if(!canEdit()){
+
+    alert(
+      'You have view-only access.'
+    );
+
+    return;
+
+  }
+
+  let next =
+    'R' +
+    String(
+      Math.max(
+        0,
+        ...db.relationships.map(
+          r =>
+            Number(
+              String(r.id)
+                .replace(/\D/g,'')
+            ) || 0
+        )
+      ) + 1
+    ).padStart(5,'0');
+
+  $('#relEditor').innerHTML =
+    `<h2>Add relationship</h2>
+
+    <label>Type</label>
+
+    <select id="r_type">
+      <option value="parent">Parent of</option>
+      <option value="spouse">Spouse of</option>
+    </select>
+
+    <label>Person 1</label>
+
+    <select id="r_a">
+      ${personOptions()}
+    </select>
+
+    <label>Person 2</label>
+
+    <select id="r_b">
+      ${personOptions()}
+    </select>
+
+    <label>Sources</label>
+    <input id="r_src">
+
+    <label>Notes</label>
+    <textarea id="r_notes"></textarea>
+
+    <div class="actions">
+
+      <button class="primary" id="saveRel">
+        Save relationship
+      </button>
+
+    </div>`;
+
+  $('#saveRel').onclick =
+    () => {
+
+      let a =
+        $('#r_a').value;
+
+      let b =
+        $('#r_b').value;
+
+      let t =
+        $('#r_type').value;
+
+      if(
+        !a ||
+        !b ||
+        a === b
+      ){
+
+        alert(
+          'Choose two different people.'
+        );
+
+        return;
+
+      }
+
+      let exists =
+        db.relationships.some(
+          r =>
+            r.type === t &&
+            r.person1 === a &&
+            r.person2 === b
+        ) ||
+        (
+          t === 'spouse' &&
+          db.relationships.some(
+            r =>
+              r.type === t &&
+              r.person1 === b &&
+              r.person2 === a
+          )
+        );
+
+      if(exists){
+
+        alert(
+          'That relationship already exists.'
+        );
+
+        return;
+
+      }
+
+      db.relationships.push({
+        id:next,
+        type:t,
+        person1:a,
+        person2:b,
+        sourceIds:
+          $('#r_src').value.trim(),
+        notes:
+          $('#r_notes').value.trim()
+      });
+
+      save();
+
+    };
+
+}
+
+function renderChartSelect(){
+
+  let el =
+    $('#chartPerson');
+
+  if(!el)
+    return;
+
+  let old =
+    el.value;
+
+  const q = String($('#chartSearch')?.value || '').toLowerCase().trim();
+  const arr = q ? db.people.filter(p => `${p.Name || ''} ${p['Person ID'] || ''}`.toLowerCase().includes(q)) : db.people;
+  el.innerHTML = arr.slice().sort((a,b)=>a.Name.localeCompare(b.Name)).map(p => `<option value="${esc(p['Person ID'])}">${esc(p.Name)} [${esc(p['Person ID'])}]</option>`).join('');
+
+  if(
+    !el.value &&
+    person('ALA')
+  )
+    el.value = 'ALA';
+
+}
+
+function ancestorLevels(root,depth){
+
+  let levels =
+    [[root]];
+
+  let seen =
+    new Set([root]);
+
+  for(
+    let i = 1;
+    i <= depth;
+    i++
+  ){
+
+    let next = [];
+
+    for(
+      const id of levels[i-1]
+    ){
+
+      for(
+        const p of parentsOf(id)
+      ){
+
+        if(!seen.has(p)){
+
+          seen.add(p);
+
+          next.push(p);
+
+        }
+
+      }
+
+    }
+
+    if(!next.length)
+      break;
+
+    levels.push(next);
+
+  }
+
+  return levels.reverse();
+
+}
+
+function descendantLevels(root,depth){
+
+  let levels =
+    [[root]];
+
+  let seen =
+    new Set([root]);
+
+  for(
+    let i = 1;
+    i <= depth;
+    i++
+  ){
+
+    let next = [];
+
+    for(
+      const id of levels[i-1]
+    ){
+
+      for(
+        const c of childrenOf(id)
+      ){
+
+        if(!seen.has(c)){
+
+          seen.add(c);
+
+          next.push(c);
+
+        }
+
+      }
+
+    }
+
+    if(!next.length)
+      break;
+
+    levels.push(next);
+
+  }
+
+  return levels;
+
+}
+
+function nodeHtml(id,root){
+
+  let p =
+    person(id);
+
+  if(!p)
+    return '';
+
+  let ev =
+    (p['Evidence Status'] || '')
+      .toLowerCase();
+
+  return `
+    <div class="node
+      ${id === root ? 'self' : ''}
+      ${
+        ev.includes('verify') ||
+        ev.includes('uncertain')
+          ? 'uncertain'
+          : ''
+      }">
+
+      <strong>
+        ${esc(p.Name)}
+      </strong>
+
+      <div class="small">
+        ${esc(p.Birth || '')}
+        ${
+          p.Death
+            ? ' – ' + esc(p.Death)
+            : ''
+        }
+      </div>
+
+      <div class="small muted">
+        ${esc(id)}
+      </div>
+
+    </div>
+  `;
+
+}
+
+function buildLevels(root,mode,depth){
+
+  let parts = [];
+
+  if(mode !== 'descendants')
+    parts.push(
+      ...ancestorLevels(
+        root,
+        depth
+      )
+    );
+
+  if(mode === 'both')
+    parts.push([root]);
+
+  if(mode !== 'ancestors')
+    parts.push(
+      ...descendantLevels(
+        root,
+        depth
+      ).slice(1)
+    );
+
+  return parts;
+
+}
+
+function generateChart(){
+
+  let root =
+    $('#chartPerson').value;
+
+  let mode =
+    $('#chartMode').value;
+
+  let depth =
+    Number(
+      $('#chartDepth').value
+    ) || 4;
+
+  let parts =
+    buildLevels(
+      root,
+      mode,
+      depth
+    );
+
+  $('#treebox').innerHTML =
+    '<div class="tree">' +
+
+    parts
+      .map(
+        lvl =>
+          `<div class="level">
+            ${
+              lvl
+                .map(
+                  id =>
+                    nodeHtml(
+                      id,
+                      root
+                    )
+                )
+                .join('')
+            }
+          </div>`
+      )
+      .join('') +
+
+    '</div>';
+
+}
+
+function svgEscape(s){
+
+  return esc(s)
+    .replace(
+      /&#39;/g,
+      "'"
+    );
+
+}
+
+function download(
+  n,
+  text,
+  type
+){
+
+  let a =
+    document.createElement('a');
+
+  a.href =
+    URL.createObjectURL(
+      new Blob(
+        [text],
+        {type}
+      )
+    );
+
+  a.download = n;
+
+  a.click();
+
+  setTimeout(
+    () =>
+      URL.revokeObjectURL(
+        a.href
+      ),
+    700
+  );
+
+}
+
+function exportSvg(){
+
+  let root =
+    $('#chartPerson').value;
+
+  let parts =
+    buildLevels(
+      root,
+      $('#chartMode').value,
+      Number(
+        $('#chartDepth').value
+      ) || 4
+    );
+
+  let width =
+    Math.max(
+      1000,
+      Math.max(
+        ...parts.map(
+          l => l.length
+        )
+      ) * 220 + 100
+    );
+
+  let height =
+    parts.length * 130 + 60;
+
+  let s =
+    `<svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="${width}"
+      height="${height}"
+      viewBox="0 0 ${width} ${height}">
+
+      <rect
+        width="100%"
+        height="100%"
+        fill="#efe5d0"
+      />`;
+
+  parts.forEach(
+    (lvl,li) => {
+
+      let gap = 220;
+
+      let start =
+        (
+          width -
+          (lvl.length - 1) *
+          gap
+        ) / 2;
+
+      lvl.forEach(
+        (id,i) => {
+
+          let x =
+            start +
+            i * gap -
+            95;
+
+          let y =
+            li * 130 +
+            20;
+
+          let p =
+            person(id);
+
+          let ev =
+            (
+              p?.['Evidence Status'] ||
+              ''
+            ).toLowerCase();
+
+          let stroke =
+            ev.includes('verify') ||
+            ev.includes('uncertain')
+              ? '#9d7b58'
+              : '#6b4f2a';
+
+          let dash =
+            ev.includes('verify') ||
+            ev.includes('uncertain')
+              ? '6 5'
+              : '';
+
+          s +=
+            `<g>
+
+              <rect
+                x="${x}"
+                y="${y}"
+                width="190"
+                height="82"
+                rx="12"
+                fill="#fffaf0"
+                stroke="${stroke}"
+                stroke-width="2"
+                stroke-dasharray="${dash}"
+              />
+
+              <text
+                x="${x+95}"
+                y="${y+26}"
+                text-anchor="middle"
+                font-family="Georgia"
+                font-size="14"
+              >
+                ${svgEscape(
+                  (p?.Name || id)
+                    .slice(0,30)
+                )}
+              </text>
+
+              <text
+                x="${x+95}"
+                y="${y+48}"
+                text-anchor="middle"
+                font-family="Arial"
+                font-size="11"
+              >
+                ${svgEscape(
+                  p?.Birth || ''
+                )}
+              </text>
+
+              <text
+                x="${x+95}"
+                y="${y+65}"
+                text-anchor="middle"
+                font-family="Arial"
+                font-size="9"
+              >
+                ${svgEscape(id)}
+              </text>
+
+            </g>`;
+
+        }
+      );
+
+    }
+  );
+
+  s += '</svg>';
+
+  download(
+    'fleury-wall-chart.svg',
+    s,
+    'image/svg+xml'
+  );
+
+}
+
+function exportJson(){
+
+  download(
+    'fleury-family-archive-backup.json',
+    JSON.stringify(
+      db,
+      null,
+      2
+    ),
+    'application/json'
+  );
+
+}
+
+function exportCsv(){
+
+  let hs = [
+    'Person ID',
+    'Name',
+    'Gender',
+    'Birth',
+    'Death',
+    'Relationship to Alan',
+    'Evidence Status',
+    'Source IDs',
+    'Notes'
+  ];
+
+  let csv =
+    [hs.join(',')]
+      .concat(
+        db.people.map(
+          p =>
+            hs
+              .map(
+                h =>
+                  '"' +
+                  String(
+                    p[h] || ''
+                  ).replaceAll(
+                    '"',
+                    '""'
+                  ) +
+                  '"'
+              )
+              .join(',')
+        )
+      )
+      .join('\n');
+
+  download(
+    'fleury-people.csv',
+    csv,
+    'text/csv'
+  );
+
+}
+
+function exportGedcom(){
+
+  let lines = [
+    '0 HEAD',
+    '1 SOUR FLEURY FAMILY ARCHIVE',
+    '1 GEDC',
+    '2 VERS 5.5.1',
+    '1 CHAR UTF-8'
+  ];
+
+  db.people.forEach(
+    p => {
+
+      let id =
+        p['Person ID'];
+
+      lines.push(
+        `0 @I${id}@ INDI`,
+        `1 NAME ${p.Name.replace(/\//g,'')}`
+      );
+
+      if(p.Gender)
+        lines.push(
+          `1 SEX ${p.Gender[0].toUpperCase()}`
+        );
+
+      if(p.Birth)
+        lines.push(
+          `1 BIRT`,
+          `2 DATE ${p.Birth}`
+        );
+
+      if(p.Death)
+        lines.push(
+          `1 DEAT`,
+          `2 DATE ${p.Death}`
+        );
+
+      if(p.Places)
+        lines.push(
+          `1 NOTE Places: ${p.Places}`
+        );
+
+      if(p.Notes)
+        lines.push(
+          `1 NOTE ${p.Notes}`
+        );
+
+    }
+  );
+
+  db.relationships
+    .filter(
+      r =>
+        r.type === 'parent'
+    )
+    .forEach(
+      r => {
+
+        let c =
+          person(r.person2);
+
+        let pa =
+          person(r.person1);
+
+        if(c && pa){}
+
+      }
+    );
+
+  lines.push('0 TRLR');
+
+  download(
+    'fleury-family-archive.ged',
+    lines.join('\n'),
+    'text/plain'
+  );
+
+}
+
+function renderData(){
+
+  $('#dataSummary').innerHTML =
+    `<div class="stats">
+
+      <span class="stat">
+        ${db.people.length} people
+      </span>
+
+      <span class="stat">
+        ${db.relationships.length} relationships
+      </span>
+
+      <span class="stat">
+        Local-first database
+      </span>
+
+    </div>
+
+    <p class="muted">
+      Last update:
+      ${esc(
+        db.meta?.updatedAt ||
+        'not recorded'
+      )}
+    </p>`;
+
+}
+
+function updateTabHistoryButtons(){
+  const back = $('#navBack');
+  const forward = $('#navForward');
+  if(back) back.disabled = tabHistoryIndex <= 0;
+  if(forward) forward.disabled = tabHistoryIndex >= tabHistory.length - 1;
+}
+
+function openTab(id, record=true){
+
+  if(!document.getElementById(id)) return;
+
+  if(record){
+    const current = tabHistory[tabHistoryIndex];
+    if(current !== id){
+      tabHistory = tabHistory.slice(0, tabHistoryIndex + 1);
+      tabHistory.push(id);
+      tabHistoryIndex = tabHistory.length - 1;
+    }
+  }
+
+  $$('.tab')
+    .forEach(
+      s =>
+        s.classList.toggle(
+          'hidden',
+          s.id !== id
+        )
+    );
+
+  $$('nav button[data-tab]')
+    .forEach(
+      b =>
+        b.classList.toggle(
+          'active',
+          b.dataset.tab === id
+        )
+    );
+
+  updateTabHistoryButtons();
+}
+
+$$('nav button[data-tab]')
+  .forEach(
+    b =>
+      b.onclick =
+        () =>
+          openTab(
+            b.dataset.tab,
+            true
+          )
+  );
+
+const navBack = $('#navBack');
+const navForward = $('#navForward');
+
+if(navBack){
+  navBack.onclick = () => {
+    if(tabHistoryIndex > 0){
+      tabHistoryIndex--;
+      openTab(tabHistory[tabHistoryIndex], false);
+    }
+  };
+}
+
+if(navForward){
+  navForward.onclick = () => {
+    if(tabHistoryIndex < tabHistory.length - 1){
+      tabHistoryIndex++;
+      openTab(tabHistory[tabHistoryIndex], false);
+    }
+  };
+}
+
+updateTabHistoryButtons();
+
+$('#search').oninput = renderPeopleList;
+$('#peopleSearch').oninput = renderPeopleTable;
+$('#relSearch').oninput = renderRels;
+$('#kinSearch').oninput = renderKinshipSelects;
+$('#chartSearch').oninput = renderChartSelect;
+$('#generationSearch').oninput = renderGenerationsSelect;
+$('#showGenerations').onclick = showGenerations;
+const personMapSearch = $('#personMapSearch');
+if(personMapSearch) personMapSearch.oninput = renderPersonMappingUI;
+
+$('#newPerson').onclick =
+  () =>
+    editPerson();
+
+$('#sortPeople').onclick =
+  () => {
+
+    currentSort =
+      !currentSort;
+
+    renderPeopleTable();
+
+  };
+
+$('#newRel').onclick =
+  editRel;
+
+$('#generateChart').onclick =
+  generateChart;
+
+$('#downloadSvg').onclick =
+  exportSvg;
+
+$('#exportJson').onclick =
+  exportJson;
+
+$('#exportCsv').onclick =
+  exportCsv;
+
+$('#exportGedcom').onclick =
+  exportGedcom;
+
+$('#importJson').onclick =
+  () =>
+    $('#fileInput').click();
+
+$('#fileInput').onchange =
+  e => {
+
+    let f =
+      e.target.files[0];
+
+    if(!f)
+      return;
+
+    let r =
+      new FileReader();
+
+    r.onload =
+      () => {
+
+        try{
+
+          let x =
+            JSON.parse(
+              r.result
+            );
+
+          if(
+            !Array.isArray(x.people) ||
+            !Array.isArray(x.relationships)
+          )
+            throw Error();
+
+          db = x;
+
+          save();
+
+          alert(
+            'Database imported.'
+          );
+
+        }catch{
+
+          alert(
+            'Invalid Fleury Archive JSON backup.'
+          );
+
+        }
+
+      };
+
+    r.readAsText(f);
+
+  };
+
+init();
+
 </script>
+
 </body>
 </html>
-
-
-
