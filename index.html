@@ -2633,7 +2633,7 @@ function renderFamilySiblingChoices(){
   box.innerHTML = arr.length ? arr.map(p => `
     <label class="sibling-row">
       <input type="checkbox" class="familySibling" value="${esc(p['Person ID'])}" ${currentSiblings.has(p['Person ID']) ? 'checked' : ''}>
-      <span><strong>${esc(p.Name)}</strong><span class="small muted"> — ${esc(p['Person ID'])}</span></span>
+      <span><strong>${esc(p.Name)}</strong></span>
     </label>
   `).join('') : '<div class="muted" style="padding:10px">No matching people.</div>';
 
