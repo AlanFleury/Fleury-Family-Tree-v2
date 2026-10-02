@@ -2974,18 +2974,17 @@ function personOptions(sel=''){
         a.Name.localeCompare(b.Name)
     )
     .map(
-      p =>
-        `<option
-          value="${esc(p['Person ID'])}"
-          ${
-            p['Person ID'] === sel
-              ? 'selected'
-              : ''
-          }
-        >
-          ${esc(p.Name)}
-          [${esc(p['Person ID'])}]
-        </option>`
+  p =>
+    `<option
+      value="${esc(p['Person ID'])}"
+      ${
+        p['Person ID'] === sel
+          ? 'selected'
+          : ''
+      }
+    >
+      ${esc(p.Name)}
+    </option>`
     )
     .join('');
 
