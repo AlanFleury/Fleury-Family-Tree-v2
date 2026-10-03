@@ -1052,7 +1052,10 @@ function isVisiblePerson(idOrPerson){
 function personLink(id, label){
   const p = person(id);
   if(!p || !isVisiblePerson(p)) return '';
-  return `<button type="button" class="person-link" data-person-link="${esc(id)}">${esc(label ?? p.Name)}</button>`;
+  const rel = relationshipToViewer(id);
+  const base = String(label ?? p.Name);
+  const shown = rel && rel !== 'you' ? `${base} — ${rel}` : base;
+  return `<button type="button" class="person-link" data-person-link="${esc(id)}" title="${esc(rel)}">${esc(shown)}</button>`;
 }
 
 function bindPersonLinks(){
@@ -1443,38 +1446,31 @@ function descendantTerm(root,target,distance){
 
 }
 
+function ordinal(n){
+  const v=Number(n);
+  const mod100=v%100;
+  if(mod100>=11 && mod100<=13) return `${v}th`;
+  if(v%10===1) return `${v}st`;
+  if(v%10===2) return `${v}nd`;
+  if(v%10===3) return `${v}rd`;
+  return `${v}th`;
+}
+
 function ancestorTerm(distance, gender=''){
-
-  const g = gender === 'F' ? 'mother' : gender === 'M' ? 'father' : 'parent';
-
-  if(distance === 1)
-    return g;
-
   const base = gender === 'F' ? 'grandmother' : gender === 'M' ? 'grandfather' : 'grandparent';
-
-  if(distance === 2)
-    return base;
-
-  const ordinal = distance - 2;
-  const prefix = ordinal === 1 ? 'great-' : `${ordinal}th great-`;
-  return `${prefix}${gender === 'F' ? 'grandmother' : gender === 'M' ? 'grandfather' : 'grandparent'}`;
-
+  if(distance === 1) return gender === 'F' ? 'mother' : gender === 'M' ? 'father' : 'parent';
+  if(distance === 2) return base;
+  const g = distance - 2;
+  return g === 1 ? `great-${base}` : `${ordinal(g)} great-${base}`;
 }
 
 function descendantTerm(root,target,distance){
-
   const g = genderOf(target);
-
-  if(distance === 1)
-    return g === 'F' ? 'daughter' : g === 'M' ? 'son' : 'child';
-
-  if(distance === 2)
-    return g === 'F' ? 'granddaughter' : g === 'M' ? 'grandson' : 'grandchild';
-
-  const ordinal = distance - 2;
-  const prefix = ordinal === 1 ? 'great-' : `${ordinal}th great-`;
-  return `${prefix}${g === 'F' ? 'granddaughter' : g === 'M' ? 'grandson' : 'grandchild'}`;
-
+  const base = g === 'F' ? 'granddaughter' : g === 'M' ? 'grandson' : 'grandchild';
+  if(distance === 1) return g === 'F' ? 'daughter' : g === 'M' ? 'son' : 'child';
+  if(distance === 2) return base;
+  const n = distance - 2;
+  return n === 1 ? `great-${base}` : `${ordinal(n)} great-${base}`;
 }
 
 function siblingSide(root,target){
@@ -1493,13 +1489,17 @@ function siblingSide(root,target){
 
 function relationshipToViewer(target){
 
+  if(!currentPersonId && currentUser){
+    const resolved = resolveCurrentPersonId();
+    if(resolved) currentPersonId = resolved;
+  }
   const root = currentPersonId;
 
   if(!person(target))
     return 'Unknown person';
 
   if(!root || !person(root))
-    return 'Family member';
+    return 'Relationship not established — signed-in account is not linked to a family person';
 
   if(root === target)
     return 'you';
@@ -1525,7 +1525,7 @@ function relationshipToViewer(target){
 
   const common = [...aa.keys()].filter(x => bb.has(x));
   if(!common.length)
-    return 'Recorded relative';
+    return 'Relationship not established in the recorded family tree';
 
   common.sort((a,b) => (aa.get(a)+bb.get(a)) - (aa.get(b)+bb.get(b)));
 
@@ -1902,7 +1902,7 @@ function renderPersonMappingUI(){
 
   const q = String($('#personMapSearch')?.value || '').toLowerCase().trim();
   const arr = q ? db.people.filter(p => isVisiblePerson(p) && `${p.Name || ''} ${p['Person ID'] || ''}`.toLowerCase().includes(q)) : db.people.filter(p => isVisiblePerson(p));
-  select.innerHTML = arr.slice().sort((a,b)=>a.Name.localeCompare(b.Name)).map(p => `<option value="${esc(p['Person ID'])}">${esc(p.Name)}</option>`).join('');
+  select.innerHTML = arr.slice().sort(nameSort).map(p => { const rel=relationshipToViewer(p['Person ID']); return `<option value="${esc(p['Person ID'])}">${esc(p.Name)}${rel && rel!=='you' ? ` — ${esc(rel)}` : ''}</option>`; }).join('');
 
 }
 
@@ -2384,9 +2384,9 @@ function findKinship(){
     .remove('hidden');
 
   $('#kinResult').innerHTML =
-    `<h3>${esc(name(a))} and ${esc(name(b))}</h3>` +
+    `<h3>${personLink(a,name(a))} and ${personLink(b,name(b))}</h3>` +
     `<p><strong>Relationship:</strong> ${esc(label)}</p>` +
-    `<p><strong>Common ancestor:</strong> ${esc(commonName)}</p>` +
+    `<p><strong>Common ancestor:</strong> ${personLink(anc,commonName)}</p>` +
     `<p><strong>Generations from common ancestor:</strong> ${esc(String(da))} and ${esc(String(dbb))}</p>` +
     `<div class="pathbox"><strong>Complete recorded family path</strong>\n${esc(left)} → ${esc(right)}</div>`;
 
@@ -2477,11 +2477,9 @@ function fillPersonSelect(id, query, preferred=''){
   const old = preferred || el.value || '';
   const q = String(query || '').toLowerCase().trim();
   const arr = q
-    ? db.people.filter(p => `${p.Name || ''} ${p['Person ID'] || ''}`.toLowerCase().includes(q))
-    : db.people;
- el.innerHTML = arr.slice().sort((a,b)=>a.Name.localeCompare(b.Name)).map(p=>
-  `<option value="${esc(p['Person ID'])}">${esc(p.Name)}</option>`
-).join('');
+    ? db.people.filter(p => isVisiblePerson(p) && `${p.Name || ''} ${p['Person ID'] || ''}`.toLowerCase().includes(q))
+    : db.people.filter(p => isVisiblePerson(p));
+ el.innerHTML = arr.slice().sort(nameSort).map(p=>{ const rel=relationshipToViewer(p['Person ID']); return `<option value="${esc(p['Person ID'])}">${esc(p.Name)}${rel && rel!=='you' ? ` — ${esc(rel)}` : ''}</option>`; }).join('');
   if(old && arr.some(p=>p['Person ID']===old)) el.value=old;
   else if(currentPersonId && arr.some(p=>p['Person ID']===currentPersonId)) el.value=currentPersonId;
   else if(person('ALAN-FLEURY') && arr.some(p=>p['Person ID']==='ALAN-FLEURY')) el.value='ALAN-FLEURY';
@@ -2584,7 +2582,7 @@ function showGenerations(){
     }
     groups=levels;
   } else groups=collateralBranches(root,depth);
-  let html=`<h3>${esc(p.Name)}</h3>`;
+  let html=`<h3>${personLink(root, p.Name)}</h3>`;
   if(!groups.length) html+='<div class="notice">No recorded family members were found for this view.</div>';
   groups.forEach(g=>{
     html+=`<div class="notice"><strong>${esc(g.title)}</strong><div class="actions">${g.ids.map(id=>personLink(id, name(id))).join(' ')}</div><div class="small muted">${g.ids.length} recorded person${g.ids.length===1?'':'s'}</div></div>`;
@@ -2595,7 +2593,7 @@ function showGenerations(){
 }
 
 function reportPersonOptions(selectedId=''){
-  return db.people.filter(p=>isVisiblePerson(p)).slice().sort((a,b)=>a.Name.localeCompare(b.Name)).map(p=>`<option value="${esc(p['Person ID'])}" ${p['Person ID']===selectedId?'selected':''}>${esc(p.Name)} [${esc(displayPersonId(p['Person ID']))}]</option>`).join('');
+  return db.people.filter(p=>isVisiblePerson(p)).slice().sort(nameSort).map(p=>{ const rel=relationshipToViewer(p['Person ID']); return `<option value="${esc(p['Person ID'])}" ${p['Person ID']===selectedId?'selected':''}>${esc(p.Name)}${rel && rel!=='you' ? ` — ${esc(rel)}` : ''} [${esc(displayPersonId(p['Person ID']))}]</option>`; }).join('');
 }
 
 function renderReportSelects(){
@@ -2625,14 +2623,14 @@ function generationGroups(root,mode,depth){
 }
 function reportHeader(title,root){
   const signed=currentPersonId ? name(currentPersonId) : 'Not linked to a family record';
-  return `<div class="report-sheet"><h1>${esc(title)}</h1><div class="report-meta">Fleury Family Archive · Generated ${esc(new Date().toLocaleString())}<br>Relationship point of view: <strong>${esc(signed)}</strong></div>`;
+  return `<div class="report-sheet"><h1>${esc(title)}</h1><div class="report-meta">Fleury Family Archive · Generated ${esc(new Date().toLocaleString())}<br>Relationship point of view: <strong>${currentPersonId ? personLink(currentPersonId,signed) : esc(signed)}</strong></div>`;
 }
 function generateReport(){
   const type=$('#reportType')?.value||'individual'; const root=$('#reportPerson')?.value; const other=$('#reportPerson2')?.value; const depth=Number($('#reportDepth')?.value)||5; const p=person(root);
   if(type!=='statistics' && type!=='people-index' && type!=='relationship-index' && !p){ $('#reportPreview').innerHTML='<div class="report-sheet"><p>No person selected.</p></div>'; return; }
   let h=reportHeader('',root);
   if(type==='individual'){
-    h=reportHeader(`Individual report — ${p.Name}`,root)+`<h2>${esc(p.Name)}</h2><table><tr><th>Person ID</th><td>${esc(displayPersonId(p['Person ID']))}</td></tr><tr><th>Gender</th><td>${esc(p.Gender||'')}</td></tr><tr><th>Birth</th><td>${esc(p.Birth||'')}</td></tr><tr><th>Death</th><td>${esc(p.Death||'')}</td></tr><tr><th>Marriage(s)</th><td>${esc(p['Marriage(s)']||'')}</td></tr><tr><th>Places</th><td>${esc(p.Places||'')}</td></tr><tr><th>Evidence</th><td>${esc(p['Evidence Status']||'')}</td></tr><tr><th>Sources</th><td>${esc(p['Source IDs']||'')}</td></tr><tr><th>Notes</th><td>${esc(p.Notes||'')}</td></tr></table><h3>Relationship to signed-in person</h3><p>${esc(relationshipToViewer(root))}</p><h3>Parents</h3>${reportList(parentsOf(root))}<h3>Spouse(s)</h3>${reportList(spousesOf(root))}<h3>Children</h3>${reportList(childrenOf(root))}`;
+    h=reportHeader(`Individual report — ${p.Name}`,root)+`<h2>${personLink(root,p.Name)}</h2><table><tr><th>Person ID</th><td>${esc(displayPersonId(p['Person ID']))}</td></tr><tr><th>Gender</th><td>${esc(p.Gender||'')}</td></tr><tr><th>Birth</th><td>${esc(p.Birth||'')}</td></tr><tr><th>Death</th><td>${esc(p.Death||'')}</td></tr><tr><th>Marriage(s)</th><td>${esc(p['Marriage(s)']||'')}</td></tr><tr><th>Places</th><td>${esc(p.Places||'')}</td></tr><tr><th>Evidence</th><td>${esc(p['Evidence Status']||'')}</td></tr><tr><th>Sources</th><td>${esc(p['Source IDs']||'')}</td></tr><tr><th>Notes</th><td>${esc(p.Notes||'')}</td></tr></table><h3>Relationship to signed-in person</h3><p>${esc(relationshipToViewer(root))}</p><h3>Parents</h3>${reportList(parentsOf(root))}<h3>Spouse(s)</h3>${reportList(spousesOf(root))}<h3>Children</h3>${reportList(childrenOf(root))}`;
   } else if(type==='family'){
     h=reportHeader(`Family group — ${p.Name}`,root)+`<h2>${esc(p.Name)}</h2><p><strong>Relationship to signed-in person:</strong> ${esc(relationshipToViewer(root))}</p><h3>Parents</h3>${reportList(parentsOf(root))}<h3>Spouse(s)</h3>${reportList(spousesOf(root))}<h3>Children</h3>${reportList(childrenOf(root))}`;
   } else if(type==='relationship'){
@@ -2769,7 +2767,7 @@ function showDetail(id){
     spousesOf(id);
 
   $('#detail').innerHTML =
-    `<h2>${esc(p.Name)}</h2>` +
+    `<h2>${personLink(id, p.Name)}</h2>` +
     `<div class="formgrid">` +
     `<div>
       <strong>Birth</strong><br>
@@ -2994,7 +2992,7 @@ function renderFamilySiblingChoices(){
   box.innerHTML = arr.length ? arr.map(p => `
     <label class="sibling-row">
       <input type="checkbox" class="familySibling" value="${esc(p['Person ID'])}" ${currentSiblings.has(p['Person ID']) ? 'checked' : ''}>
-      <span><strong>${esc(p.Name)}</strong></span>
+      <span>${personLink(p['Person ID'], p.Name)}</span>
     </label>
   `).join('') : '<div class="muted" style="padding:10px">No matching people.</div>';
 
@@ -3008,11 +3006,10 @@ function renderFamilySiblingChoices(){
 
 function familyPersonOptions(excludeId, selected=''){
   return '<option value="">— Select person —</option>' +
-    db.people
-      .filter(x => x['Person ID'] !== excludeId)
-      .sort((a,b) => a.Name.localeCompare(b.Name))
-      .map(x => `<option value="${esc(x['Person ID'])}" ${x['Person ID'] === selected ? 'selected' : ''}>${esc(x.Name)} [${esc(displayPersonId(x['Person ID']))}]</option>`)
-      .join('');
+    db.people.filter(x => isVisiblePerson(x) && x['Person ID'] !== excludeId).sort(nameSort).map(x => {
+      const rel=relationshipToViewer(x['Person ID']);
+      return `<option value="${esc(x['Person ID'])}" ${x['Person ID'] === selected ? 'selected' : ''}>${esc(x.Name)}${rel && rel!=='you' ? ` — ${esc(rel)}` : ''} [${esc(displayPersonId(x['Person ID']))}]</option>`;
+    }).join('');
 }
 
 function renderFamilyDynamicRows(){
@@ -3260,7 +3257,7 @@ function editPerson(id){
     ['familyParent1','familyParent2'].forEach((selId, index) => {
       const sel = $('#'+selId);
       if(!sel) return;
-      sel.innerHTML = '<option value="">— None —</option>' + peopleForParent.map(x => `<option value="${esc(x['Person ID'])}">${esc(x.Name)} [${esc(displayPersonId(x['Person ID']))}]</option>`).join('');
+      sel.innerHTML = '<option value="">— None —</option>' + peopleForParent.map(x => { const rel=relationshipToViewer(x['Person ID']); return `<option value="${esc(x['Person ID'])}">${esc(x.Name)}${rel && rel!=='you' ? ` — ${esc(rel)}` : ''} [${esc(displayPersonId(x['Person ID']))}]</option>`; }).join('');
       if(currentParents[index]) sel.value = currentParents[index];
     });
     renderFamilySiblingChoices();
@@ -3444,28 +3441,10 @@ function renderRels(){
 }
 
 function personOptions(sel=''){
-
-  return db.people
-    .slice()
-    .sort(
-      (a,b) =>
-        a.Name.localeCompare(b.Name)
-    )
-    .map(
-  p =>
-    `<option
-      value="${esc(p['Person ID'])}"
-      ${
-        p['Person ID'] === sel
-          ? 'selected'
-          : ''
-      }
-    >
-      ${esc(p.Name)}
-    </option>`
-    )
-    .join('');
-
+  return db.people.filter(isVisiblePerson).slice().sort(nameSort).map(p=>{
+    const rel=relationshipToViewer(p['Person ID']);
+    return `<option value="${esc(p['Person ID'])}" ${p['Person ID']===sel?'selected':''}>${esc(p.Name)}${rel && rel!=='you' ? ` — ${esc(rel)}` : ''}</option>`;
+  }).join('');
 }
 
 function editRel(){
@@ -3614,7 +3593,7 @@ function renderChartSelect(){
 
   const q = String($('#chartSearch')?.value || '').toLowerCase().trim();
   const arr = q ? db.people.filter(p => isVisiblePerson(p) && `${p.Name || ''} ${p['Person ID'] || ''}`.toLowerCase().includes(q)) : db.people.filter(p => isVisiblePerson(p));
-  el.innerHTML = arr.slice().sort((a,b)=>a.Name.localeCompare(b.Name)).map(p => `<option value="${esc(p['Person ID'])}">${esc(p.Name)}</option>`).join('');
+  el.innerHTML = arr.slice().sort(nameSort).map(p => { const rel=relationshipToViewer(p['Person ID']); return `<option value="${esc(p['Person ID'])}">${esc(p.Name)}${rel && rel!=='you' ? ` — ${esc(rel)}` : ''}</option>`; }).join('');
   if(
     !el.value &&
     person('ALA')
