@@ -2532,6 +2532,36 @@ function collateralBranches(root, depth){
   return result.map(r=>({...r,ids:r.ids.filter(id=>{if(seen.has(id)) return false; seen.add(id); return true;})})).filter(r=>r.ids.length);
 }
 
+function ordinalWord(n){
+  const v=Number(n);
+  if(v===2) return '2nd';
+  if(v===3) return '3rd';
+  return `${v}th`;
+}
+
+function generationAncestorLabel(g){
+  if(g===1) return 'Parents';
+  if(g===2) return 'Grandparents';
+  if(g===3) return 'Great-grandparents';
+  return `${ordinalWord(g-2)} great-grandparents`;
+}
+
+function generationDescendantLabel(g){
+  if(g===1) return 'Children';
+  if(g===2) return 'Grandchildren';
+  if(g===3) return 'Great-grandchildren';
+  return `${ordinalWord(g-2)} great-grandchildren`;
+}
+
+function nameSort(a,b){
+  const an=String(a?.Name||'').trim();
+  const bn=String(b?.Name||'').trim();
+  const aLetter=/^[A-Za-zÀ-ÖØ-öø-ÿ]/.test(an);
+  const bLetter=/^[A-Za-zÀ-ÖØ-öø-ÿ]/.test(bn);
+  if(aLetter!==bLetter) return aLetter ? -1 : 1;
+  return an.localeCompare(bn, undefined, {sensitivity:'base', numeric:false});
+}
+
 function showGenerations(){
   const root=$('#generationPerson')?.value;
   const mode=$('#generationMode')?.value || 'ancestors';
@@ -2543,14 +2573,14 @@ function showGenerations(){
     const levels=[]; let cur=[root], seen=new Set([root]);
     for(let g=1;g<=depth;g++){
       const next=[]; cur.forEach(id=>parentsOf(id).forEach(x=>{if(!seen.has(x)){seen.add(x);next.push(x);}}));
-      if(!next.length) break; levels.push({title:g===1?'Parents':g===2?'Grandparents':`${'great-'.repeat(g-2)}great-grandparents`,ids:next}); cur=next;
+      if(!next.length) break; levels.push({title: generationAncestorLabel(g),ids:next}); cur=next;
     }
     groups=levels;
   } else if(mode==='descendants'){
     const levels=[]; let cur=[root], seen=new Set([root]);
     for(let g=1;g<=depth;g++){
       const next=[]; cur.forEach(id=>childrenOf(id).forEach(x=>{if(!seen.has(x)){seen.add(x);next.push(x);}}));
-      if(!next.length) break; levels.push({title:g===1?'Children':g===2?'Grandchildren':`${'great-'.repeat(g-2)}great-grandchildren`,ids:next}); cur=next;
+      if(!next.length) break; levels.push({title: generationDescendantLabel(g),ids:next}); cur=next;
     }
     groups=levels;
   } else groups=collateralBranches(root,depth);
@@ -2560,6 +2590,7 @@ function showGenerations(){
     html+=`<div class="notice"><strong>${esc(g.title)}</strong><div class="actions">${g.ids.map(id=>personLink(id, name(id))).join(' ')}</div><div class="small muted">${g.ids.length} recorded person${g.ids.length===1?'':'s'}</div></div>`;
   });
   $('#generationResult').innerHTML=html;
+  bindPersonLinks();
   $$('[data-jump]').forEach(b=>b.onclick=()=>{selectPerson(b.dataset.jump);});
 }
 
@@ -2880,10 +2911,8 @@ function renderPeopleTable(){
       .sort(
         (a,b) =>
           currentSort
-            ? a.Name.localeCompare(b.Name)
-            : a['Person ID'].localeCompare(
-                b['Person ID']
-              )
+            ? nameSort(a,b)
+            : String(a['Person ID']||'').localeCompare(String(b['Person ID']||''), undefined, {numeric:true})
       );
 
   $('#peopleTable').innerHTML =
@@ -4212,12 +4241,10 @@ $('#newPerson').onclick =
 
 $('#sortPeople').onclick =
   () => {
-
-    currentSort =
-      !currentSort;
-
+    currentSort = true;
     renderPeopleTable();
-
+    const btn = $('#sortPeople');
+    if(btn) btn.textContent = 'Sorted A–Z';
   };
 
 $('#newRel').onclick =
