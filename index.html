@@ -831,6 +831,17 @@ input,select,textarea{
         After that, the app can be used to manage the family database.
       </p>
 
+      <div class="familybox">
+        <h3>Unnamed-person cleanup</h3>
+        <p class="small muted">This tool finds people whose <strong>Name</strong> field is completely blank. It is administrator-only and never deletes anything automatically. Review the list first, then explicitly select records to remove.</p>
+        <div class="actions">
+          <button type="button" id="scanUnnamedPeople">Preview unnamed people</button>
+          <button type="button" id="deleteUnnamedPeople" class="danger" disabled>Delete selected unnamed people</button>
+        </div>
+        <div id="unnamedCleanupStatus" class="notice">No cleanup scan has been run.</div>
+        <div id="unnamedPeopleList"></div>
+      </div>
+
     </div>
 
     <div id="personMappingTools" class="hidden">
@@ -924,13 +935,18 @@ let currentUser = null;
 let currentRole = null;
 let currentPersonId = null;
 let cloudReady = false;
-let tabHistory = ['explore'];
-let tabHistoryIndex = 0;
+let navigationHistory = [{tab:'explore', personId:null}];
+let navigationIndex = 0;
+let navigationApplying = false;
 let familyEditPersonId = null;
 
 const $ = s => document.querySelector(s);
 
 const $$ = s => [...document.querySelectorAll(s)];
+
+function displayPersonId(id){
+  return String(id ?? '').replace(/^@+|@+$/g,'');
+}
 
 const esc = s =>
   String(s ?? '').replace(
@@ -943,6 +959,47 @@ const esc = s =>
       "'":'&#39;'
     }[m])
   );
+
+function currentTabId(){
+  return document.querySelector('nav button[data-tab].active')?.dataset.tab || 'explore';
+}
+
+function updateNavigationButtons(){
+  const back = $('#navBack');
+  const forward = $('#navForward');
+  if(back) back.disabled = navigationIndex <= 0;
+  if(forward) forward.disabled = navigationIndex >= navigationHistory.length - 1;
+}
+
+function recordNavigation(tabId=currentTabId(), personId=selected){
+  const state = {tab:tabId, personId:personId || null};
+  const current = navigationHistory[navigationIndex];
+  if(current && current.tab === state.tab && current.personId === state.personId){
+    updateNavigationButtons();
+    return;
+  }
+  navigationHistory = navigationHistory.slice(0, navigationIndex + 1);
+  navigationHistory.push(state);
+  navigationIndex = navigationHistory.length - 1;
+  updateNavigationButtons();
+}
+
+function applyNavigationState(state){
+  navigationApplying = true;
+  openTab(state.tab, false);
+  selected = state.personId && person(state.personId) ? state.personId : null;
+  if(selected) showDetail(selected);
+  else $('#detail').innerHTML = '<p class="muted">Select a person.</p>';
+  navigationApplying = false;
+  updateNavigationButtons();
+}
+
+function selectPerson(id, record=true){
+  if(!person(id)) return;
+  selected = id;
+  if(record && !navigationApplying) recordNavigation(currentTabId(), id);
+  showDetail(id);
+}
 
 function canEdit(){
   return currentRole === 'admin' || currentRole === 'editor';
@@ -1197,10 +1254,9 @@ function resolveCurrentPersonId(){
 
   }
 
-  // Backward-compatible default for the original archive owner.
-  if(person('ALAN-FLEURY'))
-    return 'ALAN-FLEURY';
-
+  // Do not guess the signed-in person's identity from the public database.
+  // An explicit family-member mapping is required so relationship labels
+  // are always calculated from the correct person's point of view.
   return null;
 
 }
@@ -1297,8 +1353,11 @@ function relationshipToViewer(target){
 
   const root = currentPersonId;
 
-  if(!root || !person(root) || !person(target))
-    return person(target)?.['Relationship to Alan'] || 'Recorded relative';
+  if(!person(target))
+    return 'Unknown person';
+
+  if(!root || !person(root))
+    return 'Not linked to a family record';
 
   if(root === target)
     return 'you';
@@ -1609,6 +1668,11 @@ async function handleUser(user){
 
     cloudReady = true;
 
+    selected = currentPersonId && person(currentPersonId) ? currentPersonId : null;
+    navigationHistory = [{tab:'explore', personId:selected}];
+    navigationIndex = 0;
+    navigationApplying = false;
+
     renderAll();
 
     setCloudStatus(
@@ -1654,6 +1718,60 @@ async function handleUser(user){
 
 }
 
+function renderUnnamedPeoplePreview(){
+  const list = $('#unnamedPeopleList');
+  const status = $('#unnamedCleanupStatus');
+  const del = $('#deleteUnnamedPeople');
+  if(!list || !status || !del) return;
+  if(!canAdmin()){
+    list.innerHTML = '';
+    status.textContent = 'Administrator access is required for this tool.';
+    del.disabled = true;
+    return;
+  }
+  const unnamed = db.people
+    .filter(p => !String(p.Name || '').trim())
+    .sort((a,b) => String(a['Person ID'] || '').localeCompare(String(b['Person ID'] || '')));
+  if(!unnamed.length){
+    list.innerHTML = '<div class="small success">No people with a completely blank Name field were found.</div>';
+    status.textContent = 'Preview complete: nothing matches the cleanup rule.';
+    del.disabled = true;
+    return;
+  }
+  list.innerHTML = `
+    <div class="small muted" style="margin:10px 0">${unnamed.length} unnamed record${unnamed.length === 1 ? '' : 's'} found. Records with names such as “Unknown” are not included.</div>
+    <div class="sibling-list">
+      ${unnamed.map(p => {
+        const id = p['Person ID'];
+        const relCount = db.relationships.filter(r => r.person1 === id || r.person2 === id).length;
+        return `<label class="sibling-row"><input type="checkbox" class="unnamedPerson" value="${esc(id)}"><span><strong>${esc(displayPersonId(id))}</strong> <span class="muted">— ${relCount} relationship${relCount === 1 ? '' : 's'}</span></span></label>`;
+      }).join('')}
+    </div>`;
+  $$('.unnamedPerson').forEach(cb => cb.onchange = () => {
+    del.disabled = !$$('.unnamedPerson:checked').length;
+  });
+  del.disabled = true;
+  status.textContent = 'Preview complete. Select only the records you are certain should be removed.';
+}
+
+function deleteSelectedUnnamedPeople(){
+  if(!canAdmin()) return;
+  const ids = $$('.unnamedPerson:checked').map(x => x.value).filter(Boolean);
+  if(!ids.length) return;
+  const selectedPeople = ids.map(id => person(id)).filter(Boolean);
+  const relationshipCount = db.relationships.filter(r => ids.includes(r.person1) || ids.includes(r.person2)).length;
+  if(!confirm(`Delete ${selectedPeople.length} unnamed person record${selectedPeople.length === 1 ? '' : 's'}?\n\nThis will also remove ${relationshipCount} relationship record${relationshipCount === 1 ? '' : 's'} that directly reference the selected people.\n\nThis cannot be undone here. Make sure you have a current JSON backup first.`)) return;
+  if(prompt('Type DELETE to confirm removal of the selected unnamed records:') !== 'DELETE') return;
+  const idSet = new Set(ids);
+  db.people = db.people.filter(p => !idSet.has(p['Person ID']));
+  db.relationships = db.relationships.filter(r => !idSet.has(r.person1) && !idSet.has(r.person2));
+  if(idSet.has(selected)) selected = null;
+  if(idSet.has(currentPersonId)) currentPersonId = null;
+  save();
+  renderUnnamedPeoplePreview();
+  $('#unnamedCleanupStatus').textContent = `Deleted ${selectedPeople.length} unnamed person record${selectedPeople.length === 1 ? '' : 's'} and ${relationshipCount} directly linked relationship record${relationshipCount === 1 ? '' : 's'}.`;
+}
+
 function renderPersonMappingUI(){
 
   const select = $('#personMapPerson');
@@ -1692,18 +1810,30 @@ function savePersonMapping(){
     return;
   }
 
+  const userPersonMap = {
+    ...(db.meta?.userPersonMap || {}),
+    [email]: personId
+  };
+
+  // If the mapping is being saved for the currently signed-in account,
+  // also store the UID. This makes the mapping survive an email-address
+  // change and gives the login resolver an unambiguous key.
+  if(
+    currentUser?.uid &&
+    String(currentUser.email || '').toLowerCase().trim() === email
+  ){
+    userPersonMap[currentUser.uid] = personId;
+  }
+
   db.meta = {
     ...(db.meta || {}),
-    userPersonMap: {
-      ...(db.meta?.userPersonMap || {}),
-      [email]: personId
-    }
+    userPersonMap
   };
 
   save();
 
   $('#personMappingStatus').textContent =
-    `${email} is now linked to ${name(personId)}.`;
+    `${email} is now linked to ${name(personId)}. Future relationship labels will use this family identity.`;
 
   if(
     currentUser?.email?.toLowerCase() === email
@@ -1759,6 +1889,12 @@ function bindAuth(){
 
   $('#savePersonMapping').onclick =
     savePersonMapping;
+
+  $('#scanUnnamedPeople').onclick =
+    renderUnnamedPeoplePreview;
+
+  $('#deleteUnnamedPeople').onclick =
+    deleteSelectedUnnamedPeople;
 
   $('#migrationFile').onchange =
     () => {
@@ -2303,7 +2439,7 @@ function showGenerations(){
     html+=`<div class="notice"><strong>${esc(g.title)}</strong><div class="actions">${g.ids.map(id=>`<button data-jump="${esc(id)}">${esc(name(id))}</button>`).join(' ')}</div><div class="small muted">${g.ids.length} recorded person${g.ids.length===1?'':'s'}</div></div>`;
   });
   $('#generationResult').innerHTML=html;
-  $$('[data-jump]').forEach(b=>b.onclick=()=>{selected=b.dataset.jump;showDetail(selected);});
+  $$('[data-jump]').forEach(b=>b.onclick=()=>{selectPerson(b.dataset.jump);});
 }
 
 function renderAll(){
@@ -2372,10 +2508,7 @@ function renderPeopleList(){
     .forEach(
       el =>
         el.onclick = () => {
-          selected =
-            el.dataset.id;
-
-          showDetail(selected);
+          selectPerson(el.dataset.id);
         }
     );
 
@@ -2494,10 +2627,7 @@ function showDetail(id){
     .forEach(
       b =>
         b.onclick = () => {
-          selected =
-            b.dataset.jump;
-
-          showDetail(selected);
+          selectPerson(b.dataset.jump);
         }
     );
 
@@ -2644,12 +2774,97 @@ function renderFamilySiblingChoices(){
   }
 }
 
+function familyPersonOptions(excludeId, selected=''){
+  return '<option value="">— Select person —</option>' +
+    db.people
+      .filter(x => x['Person ID'] !== excludeId)
+      .sort((a,b) => a.Name.localeCompare(b.Name))
+      .map(x => `<option value="${esc(x['Person ID'])}" ${x['Person ID'] === selected ? 'selected' : ''}>${esc(x.Name)} [${esc(displayPersonId(x['Person ID']))}]</option>`)
+      .join('');
+}
+
+function renderFamilyDynamicRows(){
+  const id = familyEditPersonId;
+  if(!id) return;
+
+  const spouseBox = $('#familySpouses');
+  const childBox = $('#familyChildren');
+
+  if(spouseBox){
+    const spouses = spousesOf(id);
+    spouseBox.innerHTML = spouses.length
+      ? spouses.map((sid,index) => familyLinkRow('spouse', index, sid)).join('')
+      : '<div class="small muted family-empty">No spouses recorded yet.</div>';
+  }
+
+  if(childBox){
+    const children = childrenOf(id);
+    childBox.innerHTML = children.length
+      ? children.map((cid,index) => familyLinkRow('child', index, cid)).join('')
+      : '<div class="small muted family-empty">No children recorded yet.</div>';
+  }
+}
+
+function familyLinkRow(kind, index, value=''){
+  const label = kind === 'spouse' ? 'Spouse' : 'Child';
+  const prefix = kind === 'spouse' ? 'familySpouse' : 'familyChild';
+  return `<div class="formgrid family-link-row" data-family-link-row="${kind}">
+    <div class="full">
+      <label>${label} ${index + 1}</label>
+      <select id="${prefix}_${index}" class="${prefix}">${familyPersonOptions(familyEditPersonId, value)}</select>
+    </div>
+    <div class="actions">
+      <button type="button" data-remove-family-row="${kind}" data-row-index="${index}">Remove row</button>
+    </div>
+  </div>`;
+}
+
+function addFamilyDynamicRow(kind){
+  const box = kind === 'spouse' ? $('#familySpouses') : $('#familyChildren');
+  if(!box || !familyEditPersonId) return;
+  const rows = box.querySelectorAll(`select.${kind === 'spouse' ? 'familySpouse' : 'familyChild'}`).length;
+  const empty = box.querySelector('.family-empty');
+  if(empty) empty.remove();
+  box.insertAdjacentHTML('beforeend', familyLinkRow(kind, rows, ''));
+  bindFamilyDynamicRows();
+}
+
+function bindFamilyDynamicRows(){
+  $$('[data-remove-family-row]').forEach(btn => {
+    btn.onclick = () => {
+      const row = btn.closest('.family-link-row');
+      if(row) row.remove();
+      renumberFamilyDynamicRows();
+    };
+  });
+}
+
+function renumberFamilyDynamicRows(){
+  ['spouse','child'].forEach(kind => {
+    const box = kind === 'spouse' ? $('#familySpouses') : $('#familyChildren');
+    const cls = kind === 'spouse' ? 'familySpouse' : 'familyChild';
+    if(!box) return;
+    const rows = [...box.querySelectorAll('.family-link-row')];
+    rows.forEach((row,index) => {
+      const label = row.querySelector('label');
+      if(label) label.textContent = `${kind === 'spouse' ? 'Spouse' : 'Child'} ${index + 1}`;
+      const select = row.querySelector(`select.${cls}`);
+      if(select) select.id = `${kind === 'spouse' ? 'familySpouse' : 'familyChild'}_${index}`;
+      const remove = row.querySelector('[data-remove-family-row]');
+      if(remove) remove.dataset.rowIndex = String(index);
+    });
+    if(!rows.length) box.innerHTML = `<div class="small muted family-empty">No ${kind === 'spouse' ? 'spouses' : 'children'} recorded or added yet.</div>`;
+  });
+}
+
 function saveFamilyConnections(){
   if(!familyEditPersonId || !canEdit()) return;
   const p1 = $('#familyParent1')?.value || '';
   const p2 = $('#familyParent2')?.value || '';
   const parentIds = [...new Set([p1,p2].filter(Boolean))].filter(x => x !== familyEditPersonId);
   const siblings = $$('.familySibling:checked').map(x => x.value).filter(x => x !== familyEditPersonId);
+  const spouses = $$('.familySpouse').map(x => x.value).filter(x => x && x !== familyEditPersonId);
+  const children = $$('.familyChild').map(x => x.value).filter(x => x && x !== familyEditPersonId);
 
   if(siblings.length && !parentIds.length){
     alert('Choose at least one parent before adding siblings.');
@@ -2657,7 +2872,7 @@ function saveFamilyConnections(){
   }
 
   const addParentLink = (parentId, childId) => {
-    if(!parentId || !childId || parentId === childId) return;
+    if(!parentId || !childId || parentId === childId || !person(parentId) || !person(childId)) return;
     const exists = db.relationships.some(r => r.type === 'parent' && r.person1 === parentId && r.person2 === childId);
     if(!exists){
       db.relationships.push({
@@ -2671,8 +2886,25 @@ function saveFamilyConnections(){
     }
   };
 
+  const addSpouseLink = spouseId => {
+    if(!spouseId || spouseId === familyEditPersonId || !person(spouseId)) return;
+    const exists = db.relationships.some(r => r.type === 'spouse' && ((r.person1 === familyEditPersonId && r.person2 === spouseId) || (r.person1 === spouseId && r.person2 === familyEditPersonId)));
+    if(!exists){
+      db.relationships.push({
+        id: nextRelationshipId(),
+        type: 'spouse',
+        person1: familyEditPersonId,
+        person2: spouseId,
+        sourceIds: '',
+        notes: 'Added from Family connections editor.'
+      });
+    }
+  };
+
   parentIds.forEach(parentId => addParentLink(parentId, familyEditPersonId));
   siblings.forEach(sibId => parentIds.forEach(parentId => addParentLink(parentId, sibId)));
+  spouses.forEach(addSpouseLink);
+  children.forEach(childId => addParentLink(familyEditPersonId, childId));
 
   save();
   editPerson(familyEditPersonId);
@@ -2738,7 +2970,7 @@ function editPerson(id){
 
     `<div class="familybox">
       <h3 style="margin-top:0">Family connections</h3>
-      <p class="small muted">Choose up to two parents. If you select siblings, those siblings will be given the same selected parent links. Existing family links are kept unless you deliberately remove them from the Relationships tab.</p>
+      <p class="small muted">Add parents, any number of spouses and any number of children. Existing family links are kept unless you deliberately remove them from the Relationships tab.</p>
       <div class="formgrid">
         <div>
           <label>Parent 1</label>
@@ -2753,11 +2985,24 @@ function editPerson(id){
         <button type="button" id="clearFamilyParents">Clear parent selections</button>
       </div>
       <div id="familyParentHint" class="small muted"></div>
+
+      <h4>Spouses</h4>
+      <div id="familySpouses"></div>
+      <div class="actions">
+        <button type="button" id="addFamilySpouse">+ Add spouse</button>
+      </div>
+
+      <h4>Children</h4>
+      <div id="familyChildren"></div>
+      <div class="actions">
+        <button type="button" id="addFamilyChild">+ Add child</button>
+      </div>
+
       <label style="margin-top:10px">Find siblings</label>
       <input id="familySiblingSearch" class="search" placeholder="Type a name or ID…">
       <div id="familySiblings" class="sibling-list"></div>
       <div class="actions">
-        <button type="button" class="primary" id="saveFamilyConnections">Apply parents & siblings</button>
+        <button type="button" class="primary" id="saveFamilyConnections">Apply family connections</button>
       </div>
     </div>` +
 
@@ -2783,12 +3028,16 @@ function editPerson(id){
     ['familyParent1','familyParent2'].forEach((selId, index) => {
       const sel = $('#'+selId);
       if(!sel) return;
-      sel.innerHTML = '<option value="">— None —</option>' + peopleForParent.map(x => `<option value="${esc(x['Person ID'])}">${esc(x.Name)} [${esc(x['Person ID'])}]</option>`).join('');
+      sel.innerHTML = '<option value="">— None —</option>' + peopleForParent.map(x => `<option value="${esc(x['Person ID'])}">${esc(x.Name)} [${esc(displayPersonId(x['Person ID']))}]</option>`).join('');
       if(currentParents[index]) sel.value = currentParents[index];
     });
     renderFamilySiblingChoices();
+    renderFamilyDynamicRows();
+    bindFamilyDynamicRows();
     $('#familySiblingSearch').oninput = renderFamilySiblingChoices;
     $('#saveFamilyConnections').onclick = saveFamilyConnections;
+    $('#addFamilySpouse').onclick = () => addFamilyDynamicRow('spouse');
+    $('#addFamilyChild').onclick = () => addFamilyDynamicRow('child');
     $('#clearFamilyParents').onclick = () => { $('#familyParent1').value=''; $('#familyParent2').value=''; renderFamilySiblingChoices(); };
   }else{
     $('#familyParent1').innerHTML = '<option value="">— None —</option>';
@@ -2854,12 +3103,9 @@ function editPerson(id){
 
       }
 
-      selected =
-        obj['Person ID'];
-
       save();
 
-      showDetail(selected);
+      selectPerson(obj['Person ID']);
 
     };
 
@@ -3286,24 +3532,22 @@ function buildLevels(root,mode,depth){
 
   let parts = [];
 
-  if(mode !== 'descendants')
-    parts.push(
-      ...ancestorLevels(
-        root,
-        depth
-      )
-    );
+  if(mode !== 'descendants'){
+    const ancestors = ancestorLevels(root,depth);
 
-  if(mode === 'both')
-    parts.push([root]);
+    // ancestorLevels already ends with the root person.
+    // Do not add the root a second time when showing both directions.
+    parts.push(...ancestors);
+  }
 
-  if(mode !== 'ancestors')
+  if(mode !== 'ancestors'){
     parts.push(
       ...descendantLevels(
         root,
         depth
       ).slice(1)
     );
+  }
 
   return parts;
 
@@ -3716,32 +3960,20 @@ function renderData(){
 
 }
 
-function updateTabHistoryButtons(){
-  const back = $('#navBack');
-  const forward = $('#navForward');
-  if(back) back.disabled = tabHistoryIndex <= 0;
-  if(forward) forward.disabled = tabHistoryIndex >= tabHistory.length - 1;
-}
-
 function openTab(id, record=true){
 
   if(!document.getElementById(id)) return;
 
-  if(record){
-    const current = tabHistory[tabHistoryIndex];
-    if(current !== id){
-      tabHistory = tabHistory.slice(0, tabHistoryIndex + 1);
-      tabHistory.push(id);
-      tabHistoryIndex = tabHistory.length - 1;
-    }
+  if(record && !navigationApplying){
+    recordNavigation(id, selected);
   }
 
   $$('.tab')
     .forEach(
-      s =>
-        s.classList.toggle(
+      section =>
+        section.classList.toggle(
           'hidden',
-          s.id !== id
+          section.id !== id
         )
     );
 
@@ -3754,18 +3986,14 @@ function openTab(id, record=true){
         )
     );
 
-  updateTabHistoryButtons();
+  updateNavigationButtons();
 }
 
 $$('nav button[data-tab]')
   .forEach(
     b =>
       b.onclick =
-        () =>
-          openTab(
-            b.dataset.tab,
-            true
-          )
+        () => openTab(b.dataset.tab, true)
   );
 
 const navBack = $('#navBack');
@@ -3773,23 +4001,23 @@ const navForward = $('#navForward');
 
 if(navBack){
   navBack.onclick = () => {
-    if(tabHistoryIndex > 0){
-      tabHistoryIndex--;
-      openTab(tabHistory[tabHistoryIndex], false);
+    if(navigationIndex > 0){
+      navigationIndex--;
+      applyNavigationState(navigationHistory[navigationIndex]);
     }
   };
 }
 
 if(navForward){
   navForward.onclick = () => {
-    if(tabHistoryIndex < tabHistory.length - 1){
-      tabHistoryIndex++;
-      openTab(tabHistory[tabHistoryIndex], false);
+    if(navigationIndex < navigationHistory.length - 1){
+      navigationIndex++;
+      applyNavigationState(navigationHistory[navigationIndex]);
     }
   };
 }
 
-updateTabHistoryButtons();
+updateNavigationButtons();
 
 $('#search').oninput = renderPeopleList;
 $('#peopleSearch').oninput = renderPeopleTable;
