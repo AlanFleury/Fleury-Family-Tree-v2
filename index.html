@@ -1362,23 +1362,32 @@ function resolveCurrentPersonId(){
     normalizePersonName(currentUser.displayName);
 
   if(display){
-
-    const match =
-      db.people.find(
-        p =>
-          normalizePersonName(p.Name) === display
-      );
-
-    if(match)
-      return match['Person ID'];
-
+    const match = db.people.find(
+      p => normalizePersonName(p.Name) === display
+    );
+    if(match) return match['Person ID'];
   }
 
-  // Owner fallback for the main family-tree account. Other relatives
-  // should be explicitly mapped by an administrator so their labels are
-  // calculated from their own point of view.
-  if(person('I154'))
-    return 'I154';
+  // Some sign-in providers expose the email address rather than the
+  // person's name as displayName. Match the email local-part to a
+  // unique family name after removing a trailing account number.
+  if(email){
+    const local = email.split('@')[0].replace(/\d+$/,'');
+    const localNorm = normalizePersonName(local);
+    if(localNorm){
+      const matches = db.people.filter(p =>
+        normalizePersonName(p.Name) === localNorm
+      );
+      if(matches.length === 1) return matches[0]['Person ID'];
+    }
+  }
+
+  // Primary Alan Fleury records used by the archive exports. Prefer the
+  // canonical ALA record when present, while retaining the legacy I154
+  // fallback for older copies of the archive. Other family members must
+  // be explicitly mapped by an administrator.
+  if(person('ALA')) return 'ALA';
+  if(person('I154')) return 'I154';
 
   return null;
 
@@ -1499,7 +1508,7 @@ function relationshipToViewer(target){
     return 'Unknown person';
 
   if(!root || !person(root))
-    return 'Relationship not established — signed-in account is not linked to a family person';
+    return 'signed-in account is not linked to a family person';
 
   if(root === target)
     return 'you';
@@ -1525,7 +1534,7 @@ function relationshipToViewer(target){
 
   const common = [...aa.keys()].filter(x => bb.has(x));
   if(!common.length)
-    return 'Relationship not established in the recorded family tree';
+    return 'not related in the recorded family tree';
 
   common.sort((a,b) => (aa.get(a)+bb.get(a)) - (aa.get(b)+bb.get(b)));
 
@@ -2093,7 +2102,10 @@ function renderKinshipSelects(){
 
  const q = String($('#kinSearch')?.value || '').toLowerCase().trim();
   const arr = q ? db.people.filter(p => isVisiblePerson(p) && `${p.Name || ''} ${p['Person ID'] || ''}`.toLowerCase().includes(q)) : db.people.filter(p => isVisiblePerson(p));
-  const opts = arr.slice().sort((x,y)=>x.Name.localeCompare(y.Name)).map(p => `<option value="${esc(p['Person ID'])}">${esc(p.Name)}</option>`).join('');
+  const opts = arr.slice().sort(nameSort).map(p => {
+    const rel = relationshipToViewer(p['Person ID']);
+    return `<option value="${esc(p['Person ID'])}">${esc(p.Name)}${rel && rel !== 'you' ? ` — ${esc(rel)}` : ''}</option>`;
+  }).join('');
 
   a.innerHTML = opts;
   b.innerHTML = opts;
@@ -2313,18 +2325,11 @@ function findKinship(){
       (
         mixed
           ? `<div class="pathbox">${
-              esc(
-                mixed
-                  .map(
-                    x =>
-                      x.type === 'spouse'
-                        ? `${name(x.from)} — spouse of — ${name(x.to)}`
-                        : name(x.from) +
-                          ' → ' +
-                          name(x.to)
-                  )
-                  .join('\n')
-              )
+              mixed.map(x =>
+                x.type === 'spouse'
+                  ? `${personLink(x.from,name(x.from))} — spouse of — ${personLink(x.to,name(x.to))}`
+                  : `${personLink(x.from,name(x.from))} → ${personLink(x.to,name(x.to))}`
+              ).join('<br>')
             }</div>`
           : ''
       );
@@ -2388,7 +2393,8 @@ function findKinship(){
     `<p><strong>Relationship:</strong> ${esc(label)}</p>` +
     `<p><strong>Common ancestor:</strong> ${personLink(anc,commonName)}</p>` +
     `<p><strong>Generations from common ancestor:</strong> ${esc(String(da))} and ${esc(String(dbb))}</p>` +
-    `<div class="pathbox"><strong>Complete recorded family path</strong>\n${esc(left)} → ${esc(right)}</div>`;
+    `<div class="pathbox"><strong>Complete recorded family path</strong><br>${pa ? pa.map(x=>personLink(x,name(x))).join(' → ') : ''} → ${pb ? pb.map(x=>personLink(x,name(x))).reverse().join(' → ') : ''}</div>`;
+  bindPersonLinks();
 
 }
 
@@ -2632,10 +2638,10 @@ function generateReport(){
   if(type==='individual'){
     h=reportHeader(`Individual report — ${p.Name}`,root)+`<h2>${personLink(root,p.Name)}</h2><table><tr><th>Person ID</th><td>${esc(displayPersonId(p['Person ID']))}</td></tr><tr><th>Gender</th><td>${esc(p.Gender||'')}</td></tr><tr><th>Birth</th><td>${esc(p.Birth||'')}</td></tr><tr><th>Death</th><td>${esc(p.Death||'')}</td></tr><tr><th>Marriage(s)</th><td>${esc(p['Marriage(s)']||'')}</td></tr><tr><th>Places</th><td>${esc(p.Places||'')}</td></tr><tr><th>Evidence</th><td>${esc(p['Evidence Status']||'')}</td></tr><tr><th>Sources</th><td>${esc(p['Source IDs']||'')}</td></tr><tr><th>Notes</th><td>${esc(p.Notes||'')}</td></tr></table><h3>Relationship to signed-in person</h3><p>${esc(relationshipToViewer(root))}</p><h3>Parents</h3>${reportList(parentsOf(root))}<h3>Spouse(s)</h3>${reportList(spousesOf(root))}<h3>Children</h3>${reportList(childrenOf(root))}`;
   } else if(type==='family'){
-    h=reportHeader(`Family group — ${p.Name}`,root)+`<h2>${esc(p.Name)}</h2><p><strong>Relationship to signed-in person:</strong> ${esc(relationshipToViewer(root))}</p><h3>Parents</h3>${reportList(parentsOf(root))}<h3>Spouse(s)</h3>${reportList(spousesOf(root))}<h3>Children</h3>${reportList(childrenOf(root))}`;
+    h=reportHeader(`Family group — ${p.Name}`,root)+`<h2>${personLink(root,p.Name)}</h2><p><strong>Relationship to signed-in person:</strong> ${esc(relationshipToViewer(root))}</p><h3>Parents</h3>${reportList(parentsOf(root))}<h3>Spouse(s)</h3>${reportList(spousesOf(root))}<h3>Children</h3>${reportList(childrenOf(root))}`;
   } else if(type==='relationship'){
     const rel=other&&root?relationshipPath(currentPersonId||root,other):'Select two people';
-    h=reportHeader(`Relationship report — ${p.Name}`,root)+`<h2>${esc(p.Name)} and ${esc(name(other))}</h2><p><strong>Relationship from signed-in person's point of view:</strong> ${esc(currentPersonId ? relationshipToViewer(other) : rel)}</p><p><strong>Recorded relationship between selected people:</strong> ${esc(rel)}</p>`;
+    h=reportHeader(`Relationship report — ${p.Name}`,root)+`<h2>${personLink(root,p.Name)} and ${personLink(other,name(other))}</h2><p><strong>Relationship from signed-in person's point of view:</strong> ${esc(currentPersonId ? relationshipToViewer(other) : rel)}</p><p><strong>Recorded relationship between selected people:</strong> ${esc(rel)}</p>`;
   } else if(type==='people-index'){
     h=reportHeader('People index',root)+`<h2>People index</h2><p>${db.people.filter(isVisiblePerson).length} visible people.</p><table><tr><th>Name</th><th>ID</th><th>Relationship to signed-in person</th></tr>${db.people.filter(isVisiblePerson).slice().sort((a,b)=>a.Name.localeCompare(b.Name)).map(x=>`<tr><td>${reportEscapedName(x['Person ID'])}</td><td>${esc(displayPersonId(x['Person ID']))}</td><td>${esc(relationshipToViewer(x['Person ID']))}</td></tr>`).join('')}</table>`;
   } else if(type==='relationship-index'){
@@ -2646,10 +2652,10 @@ function generateReport(){
     h=reportHeader('Database statistics',root)+`<h2>Database statistics</h2><table><tr><th>Measure</th><th>Count</th></tr><tr><td>Total database people</td><td>${db.people.length}</td></tr><tr><td>Visible people</td><td>${db.people.filter(isVisiblePerson).length}</td></tr><tr><td>Hidden uncertain (?) people</td><td>${db.people.filter(p=>!isVisiblePerson(p)).length}</td></tr><tr><td>Relationships</td><td>${db.relationships.length}</td></tr><tr><td>Visible relationship records</td><td>${db.relationships.filter(r=>isVisiblePerson(r.person1)&&isVisiblePerson(r.person2)).length}</td></tr></table>`;
   } else {
     const mode=type==='descendants'?'descendants':'ancestors'; const groups=generationGroups(root,mode,depth);
-    if(type==='both'){ const ag=generationGroups(root,'ancestors',depth), dg=generationGroups(root,'descendants',depth); h=reportHeader(`Ancestors & descendants — ${p.Name}`,root)+`<h2>${esc(p.Name)}</h2><h3>Ancestors</h3>${ag.map(g=>`<h4>${esc(g.label)}</h4>${reportList(g.ids)}`).join('')}<h3>Descendants</h3>${dg.map(g=>`<h4>${esc(g.label)}</h4>${reportList(g.ids)}`).join('')}`; }
-    else if(type==='branches'){ const groups=collateralBranches(root,depth); h=reportHeader(`Extended family — ${p.Name}`,root)+`<h2>${esc(p.Name)}</h2>${groups.map(g=>`<h3>${esc(g.title)}</h3>${reportList(g.ids)}`).join('')}`; }
-    else if(type==='generations'){ const ag=generationGroups(root,'ancestors',depth), dg=generationGroups(root,'descendants',depth); h=reportHeader(`Generations — ${p.Name}`,root)+`<h2>${esc(p.Name)}</h2><h3>Ancestor generations</h3>${ag.map((g,i)=>`<h4>Generation ${i+1}: ${esc(g.label)}</h4>${reportList(g.ids)}`).join('')}<h3>Descendant generations</h3>${dg.map((g,i)=>`<h4>Generation ${i+1}: ${esc(g.label)}</h4>${reportList(g.ids)}`).join('')}`; }
-    else { h=reportHeader(`${type==='ancestors'?'Ancestor':'Descendant'} report — ${p.Name}`,root)+`<h2>${esc(p.Name)}</h2>${groups.map(g=>`<h3>${esc(g.label)}</h3>${reportList(g.ids)}`).join('')}`; }
+    if(type==='both'){ const ag=generationGroups(root,'ancestors',depth), dg=generationGroups(root,'descendants',depth); h=reportHeader(`Ancestors & descendants — ${p.Name}`,root)+`<h2>${personLink(root,p.Name)}</h2><h3>Ancestors</h3>${ag.map(g=>`<h4>${esc(g.label)}</h4>${reportList(g.ids)}`).join('')}<h3>Descendants</h3>${dg.map(g=>`<h4>${esc(g.label)}</h4>${reportList(g.ids)}`).join('')}`; }
+    else if(type==='branches'){ const groups=collateralBranches(root,depth); h=reportHeader(`Extended family — ${p.Name}`,root)+`<h2>${personLink(root,p.Name)}</h2>${groups.map(g=>`<h3>${esc(g.title)}</h3>${reportList(g.ids)}`).join('')}`; }
+    else if(type==='generations'){ const ag=generationGroups(root,'ancestors',depth), dg=generationGroups(root,'descendants',depth); h=reportHeader(`Generations — ${p.Name}`,root)+`<h2>${personLink(root,p.Name)}</h2><h3>Ancestor generations</h3>${ag.map((g,i)=>`<h4>Generation ${i+1}: ${esc(g.label)}</h4>${reportList(g.ids)}`).join('')}<h3>Descendant generations</h3>${dg.map((g,i)=>`<h4>Generation ${i+1}: ${esc(g.label)}</h4>${reportList(g.ids)}`).join('')}`; }
+    else { h=reportHeader(`${type==='ancestors'?'Ancestor':'Descendant'} report — ${p.Name}`,root)+`<h2>${personLink(root,p.Name)}</h2>${groups.map(g=>`<h3>${esc(g.label)}</h3>${reportList(g.ids)}`).join('')}`; }
   }
   h+='</div>'; $('#reportPreview').innerHTML=h; bindPersonLinks();
 }
@@ -2729,9 +2735,6 @@ function renderPeopleList(){
         p =>
           `<div class="person" data-id="${esc(p['Person ID'])}">
             ${personLink(p['Person ID'], p.Name)}
-            <span class="muted">
-              — ${esc(relationshipToViewer(p['Person ID']))}
-            </span>
             <div class="small muted">
               ${esc(displayPersonId(p['Person ID']))}
             </div>
