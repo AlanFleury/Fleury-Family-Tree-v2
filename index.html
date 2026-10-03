@@ -436,6 +436,29 @@ input,select,textarea{
   margin-top:0
 }
 
+
+.report-preview{background:#fff;border:1px solid var(--line);max-height:70vh;overflow:auto}
+.report-sheet{background:#fff;color:#222;padding:28px;line-height:1.45}
+.report-sheet h1,.report-sheet h2,.report-sheet h3{font-family:Georgia,serif;color:#49351f}
+.report-sheet table{width:100%;border-collapse:collapse;margin:12px 0}
+.report-sheet th,.report-sheet td{border:1px solid #cfc3b1;padding:6px;text-align:left;vertical-align:top}
+.report-meta{font-size:12px;color:#756b5d;margin-bottom:18px}
+.report-person{display:inline-block;margin:3px 8px 3px 0;padding:3px 7px;border-bottom:1px solid #9d7b58}
+@media print{
+  nav,.authbar,header,.actions,.toolbar,.search,#reportPreview button{display:none!important}
+  body{background:#fff}
+  main{max-width:none;padding:0}
+  .tab.hidden{display:none!important}
+  .tab:not(.hidden){display:block!important}
+  .panel{border:0;box-shadow:none;padding:0}
+  .report-preview{max-height:none;border:0}
+  .treewrap{overflow:visible;border:0;padding:0}
+  .tree{min-width:0}
+  .node{break-inside:avoid}
+}
+.wall-print-sheet{background:#fff;color:#222;padding:20px}
+.wall-print-sheet h1{font-family:Georgia,serif}
+
 @media(max-width:800px){
   .grid{
     grid-template-columns:1fr
@@ -456,6 +479,16 @@ input,select,textarea{
   .people-list{
     max-height:40vh
   }
+}
+.person-link{
+  border:0;
+  background:none;
+  padding:0;
+  margin:0;
+  font:inherit;
+  color:inherit;
+  text-decoration:underline;
+  cursor:pointer;
 }
 </style>
 <script src="https://cdn.auth0.com/js/auth0-spa-js/2.24/auth0-spa-js.production.js"></script>
@@ -505,6 +538,7 @@ input,select,textarea{
   <button data-tab="kinship">Relationship Finder</button>
   <button data-tab="chart">Wall Chart</button>
 <button data-tab="generations">Generations</button>
+  <button data-tab="reports">Reports</button>
   <button data-tab="gedcom">GEDCOM</button>
   <button data-tab="backup">Backup</button>
   <button data-tab="sync">Free Cloud Sync</button>
@@ -525,6 +559,7 @@ input,select,textarea{
       >
 
       <div id="stats" class="stats" style="margin:10px 0"></div>
+      <div id="relationshipViewpoint" class="small muted"></div>
 
       <div id="peopleList" class="people-list"></div>
     </div>
@@ -656,6 +691,12 @@ input,select,textarea{
         <option value="descendants">Descendants</option>
       </select>
 
+      <select id="chartStyle">
+        <option value="cascading">Cascading family chart</option>
+        <option value="pedigree">Pedigree / ancestry chart</option>
+        <option value="branch">Extended family branch</option>
+      </select>
+
       <select id="chartDepth">
         <option>3</option>
         <option selected>4</option>
@@ -670,6 +711,10 @@ input,select,textarea{
 
       <button id="downloadSvg">
         Download SVG
+      </button>
+
+      <button id="printWallChart">
+        Print / Save PDF
       </button>
 
     </div>
@@ -730,6 +775,55 @@ input,select,textarea{
 
     <div id="generationResult" class="pathbox">Choose a person and generate the family view.</div>
 
+  </div>
+
+</section>
+
+<section id="reports" class="tab hidden">
+
+  <div class="panel">
+    <h2>Reports & Printing</h2>
+    <p class="muted">Generate readable genealogy reports from the current family database. Reports use the <strong>signed-in family member</strong> as the point of view for relationship labels. If your account is not linked to a family person, the app will say so rather than guessing.</p>
+
+    <div class="formgrid">
+      <div>
+        <label>Person</label>
+        <select id="reportPerson"></select>
+      </div>
+      <div>
+        <label>Second person (relationship report)</label>
+        <select id="reportPerson2"></select>
+      </div>
+      <div>
+        <label>Generations</label>
+        <select id="reportDepth"><option>3</option><option selected>5</option><option>7</option><option>10</option><option>12</option></select>
+      </div>
+      <div>
+        <label>Report type</label>
+        <select id="reportType">
+          <option value="individual">Individual person report</option>
+          <option value="family">Family group sheet</option>
+          <option value="ancestors">Ancestor report</option>
+          <option value="descendants">Descendant report</option>
+          <option value="both">Ancestor & descendant report</option>
+          <option value="relationship">Relationship report</option>
+          <option value="branches">Extended family / cousins</option>
+          <option value="generations">Generation report</option>
+          <option value="people-index">People index</option>
+          <option value="relationship-index">Relationship index</option>
+          <option value="sources">Sources & research report</option>
+          <option value="statistics">Database statistics</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="primary" id="generateReport">Generate report</button>
+      <button id="printReport">Print / Save as PDF</button>
+      <button id="downloadReportHtml">Save report HTML</button>
+    </div>
+
+    <div id="reportPreview" class="report-preview notice">Choose a report and generate it.</div>
   </div>
 
 </section>
@@ -946,6 +1040,29 @@ const $$ = s => [...document.querySelectorAll(s)];
 
 function displayPersonId(id){
   return String(id ?? '').replace(/^@+|@+$/g,'');
+}
+
+// People whose recorded name contains '?' remain in the database,
+// but are hidden from normal family views until their identity is clarified.
+function isVisiblePerson(idOrPerson){
+  const p = typeof idOrPerson === 'object' ? idOrPerson : person(idOrPerson);
+  return !!p && !String(p.Name || '').includes('?');
+}
+
+function personLink(id, label){
+  const p = person(id);
+  if(!p || !isVisiblePerson(p)) return '';
+  return `<button type="button" class="person-link" data-person-link="${esc(id)}">${esc(label ?? p.Name)}</button>`;
+}
+
+function bindPersonLinks(){
+  $$('[data-person-link]').forEach(b => {
+    b.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      selectPerson(b.dataset.personLink);
+    };
+  });
 }
 
 const esc = s =>
@@ -1254,9 +1371,12 @@ function resolveCurrentPersonId(){
 
   }
 
-  // Do not guess the signed-in person's identity from the public database.
-  // An explicit family-member mapping is required so relationship labels
-  // are always calculated from the correct person's point of view.
+  // Owner fallback for the main family-tree account. Other relatives
+  // should be explicitly mapped by an administrator so their labels are
+  // calculated from their own point of view.
+  if(person('I154'))
+    return 'I154';
+
   return null;
 
 }
@@ -1323,15 +1443,37 @@ function descendantTerm(root,target,distance){
 
 }
 
-function ancestorTerm(distance){
+function ancestorTerm(distance, gender=''){
+
+  const g = gender === 'F' ? 'mother' : gender === 'M' ? 'father' : 'parent';
 
   if(distance === 1)
-    return 'parent';
+    return g;
+
+  const base = gender === 'F' ? 'grandmother' : gender === 'M' ? 'grandfather' : 'grandparent';
 
   if(distance === 2)
-    return 'grandparent';
+    return base;
 
-  return `${'great-'.repeat(distance-2)}grandparent`;
+  const ordinal = distance - 2;
+  const prefix = ordinal === 1 ? 'great-' : `${ordinal}th great-`;
+  return `${prefix}${gender === 'F' ? 'grandmother' : gender === 'M' ? 'grandfather' : 'grandparent'}`;
+
+}
+
+function descendantTerm(root,target,distance){
+
+  const g = genderOf(target);
+
+  if(distance === 1)
+    return g === 'F' ? 'daughter' : g === 'M' ? 'son' : 'child';
+
+  if(distance === 2)
+    return g === 'F' ? 'granddaughter' : g === 'M' ? 'grandson' : 'grandchild';
+
+  const ordinal = distance - 2;
+  const prefix = ordinal === 1 ? 'great-' : `${ordinal}th great-`;
+  return `${prefix}${g === 'F' ? 'granddaughter' : g === 'M' ? 'grandson' : 'grandchild'}`;
 
 }
 
@@ -1357,12 +1499,11 @@ function relationshipToViewer(target){
     return 'Unknown person';
 
   if(!root || !person(root))
-    return 'Not linked to a family record';
+    return 'Family member';
 
   if(root === target)
     return 'you';
 
-  // Direct spouse relationship.
   if(spousesOf(root).includes(target)){
     const g = genderOf(target);
     return g === 'F' ? 'wife' : g === 'M' ? 'husband' : 'spouse';
@@ -1371,73 +1512,53 @@ function relationshipToViewer(target){
   const aa = ancestorsWithDistance(root);
   const bb = ancestorsWithDistance(target);
 
-  // target is an ancestor/descendant of the viewer.
   if(aa.has(target)){
     const d = aa.get(target);
     const side = sideOfAncestor(root,target);
-    const term = ancestorTerm(d);
+    const term = ancestorTerm(d, genderOf(target));
     return side ? `${side} ${term}` : term;
   }
 
   if(bb.has(root)){
-    const d = bb.get(root);
-    return descendantTerm(root,target,d);
+    return descendantTerm(root,target,bb.get(root));
   }
 
-  const common =
-    [...aa.keys()]
-      .filter(x => bb.has(x));
-
+  const common = [...aa.keys()].filter(x => bb.has(x));
   if(!common.length)
     return 'Recorded relative';
 
-  common.sort(
-    (a,b) =>
-      (aa.get(a)+bb.get(a)) -
-      (aa.get(b)+bb.get(b))
-  );
+  common.sort((a,b) => (aa.get(a)+bb.get(a)) - (aa.get(b)+bb.get(b)));
 
   const anc = common[0];
   const da = aa.get(anc);
   const dbb = bb.get(anc);
   const side = sideOfAncestor(root,anc);
+  const g = genderOf(target);
 
-  // Siblings.
   if(da === 1 && dbb === 1){
-    const g = genderOf(target);
     const term = g === 'F' ? 'sister' : g === 'M' ? 'brother' : 'sibling';
     return side ? `${side} ${term}` : term;
   }
 
-  // Aunts/uncles and nieces/nephews.
   if(da === 1 && dbb >= 2){
-    const g = genderOf(target);
-    const term = dbb === 2
-      ? (g === 'F' ? 'aunt' : g === 'M' ? 'uncle' : 'aunt/uncle')
-      : `${'great-'.repeat(dbb-2)}${g === 'F' ? 'aunt' : g === 'M' ? 'uncle' : 'aunt/uncle'}`;
+    const base = g === 'F' ? 'aunt' : g === 'M' ? 'uncle' : 'aunt/uncle';
+    const ordinal = dbb - 2;
+    const term = ordinal === 0 ? base : ordinal === 1 ? `great-${base}` : `${ordinal} great-${base}`;
     return side ? `${side} ${term}` : term;
   }
 
   if(dbb === 1 && da >= 2){
-    const g = genderOf(target);
-    const term = da === 2
-      ? (g === 'F' ? 'niece' : g === 'M' ? 'nephew' : 'niece/nephew')
-      : `${'great-'.repeat(da-2)}${g === 'F' ? 'niece' : g === 'M' ? 'nephew' : 'niece/nephew'}`;
-    return term;
+    const base = g === 'F' ? 'niece' : g === 'M' ? 'nephew' : 'niece/nephew';
+    const ordinal = da - 2;
+    return ordinal === 0 ? base : ordinal === 1 ? `great-${base}` : `${ordinal} great-${base}`;
   }
 
   const degree = Math.min(da,dbb) - 1;
-  const cousin =
-    degree === 1 ? '1st cousin' :
-    degree === 2 ? '2nd cousin' :
-    degree === 3 ? '3rd cousin' :
-    `${degree}th cousin`;
+  const cousin = degree === 1 ? '1st cousin' : degree === 2 ? '2nd cousin' : degree === 3 ? '3rd cousin' : `${ordinal(degree)} cousin`;
   const removed = Math.abs(da-dbb);
-  const label = removed
-    ? `${cousin}, ${removed} time${removed===1?'':'s'} removed`
-    : cousin;
-
-  return side ? `${side} ${label}` : label;
+  return side
+    ? `${side} ${cousin}${removed ? `, ${removed} time${removed===1?'':'s'} removed` : ''}`
+    : `${cousin}${removed ? `, ${removed} time${removed===1?'':'s'} removed` : ''}`;
 
 }
 
@@ -1780,7 +1901,7 @@ function renderPersonMappingUI(){
     return;
 
   const q = String($('#personMapSearch')?.value || '').toLowerCase().trim();
-  const arr = q ? db.people.filter(p => `${p.Name || ''} ${p['Person ID'] || ''}`.toLowerCase().includes(q)) : db.people;
+  const arr = q ? db.people.filter(p => isVisiblePerson(p) && `${p.Name || ''} ${p['Person ID'] || ''}`.toLowerCase().includes(q)) : db.people.filter(p => isVisiblePerson(p));
   select.innerHTML = arr.slice().sort((a,b)=>a.Name.localeCompare(b.Name)).map(p => `<option value="${esc(p['Person ID'])}">${esc(p.Name)}</option>`).join('');
 
 }
@@ -1971,7 +2092,7 @@ function renderKinshipSelects(){
   let bv = b.value;
 
  const q = String($('#kinSearch')?.value || '').toLowerCase().trim();
-  const arr = q ? db.people.filter(p => `${p.Name || ''} ${p['Person ID'] || ''}`.toLowerCase().includes(q)) : db.people;
+  const arr = q ? db.people.filter(p => isVisiblePerson(p) && `${p.Name || ''} ${p['Person ID'] || ''}`.toLowerCase().includes(q)) : db.people.filter(p => isVisiblePerson(p));
   const opts = arr.slice().sort((x,y)=>x.Name.localeCompare(y.Name)).map(p => `<option value="${esc(p['Person ID'])}">${esc(p.Name)}</option>`).join('');
 
   a.innerHTML = opts;
@@ -2107,7 +2228,7 @@ function relationshipLabel(da,db){
         ? '2nd cousin'
         : degree === 3
           ? '3rd cousin'
-          : `${degree}th cousin`;
+          : `${ordinal(degree)} cousin`;
 
   let rem =
     Math.abs(da-db);
@@ -2346,8 +2467,8 @@ function shortestMixedPath(a,b){
 
 function filterPeopleArray(query){
   const q = String(query || '').toLowerCase().trim();
-  if(!q) return [...db.people];
-  return db.people.filter(p => Object.values(p).join(' ').toLowerCase().includes(q));
+  if(!q) return db.people.filter(p => isVisiblePerson(p));
+  return db.people.filter(p => isVisiblePerson(p) && Object.values(p).join(' ').toLowerCase().includes(q));
 }
 
 function fillPersonSelect(id, query, preferred=''){
@@ -2436,11 +2557,79 @@ function showGenerations(){
   let html=`<h3>${esc(p.Name)}</h3>`;
   if(!groups.length) html+='<div class="notice">No recorded family members were found for this view.</div>';
   groups.forEach(g=>{
-    html+=`<div class="notice"><strong>${esc(g.title)}</strong><div class="actions">${g.ids.map(id=>`<button data-jump="${esc(id)}">${esc(name(id))}</button>`).join(' ')}</div><div class="small muted">${g.ids.length} recorded person${g.ids.length===1?'':'s'}</div></div>`;
+    html+=`<div class="notice"><strong>${esc(g.title)}</strong><div class="actions">${g.ids.map(id=>personLink(id, name(id))).join(' ')}</div><div class="small muted">${g.ids.length} recorded person${g.ids.length===1?'':'s'}</div></div>`;
   });
   $('#generationResult').innerHTML=html;
   $$('[data-jump]').forEach(b=>b.onclick=()=>{selectPerson(b.dataset.jump);});
 }
+
+function reportPersonOptions(selectedId=''){
+  return db.people.filter(p=>isVisiblePerson(p)).slice().sort((a,b)=>a.Name.localeCompare(b.Name)).map(p=>`<option value="${esc(p['Person ID'])}" ${p['Person ID']===selectedId?'selected':''}>${esc(p.Name)} [${esc(displayPersonId(p['Person ID']))}]</option>`).join('');
+}
+
+function renderReportSelects(){
+  const a=$('#reportPerson'), b=$('#reportPerson2');
+  if(!a||!b) return;
+  const oldA=a.value, oldB=b.value;
+  a.innerHTML=reportPersonOptions(currentPersonId||selected||oldA);
+  b.innerHTML=reportPersonOptions(oldB);
+  if(oldA && person(oldA) && isVisiblePerson(oldA)) a.value=oldA;
+  if(oldB && person(oldB) && isVisiblePerson(oldB)) b.value=oldB;
+  if(!a.value && currentPersonId) a.value=currentPersonId;
+  if(!b.value && a.options.length>1) b.selectedIndex=a.selectedIndex===0?1:0;
+}
+
+function reportEscapedName(id){ return personLink(id,name(id)) || esc(name(id)); }
+function reportList(ids){ return ids.filter(isVisiblePerson).map(id=>`<span class="report-person">${reportEscapedName(id)}</span>`).join(' ') || '<span class="muted">None recorded</span>'; }
+function generationGroups(root,mode,depth){
+  let groups=[]; const seen=new Set([root]); let frontier=[root];
+  for(let d=1;d<=depth;d++){
+    const next=[];
+    frontier.forEach(id=>(mode==='ancestors'?parentsOf(id):childrenOf(id)).forEach(x=>{if(!seen.has(x)&&isVisiblePerson(x)){seen.add(x);next.push(x);}}));
+    if(!next.length) break;
+    const label=mode==='ancestors' ? (d===1?'Parents':d===2?'Grandparents':d===3?'Great-grandparents':`${ordinal(d-2)} great-grandparents`) : (d===1?'Children':d===2?'Grandchildren':d===3?'Great-grandchildren':`${ordinal(d-2)} great-grandchildren`);
+    groups.push({label,ids:next}); frontier=next;
+  }
+  return groups;
+}
+function reportHeader(title,root){
+  const signed=currentPersonId ? name(currentPersonId) : 'Not linked to a family record';
+  return `<div class="report-sheet"><h1>${esc(title)}</h1><div class="report-meta">Fleury Family Archive · Generated ${esc(new Date().toLocaleString())}<br>Relationship point of view: <strong>${esc(signed)}</strong></div>`;
+}
+function generateReport(){
+  const type=$('#reportType')?.value||'individual'; const root=$('#reportPerson')?.value; const other=$('#reportPerson2')?.value; const depth=Number($('#reportDepth')?.value)||5; const p=person(root);
+  if(type!=='statistics' && type!=='people-index' && type!=='relationship-index' && !p){ $('#reportPreview').innerHTML='<div class="report-sheet"><p>No person selected.</p></div>'; return; }
+  let h=reportHeader('',root);
+  if(type==='individual'){
+    h=reportHeader(`Individual report — ${p.Name}`,root)+`<h2>${esc(p.Name)}</h2><table><tr><th>Person ID</th><td>${esc(displayPersonId(p['Person ID']))}</td></tr><tr><th>Gender</th><td>${esc(p.Gender||'')}</td></tr><tr><th>Birth</th><td>${esc(p.Birth||'')}</td></tr><tr><th>Death</th><td>${esc(p.Death||'')}</td></tr><tr><th>Marriage(s)</th><td>${esc(p['Marriage(s)']||'')}</td></tr><tr><th>Places</th><td>${esc(p.Places||'')}</td></tr><tr><th>Evidence</th><td>${esc(p['Evidence Status']||'')}</td></tr><tr><th>Sources</th><td>${esc(p['Source IDs']||'')}</td></tr><tr><th>Notes</th><td>${esc(p.Notes||'')}</td></tr></table><h3>Relationship to signed-in person</h3><p>${esc(relationshipToViewer(root))}</p><h3>Parents</h3>${reportList(parentsOf(root))}<h3>Spouse(s)</h3>${reportList(spousesOf(root))}<h3>Children</h3>${reportList(childrenOf(root))}`;
+  } else if(type==='family'){
+    h=reportHeader(`Family group — ${p.Name}`,root)+`<h2>${esc(p.Name)}</h2><p><strong>Relationship to signed-in person:</strong> ${esc(relationshipToViewer(root))}</p><h3>Parents</h3>${reportList(parentsOf(root))}<h3>Spouse(s)</h3>${reportList(spousesOf(root))}<h3>Children</h3>${reportList(childrenOf(root))}`;
+  } else if(type==='relationship'){
+    const rel=other&&root?relationshipPath(currentPersonId||root,other):'Select two people';
+    h=reportHeader(`Relationship report — ${p.Name}`,root)+`<h2>${esc(p.Name)} and ${esc(name(other))}</h2><p><strong>Relationship from signed-in person's point of view:</strong> ${esc(currentPersonId ? relationshipToViewer(other) : rel)}</p><p><strong>Recorded relationship between selected people:</strong> ${esc(rel)}</p>`;
+  } else if(type==='people-index'){
+    h=reportHeader('People index',root)+`<h2>People index</h2><p>${db.people.filter(isVisiblePerson).length} visible people.</p><table><tr><th>Name</th><th>ID</th><th>Relationship to signed-in person</th></tr>${db.people.filter(isVisiblePerson).slice().sort((a,b)=>a.Name.localeCompare(b.Name)).map(x=>`<tr><td>${reportEscapedName(x['Person ID'])}</td><td>${esc(displayPersonId(x['Person ID']))}</td><td>${esc(relationshipToViewer(x['Person ID']))}</td></tr>`).join('')}</table>`;
+  } else if(type==='relationship-index'){
+    h=reportHeader('Relationship index',root)+`<h2>Relationship index</h2><table><tr><th>ID</th><th>Type</th><th>Person 1</th><th>Person 2</th><th>Sources</th></tr>${db.relationships.filter(r=>isVisiblePerson(r.person1)&&isVisiblePerson(r.person2)).map(r=>`<tr><td>${esc(r.id)}</td><td>${esc(r.type)}</td><td>${reportEscapedName(r.person1)}</td><td>${reportEscapedName(r.person2)}</td><td>${esc(r.sourceIds||'')}</td></tr>`).join('')}</table>`;
+  } else if(type==='sources'){
+    h=reportHeader('Sources & research',root)+`<h2>Sources & research information</h2><table><tr><th>Person</th><th>Evidence</th><th>Source IDs</th><th>Notes</th></tr>${db.people.filter(isVisiblePerson).filter(x=>x['Source IDs']||x.Notes||x['Evidence Status']).map(x=>`<tr><td>${reportEscapedName(x['Person ID'])}</td><td>${esc(x['Evidence Status']||'')}</td><td>${esc(x['Source IDs']||'')}</td><td>${esc(x.Notes||'')}</td></tr>`).join('')}</table>`;
+  } else if(type==='statistics'){
+    h=reportHeader('Database statistics',root)+`<h2>Database statistics</h2><table><tr><th>Measure</th><th>Count</th></tr><tr><td>Total database people</td><td>${db.people.length}</td></tr><tr><td>Visible people</td><td>${db.people.filter(isVisiblePerson).length}</td></tr><tr><td>Hidden uncertain (?) people</td><td>${db.people.filter(p=>!isVisiblePerson(p)).length}</td></tr><tr><td>Relationships</td><td>${db.relationships.length}</td></tr><tr><td>Visible relationship records</td><td>${db.relationships.filter(r=>isVisiblePerson(r.person1)&&isVisiblePerson(r.person2)).length}</td></tr></table>`;
+  } else {
+    const mode=type==='descendants'?'descendants':'ancestors'; const groups=generationGroups(root,mode,depth);
+    if(type==='both'){ const ag=generationGroups(root,'ancestors',depth), dg=generationGroups(root,'descendants',depth); h=reportHeader(`Ancestors & descendants — ${p.Name}`,root)+`<h2>${esc(p.Name)}</h2><h3>Ancestors</h3>${ag.map(g=>`<h4>${esc(g.label)}</h4>${reportList(g.ids)}`).join('')}<h3>Descendants</h3>${dg.map(g=>`<h4>${esc(g.label)}</h4>${reportList(g.ids)}`).join('')}`; }
+    else if(type==='branches'){ const groups=collateralBranches(root,depth); h=reportHeader(`Extended family — ${p.Name}`,root)+`<h2>${esc(p.Name)}</h2>${groups.map(g=>`<h3>${esc(g.title)}</h3>${reportList(g.ids)}`).join('')}`; }
+    else if(type==='generations'){ const ag=generationGroups(root,'ancestors',depth), dg=generationGroups(root,'descendants',depth); h=reportHeader(`Generations — ${p.Name}`,root)+`<h2>${esc(p.Name)}</h2><h3>Ancestor generations</h3>${ag.map((g,i)=>`<h4>Generation ${i+1}: ${esc(g.label)}</h4>${reportList(g.ids)}`).join('')}<h3>Descendant generations</h3>${dg.map((g,i)=>`<h4>Generation ${i+1}: ${esc(g.label)}</h4>${reportList(g.ids)}`).join('')}`; }
+    else { h=reportHeader(`${type==='ancestors'?'Ancestor':'Descendant'} report — ${p.Name}`,root)+`<h2>${esc(p.Name)}</h2>${groups.map(g=>`<h3>${esc(g.label)}</h3>${reportList(g.ids)}`).join('')}`; }
+  }
+  h+='</div>'; $('#reportPreview').innerHTML=h; bindPersonLinks();
+}
+function printReport(){
+  const content=$('#reportPreview')?.innerHTML; if(!content) return;
+  const w=window.open('','_blank'); if(!w) return alert('Please allow pop-ups for printing.');
+  w.document.write(`<!doctype html><html><head><title>Fleury Family Archive Report</title><style>body{font-family:Arial,sans-serif;margin:25px;color:#222}.report-sheet h1,.report-sheet h2,.report-sheet h3{font-family:Georgia,serif}.report-meta{font-size:12px;color:#666;margin-bottom:18px}.report-sheet table{width:100%;border-collapse:collapse}.report-sheet th,.report-sheet td{border:1px solid #bbb;padding:6px;text-align:left;vertical-align:top}.report-person{display:inline-block;margin:3px 8px 3px 0} @media print{body{margin:10mm}}</style></head><body>${content}</body></html>`); w.document.close(); w.focus(); setTimeout(()=>w.print(),250);
+}
+function downloadReportHtml(){ const content=$('#reportPreview')?.innerHTML; if(!content) return; download('fleury-report.html',`<!doctype html><html><head><meta charset="utf-8"><title>Fleury Family Archive Report</title></head><body>${content}</body></html>`,'text/html'); }
 
 function renderAll(){
 
@@ -2460,10 +2649,15 @@ function renderAll(){
   renderChartSelect();
   renderKinshipSelects();
   renderGenerationsSelect();
+  renderReportSelects();
   renderData();
+  const vp=$('#relationshipViewpoint');
+  if(vp) vp.textContent=currentPersonId && person(currentPersonId) ? `Relationships shown from ${name(currentPersonId)} (signed-in family member).` : 'Relationship labels require the signed-in account to be linked to a family person.';
 
-  if(selected && person(selected))
+  if(selected && person(selected) && isVisiblePerson(selected))
     showDetail(selected);
+
+  bindPersonLinks();
 
 }
 
@@ -2475,6 +2669,7 @@ function renderPeopleList(){
 
   let arr =
     db.people
+      .filter(p => isVisiblePerson(p))
       .filter(
         p =>
           Object.values(p)
@@ -2482,17 +2677,29 @@ function renderPeopleList(){
             .toLowerCase()
             .includes(q)
       )
-      .sort(
-        (a,b) =>
-          a.Name.localeCompare(b.Name)
-      );
+      .sort((a,b) => {
+        // Keep the People list starting with A–Z names. Any name whose
+        // first character is not a letter is placed after the alphabet.
+        const an = String(a.Name || '').trim();
+        const bn = String(b.Name || '').trim();
+        const am = an.match(/[A-Za-zÀ-ÖØ-öø-ÿ]/);
+        const bm = bn.match(/[A-Za-zÀ-ÖØ-öø-ÿ]/);
+        if (!am && !bm) return an.localeCompare(bn);
+        if (!am) return 1;
+        if (!bm) return -1;
+        const ac = am[0].toLocaleLowerCase();
+        const bc = bm[0].toLocaleLowerCase();
+        const byLetter = ac.localeCompare(bc, undefined, {sensitivity:'base'});
+        if (byLetter) return byLetter;
+        return an.localeCompare(bn, undefined, {sensitivity:'base'});
+      });
 
   $('#peopleList').innerHTML =
     arr
       .map(
         p =>
           `<div class="person" data-id="${esc(p['Person ID'])}">
-            <strong>${esc(p.Name)}</strong>
+            ${personLink(p['Person ID'], p.Name)}
             <span class="muted">
               — ${esc(relationshipToViewer(p['Person ID']))}
             </span>
@@ -2561,9 +2768,7 @@ function showDetail(id){
         ps
           .map(
             x =>
-              `<button data-jump="${esc(x)}">
-                ${esc(name(x))}
-              </button>`
+              personLink(x, name(x))
           )
           .join(' ') || '—'
       }
@@ -2575,9 +2780,7 @@ function showDetail(id){
         ss
           .map(
             x =>
-              `<button data-jump="${esc(x)}">
-                ${esc(name(x))}
-              </button>`
+              personLink(x, name(x))
           )
           .join(' ') || '—'
       }
@@ -2589,9 +2792,7 @@ function showDetail(id){
         cs
           .map(
             x =>
-              `<button data-jump="${esc(x)}">
-                ${esc(name(x))}
-              </button>`
+              personLink(x, name(x))
           )
           .join(' ') || '—'
       }
@@ -2675,6 +2876,7 @@ function renderPeopleTable(){
 
   let arr =
     filterPeopleArray($('#peopleSearch')?.value || '')
+      .filter(p => isVisiblePerson(p))
       .sort(
         (a,b) =>
           currentSort
@@ -2703,7 +2905,7 @@ function renderPeopleTable(){
             .map(
               p =>
                 `<tr>
-                  <td>${esc(p.Name)}</td>
+                  <td>${personLink(p['Person ID'], p.Name) || esc(p.Name)}</td>
 <td>${esc(p.Birth || '')}</td>
 <td>${esc(p.Death || '')}</td>
 <td>${esc(p['Evidence Status'] || '')}</td>
@@ -2755,6 +2957,7 @@ function renderFamilySiblingChoices(){
   const parents = parentsOf(familyEditPersonId);
   const currentSiblings = new Set(siblingPeople(familyEditPersonId));
   const arr = db.people
+    .filter(p => isVisiblePerson(p))
     .filter(p => p['Person ID'] !== familyEditPersonId)
     .filter(p => !q || `${p.Name || ''} ${p['Person ID'] || ''}`.toLowerCase().includes(q))
     .sort((a,b) => a.Name.localeCompare(b.Name));
@@ -3024,7 +3227,7 @@ function editPerson(id){
 
   if(id){
     const currentParents = parentsOf(id);
-    const peopleForParent = db.people.filter(x => x['Person ID'] !== id).sort((a,b) => a.Name.localeCompare(b.Name));
+    const peopleForParent = db.people.filter(x => isVisiblePerson(x) && x['Person ID'] !== id).sort((a,b) => a.Name.localeCompare(b.Name));
     ['familyParent1','familyParent2'].forEach((selId, index) => {
       const sel = $('#'+selId);
       if(!sel) return;
@@ -3150,14 +3353,15 @@ function renderRels(){
 
   let rows =
     db.relationships
+      .filter(r => isVisiblePerson(r.person1) && isVisiblePerson(r.person2))
       .filter(r => !rq || `${r.id} ${r.type} ${name(r.person1)} ${name(r.person2)} ${r.sourceIds || ''} ${r.notes || ''}`.toLowerCase().includes(rq))
       .map(
         r =>
           `<tr>
             <td>${esc(r.id)}</td>
             <td>${esc(r.type)}</td>
-            <td>${esc(name(r.person1))}</td>
-            <td>${esc(name(r.person2))}</td>
+            <td>${personLink(r.person1, name(r.person1)) || esc(name(r.person1))}</td>
+            <td>${personLink(r.person2, name(r.person2)) || esc(name(r.person2))}</td>
             <td>${esc(r.sourceIds || '')}</td>
 
             <td>
@@ -3380,7 +3584,7 @@ function renderChartSelect(){
     el.value;
 
   const q = String($('#chartSearch')?.value || '').toLowerCase().trim();
-  const arr = q ? db.people.filter(p => `${p.Name || ''} ${p['Person ID'] || ''}`.toLowerCase().includes(q)) : db.people;
+  const arr = q ? db.people.filter(p => isVisiblePerson(p) && `${p.Name || ''} ${p['Person ID'] || ''}`.toLowerCase().includes(q)) : db.people.filter(p => isVisiblePerson(p));
   el.innerHTML = arr.slice().sort((a,b)=>a.Name.localeCompare(b.Name)).map(p => `<option value="${esc(p['Person ID'])}">${esc(p.Name)}</option>`).join('');
   if(
     !el.value &&
@@ -3489,7 +3693,7 @@ function nodeHtml(id,root){
   let p =
     person(id);
 
-  if(!p)
+  if(!p || !isVisiblePerson(p))
     return '';
 
   let ev =
@@ -3506,9 +3710,7 @@ function nodeHtml(id,root){
           : ''
       }">
 
-      <strong>
-        ${esc(p.Name)}
-      </strong>
+      ${personLink(id, p.Name)}
 
       <div class="small">
         ${esc(p.Birth || '')}
@@ -3554,51 +3756,21 @@ function buildLevels(root,mode,depth){
 }
 
 function generateChart(){
-
-  let root =
-    $('#chartPerson').value;
-
-  let mode =
-    $('#chartMode').value;
-
-  let depth =
-    Number(
-      $('#chartDepth').value
-    ) || 4;
-
-  let parts =
-    buildLevels(
-      root,
-      mode,
-      depth
-    );
-
-  $('#treebox').innerHTML =
-    '<div class="tree">' +
-
-    parts
-      .map(
-        lvl =>
-          `<div class="level">
-            ${
-              lvl
-                .map(
-                  id =>
-                    nodeHtml(
-                      id,
-                      root
-                    )
-                )
-                .join('')
-            }
-          </div>`
-      )
-      .join('') +
-
-    '</div>';
-
+  let root=$('#chartPerson').value;
+  let mode=$('#chartMode').value;
+  let depth=Number($('#chartDepth').value)||4;
+  let style=$('#chartStyle')?.value||'cascading';
+  if(style==='pedigree') mode='ancestors';
+  if(style==='branch') mode='both';
+  let parts=buildLevels(root,mode,depth);
+  if(style==='branch'){
+    const branch=collateralBranches(root,depth).map(g=>g.ids);
+    parts=[ [root], ...branch ];
+  }
+  parts=parts.map(lvl=>lvl.filter(id=>isVisiblePerson(id))).filter(lvl=>lvl.length);
+  $('#treebox').innerHTML='<div class="tree">'+parts.map(lvl=>`<div class="level">${lvl.map(id=>nodeHtml(id,root)).join('')}</div>`).join('')+'</div>';
+  bindPersonLinks();
 }
-
 function svgEscape(s){
 
   return esc(s)
@@ -3640,19 +3812,24 @@ function download(
 
 }
 
+function printWallChart(){
+  const tree=$('#treebox')?.innerHTML; if(!tree) return;
+  const root=$('#chartPerson')?.value; const title=`Fleury Family Wall Chart — ${name(root)}`;
+  const w=window.open('','_blank'); if(!w) return alert('Please allow pop-ups for printing.');
+  w.document.write(`<!doctype html><html><head><title>${esc(title)}</title><style>body{font-family:Arial,sans-serif;margin:15px}.tree{min-width:900px}.level{display:flex;justify-content:center;gap:14px;margin:10px 0}.node{width:190px;min-height:78px;padding:10px;border:2px solid #9d7b58;border-radius:12px;background:#fffaf0;text-align:center;box-sizing:border-box}.person-link{border:0;background:transparent;padding:0;text-decoration:underline;cursor:pointer;font-weight:700}.small{font-size:12px;color:#756b5d}@page{size:auto;margin:10mm}</style></head><body><h1>${esc(title)}</h1><p>Generated from the Fleury Family Archive. Centre person: ${esc(name(root))}.</p>${tree}</body></html>`); w.document.close(); w.focus(); setTimeout(()=>w.print(),250);
+}
+
 function exportSvg(){
 
   let root =
     $('#chartPerson').value;
 
-  let parts =
-    buildLevels(
-      root,
-      $('#chartMode').value,
-      Number(
-        $('#chartDepth').value
-      ) || 4
-    );
+  let chartStyle=$('#chartStyle')?.value||'cascading';
+  let chartMode=$('#chartMode').value;
+  if(chartStyle==='pedigree') chartMode='ancestors';
+  let parts = buildLevels(root,chartMode,Number($('#chartDepth').value)||4);
+  if(chartStyle==='branch') parts=[[root],...collateralBranches(root,Number($('#chartDepth').value)||4).map(g=>g.ids)];
+  parts=parts.map(lvl=>lvl.filter(id=>isVisiblePerson(id))).filter(lvl=>lvl.length);
 
   let width =
     Math.max(
@@ -4051,6 +4228,18 @@ $('#generateChart').onclick =
 
 $('#downloadSvg').onclick =
   exportSvg;
+
+$('#printWallChart').onclick =
+  printWallChart;
+
+$('#generateReport').onclick =
+  generateReport;
+
+$('#printReport').onclick =
+  printReport;
+
+$('#downloadReportHtml').onclick =
+  downloadReportHtml;
 
 $('#exportJson').onclick =
   exportJson;
