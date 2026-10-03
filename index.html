@@ -1049,20 +1049,13 @@ function isVisiblePerson(idOrPerson){
   return !!p && !String(p.Name || '').includes('?');
 }
 
-function displayRelationship(rel){
-  const s = String(rel || '');
-  if(!s || s === 'you') return s;
-  return s.replace(/(^|[—, ])([a-z])/g, (_,prefix,ch) => prefix + ch.toUpperCase());
-}
-
 function personLink(id, label){
   const p = person(id);
   if(!p || !isVisiblePerson(p)) return '';
   const rel = relationshipToViewer(id);
-  const shownRel = displayRelationship(rel);
   const base = String(label ?? p.Name);
-  const shown = shownRel && shownRel !== 'you' ? `${base} — ${shownRel}` : base;
-  return `<button type="button" class="person-link" data-person-link="${esc(id)}" title="${esc(shownRel)}">${esc(shown)}</button>`;
+  const shown = rel && rel !== 'you' ? `${base} — ${rel}` : base;
+  return `<button type="button" class="person-link" data-person-link="${esc(id)}" title="${esc(rel)}">${esc(shown)}</button>`;
 }
 
 function bindPersonLinks(){
@@ -1348,47 +1341,52 @@ function resolveCurrentPersonId(){
   if(!currentUser)
     return null;
 
-  const map = db.meta?.userPersonMap || {};
-  const email = String(currentUser.email || '').toLowerCase().trim();
-  const display = normalizePersonName(currentUser.displayName);
+  const map =
+    db.meta?.userPersonMap || {};
 
-  // The archive has more than one Alan Fleury record in some exports.
-  // When the signed-in account is Alan Fleury, always use the canonical
-  // ALA record because that is the record carrying Alan's parent links.
-  const canonicalAlan = person('ALA');
-  const alanNames = new Set(['alan fleury']);
-  const emailLocal = email ? normalizePersonName(email.split('@')[0].replace(/\d+$/,'')) : '';
-  const isAlanAccount = display === 'alan fleury' || emailLocal === 'alan fleury';
+  const byUid =
+    map[currentUser.uid];
 
-  if(canonicalAlan && isAlanAccount)
-    return 'ALA';
+  if(byUid && person(byUid))
+    return byUid;
 
-  const mapped = map[currentUser.uid] || (email ? map[email] : '');
-  if(mapped && person(mapped)){
-    // If an old mapping points to a duplicate Alan Fleury record, migrate
-    // the viewpoint in memory to the canonical ALA record without changing
-    // any database data.
-    if(canonicalAlan && normalizePersonName(person(mapped).Name) === 'alan fleury')
-      return 'ALA';
-    return mapped;
-  }
+  const email =
+    String(currentUser.email || '')
+      .toLowerCase()
+      .trim();
+
+  if(email && map[email] && person(map[email]))
+    return map[email];
+
+  const display =
+    normalizePersonName(currentUser.displayName);
 
   if(display){
-    const match = db.people.find(p => normalizePersonName(p.Name) === display);
-    if(match){
-      if(canonicalAlan && display === 'alan fleury') return 'ALA';
-      return match['Person ID'];
+    const match = db.people.find(
+      p => normalizePersonName(p.Name) === display
+    );
+    if(match) return match['Person ID'];
+  }
+
+  // Some sign-in providers expose the email address rather than the
+  // person's name as displayName. Match the email local-part to a
+  // unique family name after removing a trailing account number.
+  if(email){
+    const local = email.split('@')[0].replace(/\d+$/,'');
+    const localNorm = normalizePersonName(local);
+    if(localNorm){
+      const matches = db.people.filter(p =>
+        normalizePersonName(p.Name) === localNorm
+      );
+      if(matches.length === 1) return matches[0]['Person ID'];
     }
   }
 
-  // Some sign-in providers expose the email local-part as displayName.
-  if(emailLocal){
-    const matches = db.people.filter(p => normalizePersonName(p.Name) === emailLocal);
-    if(matches.length === 1) return matches[0]['Person ID'];
-  }
-
-  // Legacy copies may use I154 for Alan. Prefer ALA whenever available.
-  if(canonicalAlan) return 'ALA';
+  // Primary Alan Fleury records used by the archive exports. Prefer the
+  // canonical ALA record when present, while retaining the legacy I154
+  // fallback for older copies of the archive. Other family members must
+  // be explicitly mapped by an administrator.
+  if(person('ALA')) return 'ALA';
   if(person('I154')) return 'I154';
 
   return null;
@@ -2336,7 +2334,6 @@ function findKinship(){
           : ''
       );
 
-    bindPersonLinks();
     return;
 
   }
@@ -2639,9 +2636,9 @@ function generateReport(){
   if(type!=='statistics' && type!=='people-index' && type!=='relationship-index' && !p){ $('#reportPreview').innerHTML='<div class="report-sheet"><p>No person selected.</p></div>'; return; }
   let h=reportHeader('',root);
   if(type==='individual'){
-    h=reportHeader(`Individual report — ${p.Name}`,root)+`<h2>${personLink(root,p.Name)}</h2><table><tr><th>Person ID</th><td>${esc(displayPersonId(p['Person ID']))}</td></tr><tr><th>Gender</th><td>${esc(p.Gender||'')}</td></tr><tr><th>Birth</th><td>${esc(p.Birth||'')}</td></tr><tr><th>Death</th><td>${esc(p.Death||'')}</td></tr><tr><th>Marriage(s)</th><td>${esc(p['Marriage(s)']||'')}</td></tr><tr><th>Places</th><td>${esc(p.Places||'')}</td></tr><tr><th>Evidence</th><td>${esc(p['Evidence Status']||'')}</td></tr><tr><th>Sources</th><td>${esc(p['Source IDs']||'')}</td></tr><tr><th>Notes</th><td>${esc(p.Notes||'')}</td></tr></table><h3>Relationship to signed-in person</h3><p>${esc(displayRelationship(relationshipToViewer(root)))}</p><h3>Parents</h3>${reportList(parentsOf(root))}<h3>Spouse(s)</h3>${reportList(spousesOf(root))}<h3>Children</h3>${reportList(childrenOf(root))}`;
+    h=reportHeader(`Individual report — ${p.Name}`,root)+`<h2>${personLink(root,p.Name)}</h2><table><tr><th>Person ID</th><td>${esc(displayPersonId(p['Person ID']))}</td></tr><tr><th>Gender</th><td>${esc(p.Gender||'')}</td></tr><tr><th>Birth</th><td>${esc(p.Birth||'')}</td></tr><tr><th>Death</th><td>${esc(p.Death||'')}</td></tr><tr><th>Marriage(s)</th><td>${esc(p['Marriage(s)']||'')}</td></tr><tr><th>Places</th><td>${esc(p.Places||'')}</td></tr><tr><th>Evidence</th><td>${esc(p['Evidence Status']||'')}</td></tr><tr><th>Sources</th><td>${esc(p['Source IDs']||'')}</td></tr><tr><th>Notes</th><td>${esc(p.Notes||'')}</td></tr></table><h3>Relationship to signed-in person</h3><p>${esc(relationshipToViewer(root))}</p><h3>Parents</h3>${reportList(parentsOf(root))}<h3>Spouse(s)</h3>${reportList(spousesOf(root))}<h3>Children</h3>${reportList(childrenOf(root))}`;
   } else if(type==='family'){
-    h=reportHeader(`Family group — ${p.Name}`,root)+`<h2>${personLink(root,p.Name)}</h2><p><strong>Relationship to signed-in person:</strong> ${esc(displayRelationship(relationshipToViewer(root)))}</p><h3>Parents</h3>${reportList(parentsOf(root))}<h3>Spouse(s)</h3>${reportList(spousesOf(root))}<h3>Children</h3>${reportList(childrenOf(root))}`;
+    h=reportHeader(`Family group — ${p.Name}`,root)+`<h2>${personLink(root,p.Name)}</h2><p><strong>Relationship to signed-in person:</strong> ${esc(relationshipToViewer(root))}</p><h3>Parents</h3>${reportList(parentsOf(root))}<h3>Spouse(s)</h3>${reportList(spousesOf(root))}<h3>Children</h3>${reportList(childrenOf(root))}`;
   } else if(type==='relationship'){
     const rel=other&&root?relationshipPath(currentPersonId||root,other):'Select two people';
     h=reportHeader(`Relationship report — ${p.Name}`,root)+`<h2>${personLink(root,p.Name)} and ${personLink(other,name(other))}</h2><p><strong>Relationship from signed-in person's point of view:</strong> ${esc(currentPersonId ? relationshipToViewer(other) : rel)}</p><p><strong>Recorded relationship between selected people:</strong> ${esc(rel)}</p>`;
@@ -2788,7 +2785,7 @@ function showDetail(id){
     `<div>
       <strong>Relationship to you</strong><br>
       ${esc(
-        displayRelationship(relationshipToViewer(id))
+        relationshipToViewer(id)
       )}
     </div>` +
 
@@ -3392,8 +3389,8 @@ function renderRels(){
           `<tr>
             <td>${esc(r.id)}</td>
             <td>${esc(r.type)}</td>
-            <td>${personLink(r.person1, name(r.person1))}</td>
-            <td>${personLink(r.person2, name(r.person2))}</td>
+            <td>${personLink(r.person1, name(r.person1)) || esc(name(r.person1))}</td>
+            <td>${personLink(r.person2, name(r.person2)) || esc(name(r.person2))}</td>
             <td>${esc(r.sourceIds || '')}</td>
 
             <td>
