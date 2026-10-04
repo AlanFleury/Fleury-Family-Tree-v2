@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="fleury-build" content="fleury-build-v13">
+<meta name="fleury-build" content="fleury-build-v14">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#6b4f2a">
@@ -1150,12 +1150,19 @@ function selectPerson(id, record=true){
   showDetail(id);
 }
 
+function normalizedRole(){
+  if(typeof currentRole === 'string') return currentRole.trim().toLowerCase();
+  if(currentRole && typeof currentRole === 'object') return String(currentRole.role || currentRole.name || '').trim().toLowerCase();
+  return '';
+}
+
 function canEdit(){
-  return currentRole === 'admin' || currentRole === 'editor';
+  const role = normalizedRole();
+  return role === 'admin' || role === 'editor';
 }
 
 function canAdmin(){
-  return currentRole === 'admin';
+  return normalizedRole() === 'admin';
 }
 
 function save(){
@@ -1224,7 +1231,7 @@ async function init(){
     setBoot('Loading private archive connection…');
 
     archiveApi = await Promise.race([
-      import('./archive-api.js?v=20261004-v13'),
+      import('./archive-api.js?v=20261004-v14'),
       new Promise((_,reject) =>
         setTimeout(() => reject(new Error('The private archive connection timed out after 10 seconds.')),10000)
       )
@@ -1260,7 +1267,7 @@ async function init(){
           setBoot('Retrying secure sign-in…');
 
           if(!archiveApi){
-            archiveApi = await import('./archive-api.js?v=20261004-v13-retry');
+            archiveApi = await import('./archive-api.js?v=20261004-v14-retry');
           }
 
           await archiveApi.signInWithEmail();
@@ -1347,7 +1354,7 @@ function resolveCurrentPersonId(){
   // Some Auth0 profiles may not expose the name fields in the same shape
   // after redirect.  If this is the approved admin account and the archive
   // contains exactly one canonical Alan Fleury record, use that record.
-  if(canonicalAlanId && String(currentRole || '').toLowerCase() === 'admin'){
+  if(canonicalAlanId && normalizedRole() === 'admin'){
     return canonicalAlanId;
   }
 
@@ -1398,7 +1405,7 @@ function resolveCurrentPersonId(){
   // alter people or relationships; it only establishes the signed-in
   // administrator's relationship viewpoint when an older account mapping
   // is absent or stale.
-  if(canonicalAlan && String(currentRole || '').toLowerCase() === 'admin')
+  if(canonicalAlan && normalizedRole() === 'admin')
     return canonicalAlanId;
 
   return null;
