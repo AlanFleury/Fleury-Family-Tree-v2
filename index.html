@@ -1334,8 +1334,21 @@ function resolveCurrentPersonId(){
     displayCompact === 'alanfleury' ||
     emailLocalCompact === 'alanfleury';
 
-  if(canonicalAlan && isAlanAccount)
+  if(canonicalAlan && isAlanAccount){
+    // The signed-in owner account is Alan Fleury.  Anchor this account to
+    // the canonical ALA record so relationship labels always have a real
+    // family-person viewpoint.  This changes only account metadata, never
+    // people or relationship records.
     return 'ALA';
+  }
+
+  // Some Auth0 profiles may not expose the name fields in the same shape
+  // after redirect.  If this is the approved admin account and the archive
+  // contains exactly one canonical Alan Fleury record, use that record.
+  if(canonicalAlan && currentRole === 'admin'){
+    const alanMatches = db.people.filter(p => normalizePersonName(p.Name) === 'alan fleury');
+    if(alanMatches.length === 1) return 'ALA';
+  }
 
   const auth0Id = String(currentUser.sub || currentUser.user_id || currentUser.uid || '').trim();
   const mapped = (auth0Id && map[auth0Id]) || (email && map[email]) || '';
@@ -1785,6 +1798,22 @@ async function handleUser(user){
 
     currentPersonId =
       resolveCurrentPersonId();
+
+    // Persist the owner-account mapping once it has been resolved to ALA.
+    // This is metadata only; no people or family relationships are changed.
+    if(currentPersonId === 'ALA' && currentUser?.email){
+      const emailKey = String(currentUser.email).toLowerCase().trim();
+      const authKey = String(currentUser.sub || currentUser.user_id || '').trim();
+      db.meta = {
+        ...(db.meta || {}),
+        userPersonMap: {
+          ...(db.meta?.userPersonMap || {}),
+          [emailKey]: 'ALA',
+          ...(authKey ? {[authKey]:'ALA'} : {})
+        }
+      };
+      try{ await archiveApi.saveDatabase(db); }catch(e){ console.warn('Account mapping could not be persisted:',e); }
+    }
 
     cloudReady = true;
 
