@@ -1309,15 +1309,30 @@ function resolveCurrentPersonId(){
 
   const map = db.meta?.userPersonMap || {};
   const email = String(currentUser.email || '').toLowerCase().trim();
-  const display = normalizePersonName(currentUser.displayName || currentUser.name || currentUser.nickname || '');
+  const display = normalizePersonName(
+    currentUser.displayName ||
+    currentUser.name ||
+    currentUser.nickname ||
+    currentUser.preferred_username ||
+    currentUser.user_metadata?.name ||
+    currentUser.user_metadata?.displayName ||
+    [currentUser.given_name, currentUser.family_name].filter(Boolean).join(' ')
+  );
 
   // The archive has more than one Alan Fleury record in some exports.
   // When the signed-in account is Alan Fleury, always use the canonical
   // ALA record because that is the record carrying Alan's parent links.
   const canonicalAlan = person('ALA');
   const alanNames = new Set(['alan fleury']);
-  const emailLocal = email ? normalizePersonName(email.split('@')[0].replace(/\d+$/,'')) : '';
-  const isAlanAccount = display === 'alan fleury' || emailLocal === 'alan fleury';
+  const rawEmailLocal = email ? email.split('@')[0] : '';
+  const emailLocal = normalizePersonName(rawEmailLocal.replace(/\d+$/,''));
+  const emailLocalCompact = emailLocal.replace(/\s+/g,'');
+  const displayCompact = display.replace(/\s+/g,'');
+  const isAlanAccount =
+    display === 'alan fleury' ||
+    emailLocal === 'alan fleury' ||
+    displayCompact === 'alanfleury' ||
+    emailLocalCompact === 'alanfleury';
 
   if(canonicalAlan && isAlanAccount)
     return 'ALA';
@@ -1333,16 +1348,22 @@ function resolveCurrentPersonId(){
   }
 
   if(display){
-    const match = db.people.find(p => normalizePersonName(p.Name) === display);
+    const match = db.people.find(p => {
+      const n = normalizePersonName(p.Name);
+      return n === display || n.replace(/\s+/g,'') === displayCompact;
+    });
     if(match){
-      if(canonicalAlan && display === 'alan fleury') return 'ALA';
+      if(canonicalAlan && displayCompact === 'alanfleury') return 'ALA';
       return match['Person ID'];
     }
   }
 
-  // Some sign-in providers expose the email local-part as displayName.
+  // Some sign-in providers expose only the email local-part.
   if(emailLocal){
-    const matches = db.people.filter(p => normalizePersonName(p.Name) === emailLocal);
+    const matches = db.people.filter(p => {
+      const n = normalizePersonName(p.Name);
+      return n === emailLocal || n.replace(/\s+/g,'') === emailLocalCompact;
+    });
     if(matches.length === 1) return matches[0]['Person ID'];
   }
 
@@ -2753,10 +2774,8 @@ function showDetail(id){
     </div>` +
 
     `<div>
-      <strong>Relationship to you</strong><br>
-      ${esc(
-        displayRelationship(relationshipToViewer(id))
-      )}
+      <strong>Relationship to ${esc(currentPersonId && person(currentPersonId) ? name(currentPersonId) : 'you')}</strong><br>
+      ${esc(displayRelationship(relationshipToViewer(id)))}
     </div>` +
 
     `<div>
@@ -2825,6 +2844,9 @@ function showDetail(id){
         Edit
       </button>
     </div>`;
+
+  // Bind the clickable person names that were just inserted into the detail panel.
+  bindPersonLinks();
 
   $$('[data-jump]')
     .forEach(
