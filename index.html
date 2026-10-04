@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="fleury-build" content="fleury-build-v10">
+<meta name="fleury-build" content="fleury-build-v11">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#6b4f2a">
@@ -786,7 +786,7 @@ input,select,textarea{
 
   <div class="panel">
     <h2>Reports & Printing</h2>
-    <p class="muted">Generate readable genealogy reports from the current family database. Reports use the <strong>signed-in family member</strong> as the point of view for relationship labels. If your account is not linked to a family person, the app will say so rather than guessing.</p>
+    <p class="muted">Generate readable genealogy reports from the current family database. Reports use the <strong>signed-in family member</strong> as the point of view for relationship labels. Relationship labels are calculated from the signed-in family member.</p>
 
     <div class="formgrid">
       <div>
@@ -1224,7 +1224,7 @@ async function init(){
     setBoot('Loading private archive connection…');
 
     archiveApi = await Promise.race([
-      import('./archive-api.js?v=20261004-v10'),
+      import('./archive-api.js?v=20261004-v11'),
       new Promise((_,reject) =>
         setTimeout(() => reject(new Error('The private archive connection timed out after 10 seconds.')),10000)
       )
@@ -1260,7 +1260,7 @@ async function init(){
           setBoot('Retrying secure sign-in…');
 
           if(!archiveApi){
-            archiveApi = await import('./archive-api.js?v=20261004-v10-retry');
+            archiveApi = await import('./archive-api.js?v=20261004-v11-retry');
           }
 
           await archiveApi.signInWithEmail();
@@ -1348,8 +1348,7 @@ function resolveCurrentPersonId(){
   // after redirect.  If this is the approved admin account and the archive
   // contains exactly one canonical Alan Fleury record, use that record.
   if(canonicalAlanId && String(currentRole || '').toLowerCase() === 'admin'){
-    const alanMatches = db.people.filter(p => normalizePersonName(p.Name) === 'alan fleury');
-    if(alanMatches.length === 1) return canonicalAlanId;
+    return canonicalAlanId;
   }
 
   const auth0Id = String(currentUser.sub || currentUser.user_id || currentUser.uid || '').trim();
@@ -1511,19 +1510,17 @@ function siblingSide(root,target){
 
 function relationshipToViewer(target){
 
-  if(!currentPersonId && currentUser){
-    const resolved = resolveCurrentPersonId();
-    if(resolved) currentPersonId = resolved;
-  }
-
-  // Relationship labels are always calculated from the canonical Alan Fleury
-  // family record. They do not depend on an Auth0-to-family mapping.
+  // Always establish the relationship viewpoint from the authenticated
+  // family member before calculating anything.  For Alan's administrator
+  // account, resolveCurrentPersonId() deliberately selects the canonical
+  // Alan record (ALA, or I154 in an older archive).  For every other
+  // account, use its explicit family-person mapping/profile match.
   if(!currentPersonId || !person(currentPersonId)){
-    const preferred = person('ALA') || person('I154');
-    if(preferred) currentPersonId = preferred['Person ID'];
+    const resolved = resolveCurrentPersonId();
+    if(resolved && person(resolved)) currentPersonId = resolved;
   }
 
-  let root = currentPersonId;
+  const root = currentPersonId;
 
   if(!person(target))
     return 'Unknown person';
@@ -2667,7 +2664,7 @@ function generationGroups(root,mode,depth){
   return groups;
 }
 function reportHeader(title,root){
-  const signed=currentPersonId ? name(currentPersonId) : 'Not linked to a family record';
+  const signed=currentPersonId ? name(currentPersonId) : 'Relationship viewpoint unavailable';
   return `<div class="report-sheet"><h1>${esc(title)}</h1><div class="report-meta">Fleury Family Archive · Generated ${esc(new Date().toLocaleString())}<br>Relationship point of view: <strong>${currentPersonId ? personLink(currentPersonId,signed) : esc(signed)}</strong></div>`;
 }
 function generateReport(){
@@ -2722,7 +2719,7 @@ function renderAll(){
   renderData();
   const vp=$('#relationshipViewpoint');
   if(!currentPersonId || !person(currentPersonId)){ const alan=person('ALA')||person('I154'); if(alan) currentPersonId=alan['Person ID']; }
-  if(vp) vp.textContent=currentPersonId && person(currentPersonId) ? `Relationships shown from ${name(currentPersonId)}.` : 'Relationship labels unavailable.';
+  if(vp) vp.textContent=currentPersonId && person(currentPersonId) ? `Relationships shown from ${name(currentPersonId)}.` : 'Relationship labels will appear once the family member is identified.';
 
   const active = currentTabId();
   if(active === 'explore') renderPeopleList();
