@@ -492,7 +492,7 @@ input,select,textarea{
 }
 </style>
 <script src="https://cdn.auth0.com/js/auth0-spa-js/2.24/auth0-spa-js.production.js"></script>
-<script src="config.js"></script>
+<script src="config.js?v=20261004-rebuild"></script>
 </head>
 
 <body>
@@ -522,6 +522,8 @@ input,select,textarea{
       <button id="signOutBtn" class="hidden">
         Sign out
       </button>
+
+      <div id="bootStatus" class="small muted" style="flex-basis:100%;margin-top:4px">Starting secure family archive…</div>
     </div>
 
   </div>
@@ -1169,111 +1171,87 @@ function save(){
 }
 
 async function init(){
-
-  db = {
-    people:[],
-    relationships:[],
-    meta:{}
-  };
-
+  db = {people:[], relationships:[], meta:{}};
   renderAll();
 
-  /*
-   * Hosted authentication and the private archive API
-   * require a real web origin. Opening this file directly from
-   * Downloads creates a file:// URL with an opaque "null" origin,
-   * which browsers intentionally block.
-   */
+  const boot = $('#bootStatus');
+  const setBoot = msg => { if(boot) boot.textContent = msg; };
 
-  const webOrigin =
-    location.protocol === 'http:' ||
-    location.protocol === 'https:';
-
+  const webOrigin = location.protocol === 'http:' || location.protocol === 'https:';
   if(!webOrigin){
-
-    setCloudStatus(
-      'Local file preview only. Open the GitHub Pages website ' +
-      'to sign in and use the private family database.'
-    );
-
-    const status = $('#authState');
-
-    if(status){
-
-      status.innerHTML =
-        '<strong>Open the published website</strong>' +
-        '<div class="small muted">' +
-        'Do not open index.html directly from Downloads. ' +
-        'Use the published HTTPS website for secure family sign-in.' +
-        '</div>';
-
-    }
-
+    setCloudStatus('Local file preview only. Open the published GitHub Pages website to sign in.');
+    setBoot('Open the published HTTPS website to use the family archive.');
     return;
   }
 
-  /*
-   * Only attach PWA resources when running from HTTP/HTTPS.
-   * This also prevents manifest errors when someone previews
-   * the downloaded HTML file locally.
-   */
-
-  const manifest =
-    document.createElement('link');
-
-  manifest.rel = 'manifest';
-  manifest.href = 'manifest.webmanifest';
-  document.head.appendChild(manifest);
-
-  const appleIcon =
-    document.createElement('link');
-
-  appleIcon.rel = 'apple-touch-icon';
-  appleIcon.href = 'icon-192.svg';
-  document.head.appendChild(appleIcon);
-
-  if(
-    'serviceWorker' in navigator &&
-    window.isSecureContext
-  ){
-
-    navigator.serviceWorker
-      .register('sw.js')
-      .catch(e =>
-        console.warn(
-          'Service worker registration failed:',
-          e
-        )
-      );
-
+  // Clean up any older service worker so it cannot interfere with this rebuild.
+  try{
+    if('serviceWorker' in navigator){
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r => r.unregister()));
+    }
+  }catch(e){
+    console.warn('Service-worker cleanup:', e);
   }
 
   try{
+    setBoot('Loading secure sign-in…');
 
-    archiveApi =
-      await import('./archive-api.js');
+    if(!window.auth0 || !window.auth0.createAuth0Client){
+      throw new Error('The Auth0 sign-in library did not load. Check the browser connection or a content blocker.');
+    }
 
-    /* Bind the family button immediately after authentication service loads.
-       Do not wait for the auth-state listener to finish, otherwise
-       a slow/stalled auth initialisation can leave the button dead. */
+    setBoot('Loading private archive connection…');
+
+    archiveApi = await Promise.race([
+      import('./archive-api.js?v=20261004-rebuild'),
+      new Promise((_,reject) =>
+        setTimeout(() => reject(new Error('The private archive connection timed out after 10 seconds.')),10000)
+      )
+    ]);
+
     bindAuth();
+    setBoot('Secure sign-in ready.');
 
-    await archiveApi.initAuth(handleUser);
+    await Promise.race([
+      archiveApi.initAuth(handleUser),
+      new Promise((_,reject) =>
+        setTimeout(() => reject(new Error('Secure sign-in initialization timed out after 15 seconds.')),15000)
+      )
+    ]);
 
   }catch(e){
+    console.error('Archive startup failed:',e);
 
-    console.error(
-      'Authentication initialization failed:',
-      e
-    );
+    const msg = e?.message || String(e);
+    setBoot('Startup problem: ' + msg);
 
-    setCloudStatus(
-      'Private archive connection failed: ' +
-      e.message
-    );
+    setCloudStatus('The family archive could not start securely. Your family data has not been changed.');
 
+    // Leave a working retry button even if automatic startup fails.
+    const btn = $('#signInBtn');
+
+    if(btn){
+      btn.disabled = false;
+      btn.textContent = 'Try secure sign-in again';
+
+      btn.onclick = async () => {
+        try{
+          setBoot('Retrying secure sign-in…');
+
+          if(!archiveApi){
+            archiveApi = await import('./archive-api.js?v=20261004-rebuild-retry');
+          }
+
+          await archiveApi.signInWithEmail();
+
+        }catch(err){
+          console.error('Sign-in retry failed:',err);
+          setBoot('Sign-in problem: ' + (err?.message || err));
+        }
+      };
+    }
   }
-
 }
 
 function person(id){
