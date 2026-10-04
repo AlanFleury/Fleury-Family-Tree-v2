@@ -1024,6 +1024,25 @@ let db = {
   meta: {}
 };
 
+let relationshipIndex = { parents:new Map(), children:new Map(), spouses:new Map() };
+
+function rebuildRelationshipIndex(){
+  relationshipIndex = { parents:new Map(), children:new Map(), spouses:new Map() };
+  for(const r of (db.relationships || [])){
+    if(r.type === 'parent'){
+      if(!relationshipIndex.parents.has(r.person2)) relationshipIndex.parents.set(r.person2, []);
+      relationshipIndex.parents.get(r.person2).push(r.person1);
+      if(!relationshipIndex.children.has(r.person1)) relationshipIndex.children.set(r.person1, []);
+      relationshipIndex.children.get(r.person1).push(r.person2);
+    } else if(r.type === 'spouse'){
+      if(!relationshipIndex.spouses.has(r.person1)) relationshipIndex.spouses.set(r.person1, []);
+      if(!relationshipIndex.spouses.has(r.person2)) relationshipIndex.spouses.set(r.person2, []);
+      relationshipIndex.spouses.get(r.person1).push(r.person2);
+      relationshipIndex.spouses.get(r.person2).push(r.person1);
+    }
+  }
+}
+
 let selected = null;
 let currentSort = false;
 let archiveApi = null;
@@ -1268,49 +1287,11 @@ function name(id){
 
 }
 
-function parentsOf(id){
+function parentsOf(id){ return relationshipIndex.parents.get(id) || []; }
 
-  return db.relationships
-    .filter(
-      r =>
-        r.type === 'parent' &&
-        r.person2 === id
-    )
-    .map(r => r.person1);
+function childrenOf(id){ return relationshipIndex.children.get(id) || []; }
 
-}
-
-function childrenOf(id){
-
-  return db.relationships
-    .filter(
-      r =>
-        r.type === 'parent' &&
-        r.person1 === id
-    )
-    .map(r => r.person2);
-
-}
-
-function spousesOf(id){
-
-  return db.relationships
-    .filter(
-      r =>
-        r.type === 'spouse' &&
-        (
-          r.person1 === id ||
-          r.person2 === id
-        )
-    )
-    .map(
-      r =>
-        r.person1 === id
-          ? r.person2
-          : r.person1
-    );
-
-}
+function spousesOf(id){ return relationshipIndex.spouses.get(id) || []; }
 
 function normalizePersonName(value){
 
@@ -1773,6 +1754,8 @@ async function handleUser(user){
     db =
       await archiveApi.loadDatabase();
 
+    rebuildRelationshipIndex();
+
     currentPersonId =
       resolveCurrentPersonId();
 
@@ -1890,7 +1873,7 @@ function renderPersonMappingUI(){
     return;
 
   const q = String($('#personMapSearch')?.value || '').toLowerCase().trim();
-  const arr = q ? db.people.filter(p => isVisiblePerson(p) && `${p.Name || ''} ${p['Person ID'] || ''}`.toLowerCase().includes(q)) : db.people.filter(p => isVisiblePerson(p));
+  const arr = (q ? db.people.filter(p => isVisiblePerson(p) && `${p.Name || ''} ${p['Person ID'] || ''}`.toLowerCase().includes(q)) : db.people.filter(p => isVisiblePerson(p))).slice(0, 300);
   select.innerHTML = arr.slice().sort(nameSort).map(p => { const rel=relationshipToViewer(p['Person ID']); return `<option value="${esc(p['Person ID'])}">${esc(p.Name)}${rel && rel!=='you' ? ` — ${esc(rel)}` : ''}</option>`; }).join('');
 
 }
@@ -2081,7 +2064,7 @@ function renderKinshipSelects(){
   let bv = b.value;
 
  const q = String($('#kinSearch')?.value || '').toLowerCase().trim();
-  const arr = q ? db.people.filter(p => isVisiblePerson(p) && `${p.Name || ''} ${p['Person ID'] || ''}`.toLowerCase().includes(q)) : db.people.filter(p => isVisiblePerson(p));
+  const arr = (q ? db.people.filter(p => isVisiblePerson(p) && `${p.Name || ''} ${p['Person ID'] || ''}`.toLowerCase().includes(q)) : db.people.filter(p => isVisiblePerson(p))).slice(0, 300);
   const opts = arr.slice().sort(nameSort).map(p => {
     const rel = relationshipToViewer(p['Person ID']);
     return `<option value="${esc(p['Person ID'])}">${esc(p.Name)}${rel && rel !== 'you' ? ` — ${esc(rel)}` : ''}</option>`;
@@ -2580,7 +2563,7 @@ function showGenerations(){
 }
 
 function reportPersonOptions(selectedId=''){
-  return db.people.filter(p=>isVisiblePerson(p)).slice().sort(nameSort).map(p=>{ const rel=relationshipToViewer(p['Person ID']); return `<option value="${esc(p['Person ID'])}" ${p['Person ID']===selectedId?'selected':''}>${esc(p.Name)}${rel && rel!=='you' ? ` — ${esc(rel)}` : ''} [${esc(displayPersonId(p['Person ID']))}]</option>`; }).join('');
+  return db.people.filter(p=>isVisiblePerson(p)).slice().sort(nameSort).slice(0,300).map(p=>{ const rel=relationshipToViewer(p['Person ID']); return `<option value="${esc(p['Person ID'])}" ${p['Person ID']===selectedId?'selected':''}>${esc(p.Name)}${rel && rel!=='you' ? ` — ${esc(rel)}` : ''} [${esc(displayPersonId(p['Person ID']))}]</option>`; }).join('');
 }
 
 function renderReportSelects(){
@@ -2659,16 +2642,20 @@ function renderAll(){
       )
     }</span>`;
 
-  renderPeopleList();
-  renderPeopleTable();
-  renderRels();
-  renderChartSelect();
-  renderKinshipSelects();
-  renderGenerationsSelect();
-  renderReportSelects();
+  // IMPORTANT: do not render the entire 18,000+ person database at login.
+  // Only the active tab is rendered; each large list is capped/paginated below.
   renderData();
   const vp=$('#relationshipViewpoint');
   if(vp) vp.textContent=currentPersonId && person(currentPersonId) ? `Relationships shown from ${name(currentPersonId)} (signed-in family member).` : 'Relationship labels require the signed-in account to be linked to a family person.';
+
+  const active = currentTabId();
+  if(active === 'explore') renderPeopleList();
+  else if(active === 'people') renderPeopleTable();
+  else if(active === 'relationships') renderRels();
+  else if(active === 'kinship') renderKinshipSelects();
+  else if(active === 'chart') renderChartSelect();
+  else if(active === 'generations') renderGenerationsSelect();
+  else if(active === 'reports') renderReportSelects();
 
   if(selected && person(selected) && isVisiblePerson(selected))
     showDetail(selected);
@@ -2710,8 +2697,10 @@ function renderPeopleList(){
         return an.localeCompare(bn, undefined, {sensitivity:'base'});
       });
 
+  const visibleArr = arr.slice(0, 150);
+
   $('#peopleList').innerHTML =
-    arr
+    visibleArr
       .map(
         p =>
           `<div class="person" data-id="${esc(p['Person ID'])}">
@@ -2722,7 +2711,7 @@ function renderPeopleList(){
           </div>`
       )
       .join('') ||
-      '<p class="muted" style="padding:10px">No matches.</p>';
+      '<p class="muted" style="padding:10px">No matches.</p>' + (arr.length > 150 ? `<p class="muted" style="padding:10px">Showing first 150 of ${arr.length}. Refine the search to find more.</p>` : '');
 
   $$('#peopleList .person')
     .forEach(
@@ -2897,6 +2886,9 @@ function renderPeopleTable(){
             : String(a['Person ID']||'').localeCompare(String(b['Person ID']||''), undefined, {numeric:true})
       );
 
+  const totalPeopleRows = arr.length;
+  arr = arr.slice(0, 100);
+
   $('#peopleTable').innerHTML =
     `<table class="table">
       <thead>
@@ -2936,7 +2928,7 @@ function renderPeopleTable(){
         }
 
       </tbody>
-    </table>`;
+    </table>` + (totalPeopleRows > 100 ? `<p class="muted" style="padding:8px">Showing first 100 of ${totalPeopleRows}. Refine the search to find more.</p>` : '');
 
   $$('[data-edit]')
     .forEach(
@@ -3361,11 +3353,12 @@ function renderRels(){
 
   const rq = String($('#relSearch')?.value || '').toLowerCase().trim();
 
-  let rows =
-    db.relationships
+  let relArr = db.relationships
       .filter(r => isVisiblePerson(r.person1) && isVisiblePerson(r.person2))
-      .filter(r => !rq || `${r.id} ${r.type} ${name(r.person1)} ${name(r.person2)} ${r.sourceIds || ''} ${r.notes || ''}`.toLowerCase().includes(rq))
-      .map(
+      .filter(r => !rq || `${r.id} ${r.type} ${name(r.person1)} ${name(r.person2)} ${r.sourceIds || ''} ${r.notes || ''}`.toLowerCase().includes(rq));
+
+  const totalRelRows = relArr.length;
+  const rows = relArr.slice(0, 100).map(
         r =>
           `<tr>
             <td>${esc(r.id)}</td>
@@ -3402,7 +3395,7 @@ function renderRels(){
         ${rows}
       </tbody>
 
-    </table>`;
+    </table>` + (totalRelRows > 100 ? `<p class="muted" style="padding:8px">Showing first 100 of ${totalRelRows}. Refine the search to find more.</p>` : '');
 
   $$('[data-delrel]')
     .forEach(
@@ -3425,7 +3418,7 @@ function renderRels(){
 }
 
 function personOptions(sel=''){
-  return db.people.filter(isVisiblePerson).slice().sort(nameSort).map(p=>{
+  return db.people.filter(isVisiblePerson).slice().sort(nameSort).slice(0, 300).map(p=>{
     const rel=relationshipToViewer(p['Person ID']);
     return `<option value="${esc(p['Person ID'])}" ${p['Person ID']===sel?'selected':''}>${esc(p.Name)}${rel && rel!=='you' ? ` — ${esc(rel)}` : ''}</option>`;
   }).join('');
@@ -4154,6 +4147,16 @@ function openTab(id, record=true){
           b.dataset.tab === id
         )
     );
+
+  // Render only the tab the user opened. This keeps the UI responsive with the full archive.
+  if(id === 'explore') renderPeopleList();
+  else if(id === 'people') renderPeopleTable();
+  else if(id === 'relationships') renderRels();
+  else if(id === 'kinship') renderKinshipSelects();
+  else if(id === 'chart') renderChartSelect();
+  else if(id === 'generations') renderGenerationsSelect();
+  else if(id === 'reports') renderReportSelects();
+  else if(id === 'backup' || id === 'sync' || id === 'gedcom') renderData();
 
   updateNavigationButtons();
 }
