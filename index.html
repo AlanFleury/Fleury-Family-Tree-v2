@@ -1345,7 +1345,7 @@ function resolveCurrentPersonId(){
   // Some Auth0 profiles may not expose the name fields in the same shape
   // after redirect.  If this is the approved admin account and the archive
   // contains exactly one canonical Alan Fleury record, use that record.
-  if(canonicalAlan && currentRole === 'admin'){
+  if(canonicalAlan && String(currentRole || '').toLowerCase() === 'admin'){
     const alanMatches = db.people.filter(p => normalizePersonName(p.Name) === 'alan fleury');
     if(alanMatches.length === 1) return 'ALA';
   }
@@ -1391,6 +1391,14 @@ function resolveCurrentPersonId(){
     const matches = db.people.filter(p => normalizePersonName(p.Name) === profileFullName);
     if(matches.length === 1) return matches[0]['Person ID'];
   }
+
+  // Final safe fallback for the authenticated archive administrator.
+  // The archive's canonical root record is ALA (Alan Fleury). This does not
+  // alter people or relationships; it only establishes the signed-in
+  // administrator's relationship viewpoint when an older account mapping
+  // is absent or stale.
+  if(canonicalAlan && String(currentRole || '').toLowerCase() === 'admin')
+    return 'ALA';
 
   return null;
 
@@ -1509,7 +1517,7 @@ function relationshipToViewer(target){
   // The signed-in owner/admin account is Alan Fleury. If an older archive
   // has no account mapping (or the mapping was saved under an old Auth0 key),
   // do not lose the relationship viewpoint. ALA is the canonical Alan record.
-  if(!currentPersonId && currentRole === 'admin' && person('ALA')){
+  if(!currentPersonId && String(currentRole || '').toLowerCase() === 'admin' && person('ALA')){
     currentPersonId = 'ALA';
   }
 
@@ -2818,7 +2826,7 @@ function showDetail(id){
     </div>` +
 
     `<div>
-      <strong>Relationship to ${esc(currentPersonId && person(currentPersonId) ? name(currentPersonId) : 'you')}</strong><br>
+      <strong>Relationship to ${esc(currentPersonId && person(currentPersonId) ? name(currentPersonId) : 'Alan')}</strong><br>
       ${esc(displayRelationship(relationshipToViewer(id)))}
     </div>` +
 
