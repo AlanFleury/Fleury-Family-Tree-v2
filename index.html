@@ -1337,7 +1337,8 @@ function resolveCurrentPersonId(){
   if(canonicalAlan && isAlanAccount)
     return 'ALA';
 
-  const mapped = map[currentUser.uid] || (email ? map[email] : '');
+  const auth0Id = String(currentUser.sub || currentUser.user_id || currentUser.uid || '').trim();
+  const mapped = (auth0Id && map[auth0Id]) || (email && map[email]) || '';
   if(mapped && person(mapped)){
     // If an old mapping points to a duplicate Alan Fleury record, migrate
     // the viewpoint in memory to the canonical ALA record without changing
@@ -1367,10 +1368,17 @@ function resolveCurrentPersonId(){
     if(matches.length === 1) return matches[0]['Person ID'];
   }
 
-  // Legacy copies may use I154 for Alan. Prefer ALA whenever available.
-  // Do not guess a family person for an unrelated account.
-  // A person must be established from the account mapping or the
-  // account's own name/email identity.
+  // Last safe identity fallback: compare the Auth0 profile's given/family
+  // names as a full name. This does not alter the database and only links
+  // when there is exactly one matching visible person.
+  const profileFullName = normalizePersonName(
+    [currentUser.given_name, currentUser.family_name].filter(Boolean).join(' ')
+  );
+  if(profileFullName){
+    const matches = db.people.filter(p => normalizePersonName(p.Name) === profileFullName);
+    if(matches.length === 1) return matches[0]['Person ID'];
+  }
+
   return null;
 
 }
@@ -1748,9 +1756,7 @@ async function handleUser(user){
   try{
 
     currentRole =
-      await archiveApi.getMyRole(
-        user.uid
-      );
+      await archiveApi.getMyRole();
 
     if(!currentRole){
 
@@ -1932,11 +1938,12 @@ function savePersonMapping(){
   // If the mapping is being saved for the currently signed-in account,
   // also store the UID. This makes the mapping survive an email-address
   // change and gives the login resolver an unambiguous key.
+  const auth0Id = String(currentUser?.sub || currentUser?.user_id || currentUser?.uid || '').trim();
   if(
-    currentUser?.uid &&
-    String(currentUser.email || '').toLowerCase().trim() === email
+    auth0Id &&
+    String(currentUser?.email || '').toLowerCase().trim() === email
   ){
-    userPersonMap[currentUser.uid] = personId;
+    userPersonMap[auth0Id] = personId;
   }
 
   db.meta = {
