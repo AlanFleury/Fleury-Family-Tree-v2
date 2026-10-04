@@ -1505,6 +1505,14 @@ function relationshipToViewer(target){
     const resolved = resolveCurrentPersonId();
     if(resolved) currentPersonId = resolved;
   }
+
+  // The signed-in owner/admin account is Alan Fleury. If an older archive
+  // has no account mapping (or the mapping was saved under an old Auth0 key),
+  // do not lose the relationship viewpoint. ALA is the canonical Alan record.
+  if(!currentPersonId && currentRole === 'admin' && person('ALA')){
+    currentPersonId = 'ALA';
+  }
+
   const root = currentPersonId;
 
   if(!person(target))
