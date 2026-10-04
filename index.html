@@ -1309,7 +1309,7 @@ function resolveCurrentPersonId(){
 
   const map = db.meta?.userPersonMap || {};
   const email = String(currentUser.email || '').toLowerCase().trim();
-  const display = normalizePersonName(currentUser.displayName);
+  const display = normalizePersonName(currentUser.displayName || currentUser.name || currentUser.nickname || '');
 
   // The archive has more than one Alan Fleury record in some exports.
   // When the signed-in account is Alan Fleury, always use the canonical
@@ -1347,9 +1347,9 @@ function resolveCurrentPersonId(){
   }
 
   // Legacy copies may use I154 for Alan. Prefer ALA whenever available.
-  if(canonicalAlan) return 'ALA';
-  if(person('I154')) return 'I154';
-
+  // Do not guess a family person for an unrelated account.
+  // A person must be established from the account mapping or the
+  // account's own name/email identity.
   return null;
 
 }
@@ -2845,6 +2845,8 @@ function showDetail(id){
       generateChart();
 
     };
+
+  bindPersonLinks();
 
   $('#detailEdit').onclick =
     () => {
