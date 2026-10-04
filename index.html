@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="fleury-build" content="fleury-build-v11">
+<meta name="fleury-build" content="fleury-build-v13">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#6b4f2a">
@@ -1224,7 +1224,7 @@ async function init(){
     setBoot('Loading private archive connection…');
 
     archiveApi = await Promise.race([
-      import('./archive-api.js?v=20261004-v11'),
+      import('./archive-api.js?v=20261004-v13'),
       new Promise((_,reject) =>
         setTimeout(() => reject(new Error('The private archive connection timed out after 10 seconds.')),10000)
       )
@@ -1260,7 +1260,7 @@ async function init(){
           setBoot('Retrying secure sign-in…');
 
           if(!archiveApi){
-            archiveApi = await import('./archive-api.js?v=20261004-v11-retry');
+            archiveApi = await import('./archive-api.js?v=20261004-v13-retry');
           }
 
           await archiveApi.signInWithEmail();
@@ -1614,9 +1614,15 @@ function updateAuthUI(){
   let nav = $('#mainNav');
   let main = $('#appMain');
 
-  let authorized =
-    !!currentUser &&
-    !!currentRole;
+  const signedIn = !!currentUser;
+  const authorized = signedIn && !!currentRole;
+
+  if(signedIn){
+    nav.classList.remove('hidden');
+    main.classList.remove('hidden');
+    $('#signInBtn').classList.add('hidden');
+    $('#signOutBtn').classList.remove('hidden');
+  }
 
   if(authorized){
 
@@ -1664,7 +1670,7 @@ function updateAuthUI(){
       </div>
     `;
 
-  }else{
+  }else if(!signedIn){
 
     nav.classList.add('hidden');
 
@@ -1684,12 +1690,11 @@ function updateAuthUI(){
     if(currentUser && !currentRole){
 
       state.innerHTML = `
-        <strong>Access pending</strong>
+        <strong>Connecting to the private family database…</strong>
 
         <div class="small muted">
           ${esc(currentUser.email || 'This account')}
-          is signed in, but has not been approved
-          for the family archive.
+          is signed in. Checking family access…
         </div>
       `;
 
@@ -1746,6 +1751,11 @@ async function startInviteAuthentication(){
 }
 
 
+function setBootStatus(msg){
+  const el = $('#bootStatus');
+  if(el) el.textContent = msg;
+}
+
 async function handleUser(user){
 
   currentUser = user;
@@ -1783,8 +1793,11 @@ async function handleUser(user){
 
   try{
 
-    currentRole =
-      await archiveApi.getMyRole();
+    setBootStatus('Checking private family access…');
+    currentRole = await Promise.race([
+      archiveApi.getMyRole(),
+      new Promise((_,reject) => setTimeout(() => reject(new Error('Family access check timed out after 15 seconds.')),15000))
+    ]);
 
     if(!currentRole){
 
@@ -1806,29 +1819,17 @@ async function handleUser(user){
 
     updateAuthUI();
 
-    db =
-      await archiveApi.loadDatabase();
+    setBootStatus('Loading the private family database…');
+    db = await Promise.race([
+      archiveApi.loadDatabase(),
+      new Promise((_,reject) => setTimeout(() => reject(new Error('Private family database timed out after 30 seconds.')),30000))
+    ]);
 
     rebuildRelationshipIndex();
 
-    currentPersonId =
-      resolveCurrentPersonId();
-
-    // Persist the owner-account mapping once it has been resolved to ALA.
-    // This is metadata only; no people or family relationships are changed.
-    if((currentPersonId === 'ALA' || currentPersonId === 'I154') && currentUser?.email){
-      const emailKey = String(currentUser.email).toLowerCase().trim();
-      const authKey = String(currentUser.sub || currentUser.user_id || '').trim();
-      db.meta = {
-        ...(db.meta || {}),
-        userPersonMap: {
-          ...(db.meta?.userPersonMap || {}),
-          [emailKey]: currentPersonId,
-          ...(authKey ? {[authKey]:currentPersonId} : {})
-        }
-      };
-      try{ await archiveApi.saveDatabase(db); }catch(e){ console.warn('Account mapping could not be persisted:',e); }
-    }
+    // Resolve the signed-in family member once, before any relationship-aware
+    // list or detail is rendered. Never write the archive during startup.
+    currentPersonId = resolveCurrentPersonId();
 
     cloudReady = true;
 
@@ -1842,6 +1843,7 @@ async function handleUser(user){
     setCloudStatus(
       'Connected to the private family database.'
     );
+    setBootStatus('Family archive ready.');
 
     $('#adminTools')
       .classList
@@ -2718,8 +2720,7 @@ function renderAll(){
   // Only the active tab is rendered; each large list is capped/paginated below.
   renderData();
   const vp=$('#relationshipViewpoint');
-  if(!currentPersonId || !person(currentPersonId)){ const alan=person('ALA')||person('I154'); if(alan) currentPersonId=alan['Person ID']; }
-  if(vp) vp.textContent=currentPersonId && person(currentPersonId) ? `Relationships shown from ${name(currentPersonId)}.` : 'Relationship labels will appear once the family member is identified.';
+  if(vp) vp.textContent=currentPersonId && person(currentPersonId) ? `Relationships shown from ${name(currentPersonId)}.` : 'Relationship labels are unavailable until a family member is identified.';
 
   const active = currentTabId();
   if(active === 'explore') renderPeopleList();
