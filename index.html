@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="fleury-build" content="fleury-build-v9">
+<meta name="fleury-build" content="fleury-build-v10">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#6b4f2a">
@@ -1224,7 +1224,7 @@ async function init(){
     setBoot('Loading private archive connection…');
 
     archiveApi = await Promise.race([
-      import('./archive-api.js?v=20261004-v9'),
+      import('./archive-api.js?v=20261004-v10'),
       new Promise((_,reject) =>
         setTimeout(() => reject(new Error('The private archive connection timed out after 10 seconds.')),10000)
       )
@@ -1260,7 +1260,7 @@ async function init(){
           setBoot('Retrying secure sign-in…');
 
           if(!archiveApi){
-            archiveApi = await import('./archive-api.js?v=20261004-v9-retry');
+            archiveApi = await import('./archive-api.js?v=20261004-v10-retry');
           }
 
           await archiveApi.signInWithEmail();
@@ -1516,23 +1516,14 @@ function relationshipToViewer(target){
     if(resolved) currentPersonId = resolved;
   }
 
-  // The signed-in owner/admin account is Alan Fleury. If an older archive
-  // has no account mapping (or the mapping was saved under an old Auth0 key),
-  // do not lose the relationship viewpoint. ALA is the canonical Alan record.
-  if(!currentPersonId && String(currentRole || '').toLowerCase() === 'admin'){
-    const fallbackAlan = person('ALA') ? 'ALA' : (person('I154') ? 'I154' : '');
-    if(fallbackAlan) currentPersonId = fallbackAlan;
+  // Relationship labels are always calculated from the canonical Alan Fleury
+  // family record. They do not depend on an Auth0-to-family mapping.
+  if(!currentPersonId || !person(currentPersonId)){
+    const preferred = person('ALA') || person('I154');
+    if(preferred) currentPersonId = preferred['Person ID'];
   }
 
-  // The signed-in administrator is Alan Fleury. Resolve the viewpoint from
-  // the actual Alan record present in this archive before calculating any
-  // relationship. This is an in-memory viewpoint only; no family data is changed.
   let root = currentPersonId;
-  if((!root || !person(root)) && currentUser && String(currentRole || '').toLowerCase() === 'admin'){
-    const preferred = person('ALA') || person('I154');
-    if(preferred) root = preferred['Person ID'];
-    if(root) currentPersonId = root;
-  }
 
   if(!person(target))
     return 'Unknown person';
@@ -2730,7 +2721,8 @@ function renderAll(){
   // Only the active tab is rendered; each large list is capped/paginated below.
   renderData();
   const vp=$('#relationshipViewpoint');
-  if(vp) vp.textContent=currentPersonId && person(currentPersonId) ? `Relationships shown from ${name(currentPersonId)} (signed-in family member).` : 'Relationship labels are calculated from Alan Fleury.';
+  if(!currentPersonId || !person(currentPersonId)){ const alan=person('ALA')||person('I154'); if(alan) currentPersonId=alan['Person ID']; }
+  if(vp) vp.textContent=currentPersonId && person(currentPersonId) ? `Relationships shown from ${name(currentPersonId)}.` : 'Relationship labels unavailable.';
 
   const active = currentTabId();
   if(active === 'explore') renderPeopleList();
@@ -2786,13 +2778,15 @@ function renderPeopleList(){
   $('#peopleList').innerHTML =
     visibleArr
       .map(
-        p =>
-          `<div class="person" data-id="${esc(p['Person ID'])}">
+        p => {
+          const rel = relationshipToViewer(p['Person ID']);
+          return `<div class="person" data-id="${esc(p['Person ID'])}">
             ${personLink(p['Person ID'], p.Name)}
             <div class="small muted">
-              ${esc(displayPersonId(p['Person ID']))}
+              ${esc(displayPersonId(p['Person ID']))} — ${esc(displayRelationship(rel))}
             </div>
-          </div>`
+          </div>`;
+        }
       )
       .join('') ||
       '<p class="muted" style="padding:10px">No matches.</p>' + (arr.length > 150 ? `<p class="muted" style="padding:10px">Showing first 150 of ${arr.length}. Refine the search to find more.</p>` : '');
