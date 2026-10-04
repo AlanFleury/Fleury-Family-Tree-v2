@@ -1341,23 +1341,28 @@ function resolveCurrentPersonId(){
     currentUser.user_metadata?.displayName ||
     [currentUser.given_name, currentUser.family_name].filter(Boolean).join(' ')
   );
-  const canonicalAlan = person('ALA');
+  // Resolve Alan by the actual archive record. Older validated archives use I154;
+  // newer archives may use ALA. If neither ID exists, use the unique Alan Fleury record.
+  const canonicalAlanId = person('ALA') ? 'ALA' : (person('I154') ? 'I154' : '');
+  const alanMatches = db.people.filter(p => normalizePersonName(p.Name) === 'alan fleury');
+  const canonicalAlanIdByName = canonicalAlanId || (alanMatches.length === 1 ? alanMatches[0]['Person ID'] : '');
+  const canonicalAlan = canonicalAlanIdByName ? person(canonicalAlanIdByName) : null;
   const auth0Id = String(currentUser.sub || currentUser.user_id || currentUser.uid || '').trim();
   const emailLocal = email ? normalizePersonName(email.split('@')[0].replace(/\d+$/,'')) : '';
 
-  if(canonicalAlan && (display === 'alan fleury' || emailLocal === 'alan fleury'))
-    return 'ALA';
+  if(canonicalAlanIdByName && (display === 'alan fleury' || emailLocal === 'alan fleury'))
+    return canonicalAlanIdByName;
 
   const mapped = (auth0Id && map[auth0Id]) || (email && map[email]) || '';
   if(mapped && person(mapped)){
-    if(canonicalAlan && normalizePersonName(person(mapped).Name) === 'alan fleury') return 'ALA';
+    if(canonicalAlan && normalizePersonName(person(mapped).Name) === 'alan fleury') return canonicalAlanIdByName;
     return mapped;
   }
 
   if(display){
     const matches = db.people.filter(p => normalizePersonName(p.Name) === display);
     if(matches.length === 1) return matches[0]['Person ID'];
-    if(canonicalAlan && display === 'alan fleury') return 'ALA';
+    if(canonicalAlan && display === 'alan fleury') return canonicalAlanIdByName;
   }
 
   if(emailLocal){
@@ -1367,13 +1372,11 @@ function resolveCurrentPersonId(){
 
   // The family administrator account is the owner's account. If it cannot
   // expose a name/email claim, use the unique canonical Alan record.
-  if(canonicalAlan && normalizedRole() === 'admin'){
-    const alanMatches = db.people.filter(p => normalizePersonName(p.Name) === 'alan fleury');
-    if(alanMatches.length === 1) return 'ALA';
-  }
+  if(canonicalAlan && normalizedRole() === 'admin')
+    return canonicalAlanIdByName;
 
   if(canonicalAlan && (email.includes('alanfleury') || emailLocal.replace(/\s+/g,'') === 'alanfleury'))
-    return 'ALA';
+    return canonicalAlanIdByName;
 
   return null;
 }
@@ -2715,7 +2718,7 @@ function renderPeopleList(){
   $('#peopleList').innerHTML =
     (shown.map(p =>
       `<div class="person" data-id="${esc(p['Person ID'])}">
-        <button type="button" class="person-link" data-person-link="${esc(p['Person ID'])}" title="Open ${esc(p.Name)}">${esc(p.Name)}${(() => { const rel=relationshipToViewer(p['Person ID']); return rel && rel !== 'you' ? ` — ${esc(displayRelationship(rel))}` : ''; })()}</button>
+        <button type="button" class="person-link" data-person-link="${esc(p['Person ID'])}" title="Open ${esc(p.Name)}">${esc(p.Name)}</button>
         <div class="small muted">${esc(displayPersonId(p['Person ID']))}</div>
       </div>`
     ).join('') || '<p class="muted" style="padding:10px">No matches.</p>') +
