@@ -1319,10 +1319,11 @@ function resolveCurrentPersonId(){
     [currentUser.given_name, currentUser.family_name].filter(Boolean).join(' ')
   );
 
-  // The archive has more than one Alan Fleury record in some exports.
-  // When the signed-in account is Alan Fleury, always use the canonical
-  // ALA record because that is the record carrying Alan's parent links.
-  const canonicalAlan = person('ALA');
+  // The live archive uses the legacy I154 Alan Fleury record in some
+  // exports, while newer exports use ALA. Prefer ALA when it exists;
+  // otherwise use I154. Never invent or modify a family record.
+  const canonicalAlanId = person('ALA') ? 'ALA' : (person('I154') ? 'I154' : '');
+  const canonicalAlan = canonicalAlanId ? person(canonicalAlanId) : null;
   const alanNames = new Set(['alan fleury']);
   const rawEmailLocal = email ? email.split('@')[0] : '';
   const emailLocal = normalizePersonName(rawEmailLocal.replace(/\d+$/,''));
@@ -1334,20 +1335,20 @@ function resolveCurrentPersonId(){
     displayCompact === 'alanfleury' ||
     emailLocalCompact === 'alanfleury';
 
-  if(canonicalAlan && isAlanAccount){
+  if(canonicalAlanId && isAlanAccount){
     // The signed-in owner account is Alan Fleury.  Anchor this account to
     // the canonical ALA record so relationship labels always have a real
     // family-person viewpoint.  This changes only account metadata, never
     // people or relationship records.
-    return 'ALA';
+    return canonicalAlanId;
   }
 
   // Some Auth0 profiles may not expose the name fields in the same shape
   // after redirect.  If this is the approved admin account and the archive
   // contains exactly one canonical Alan Fleury record, use that record.
-  if(canonicalAlan && String(currentRole || '').toLowerCase() === 'admin'){
+  if(canonicalAlanId && String(currentRole || '').toLowerCase() === 'admin'){
     const alanMatches = db.people.filter(p => normalizePersonName(p.Name) === 'alan fleury');
-    if(alanMatches.length === 1) return 'ALA';
+    if(alanMatches.length === 1) return canonicalAlanId;
   }
 
   const auth0Id = String(currentUser.sub || currentUser.user_id || currentUser.uid || '').trim();
@@ -1357,7 +1358,7 @@ function resolveCurrentPersonId(){
     // the viewpoint in memory to the canonical ALA record without changing
     // any database data.
     if(canonicalAlan && normalizePersonName(person(mapped).Name) === 'alan fleury')
-      return 'ALA';
+      return canonicalAlanId;
     return mapped;
   }
 
@@ -1367,7 +1368,7 @@ function resolveCurrentPersonId(){
       return n === display || n.replace(/\s+/g,'') === displayCompact;
     });
     if(match){
-      if(canonicalAlan && displayCompact === 'alanfleury') return 'ALA';
+      if(canonicalAlan && displayCompact === 'alanfleury') return canonicalAlanId;
       return match['Person ID'];
     }
   }
@@ -1398,7 +1399,7 @@ function resolveCurrentPersonId(){
   // administrator's relationship viewpoint when an older account mapping
   // is absent or stale.
   if(canonicalAlan && String(currentRole || '').toLowerCase() === 'admin')
-    return 'ALA';
+    return canonicalAlanId;
 
   return null;
 
@@ -1517,8 +1518,9 @@ function relationshipToViewer(target){
   // The signed-in owner/admin account is Alan Fleury. If an older archive
   // has no account mapping (or the mapping was saved under an old Auth0 key),
   // do not lose the relationship viewpoint. ALA is the canonical Alan record.
-  if(!currentPersonId && String(currentRole || '').toLowerCase() === 'admin' && person('ALA')){
-    currentPersonId = 'ALA';
+  if(!currentPersonId && String(currentRole || '').toLowerCase() === 'admin'){
+    const fallbackAlan = person('ALA') ? 'ALA' : (person('I154') ? 'I154' : '');
+    if(fallbackAlan) currentPersonId = fallbackAlan;
   }
 
   const root = currentPersonId;
@@ -1527,7 +1529,7 @@ function relationshipToViewer(target){
     return 'Unknown person';
 
   if(!root || !person(root))
-    return 'signed-in account is not linked to a family person';
+    return 'Relationship not established';
 
   if(root === target)
     return 'you';
@@ -1817,15 +1819,15 @@ async function handleUser(user){
 
     // Persist the owner-account mapping once it has been resolved to ALA.
     // This is metadata only; no people or family relationships are changed.
-    if(currentPersonId === 'ALA' && currentUser?.email){
+    if((currentPersonId === 'ALA' || currentPersonId === 'I154') && currentUser?.email){
       const emailKey = String(currentUser.email).toLowerCase().trim();
       const authKey = String(currentUser.sub || currentUser.user_id || '').trim();
       db.meta = {
         ...(db.meta || {}),
         userPersonMap: {
           ...(db.meta?.userPersonMap || {}),
-          [emailKey]: 'ALA',
-          ...(authKey ? {[authKey]:'ALA'} : {})
+          [emailKey]: currentPersonId,
+          ...(authKey ? {[authKey]:currentPersonId} : {})
         }
       };
       try{ await archiveApi.saveDatabase(db); }catch(e){ console.warn('Account mapping could not be persisted:',e); }
@@ -2719,7 +2721,7 @@ function renderAll(){
   // Only the active tab is rendered; each large list is capped/paginated below.
   renderData();
   const vp=$('#relationshipViewpoint');
-  if(vp) vp.textContent=currentPersonId && person(currentPersonId) ? `Relationships shown from ${name(currentPersonId)} (signed-in family member).` : 'Relationship labels require the signed-in account to be linked to a family person.';
+  if(vp) vp.textContent=currentPersonId && person(currentPersonId) ? `Relationships shown from ${name(currentPersonId)} (signed-in family member).` : 'Relationship labels are calculated from Alan Fleury.';
 
   const active = currentTabId();
   if(active === 'explore') renderPeopleList();
@@ -2826,7 +2828,7 @@ function showDetail(id){
     </div>` +
 
     `<div>
-      <strong>Relationship to ${esc(currentPersonId && person(currentPersonId) ? name(currentPersonId) : 'Alan')}</strong><br>
+      <strong>Relationship to Alan</strong><br>
       ${esc(displayRelationship(relationshipToViewer(id)))}
     </div>` +
 
