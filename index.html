@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
+<meta name="fleury-build" content="fleury-build-v9">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#6b4f2a">
@@ -1223,7 +1224,7 @@ async function init(){
     setBoot('Loading private archive connection…');
 
     archiveApi = await Promise.race([
-      import('./archive-api.js?v=20261004-rebuild'),
+      import('./archive-api.js?v=20261004-v9'),
       new Promise((_,reject) =>
         setTimeout(() => reject(new Error('The private archive connection timed out after 10 seconds.')),10000)
       )
@@ -1259,7 +1260,7 @@ async function init(){
           setBoot('Retrying secure sign-in…');
 
           if(!archiveApi){
-            archiveApi = await import('./archive-api.js?v=20261004-rebuild-retry');
+            archiveApi = await import('./archive-api.js?v=20261004-v9-retry');
           }
 
           await archiveApi.signInWithEmail();
@@ -1523,13 +1524,21 @@ function relationshipToViewer(target){
     if(fallbackAlan) currentPersonId = fallbackAlan;
   }
 
-  const root = currentPersonId;
+  // The signed-in administrator is Alan Fleury. Resolve the viewpoint from
+  // the actual Alan record present in this archive before calculating any
+  // relationship. This is an in-memory viewpoint only; no family data is changed.
+  let root = currentPersonId;
+  if((!root || !person(root)) && currentUser && String(currentRole || '').toLowerCase() === 'admin'){
+    const preferred = person('ALA') || person('I154');
+    if(preferred) root = preferred['Person ID'];
+    if(root) currentPersonId = root;
+  }
 
   if(!person(target))
     return 'Unknown person';
 
   if(!root || !person(root))
-    return 'Relationship not established';
+    return 'relationship unavailable';
 
   if(root === target)
     return 'you';
