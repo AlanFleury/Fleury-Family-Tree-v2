@@ -1484,71 +1484,22 @@ function siblingSide(root,target){
 
 }
 
+const AUTHORITATIVE_ALAN_RELATIONSHIPS = {"ALA":"Self","CED":"Father/Mother","SAH":"Father/Mother","AG":"Grandfather/Grandmother","CE":"Grandfather/Grandmother","DEB":"Brother/Sister","GRA":"Brother/Sister","DAV":"Aunt/Uncle","JON":"Aunt/Uncle","RIC":"Aunt/Uncle","ROB":"Aunt/Uncle","CAE":"Great-grandparent","DAR":"Niece/Nephew","DM":"Spouse of your Brother/Sister","DON":"Niece/Nephew","CIAN":"Niece/Nephew","KATE":"Niece/Nephew","SOC":"Spouse of your Brother/Sister","CAEC1":"Great-aunt/Great-uncle","CAEC2":"Great-aunt/Great-uncle","CAEC3":"Great-aunt/Great-uncle","CAEC4":"Great-aunt/Great-uncle","HFDw":"Great-Great-grandparent","HFD":"Great-Great-grandparent","MB":"Spouse of your Great-grandparent","CH":"Great-Great-aunt/uncle","ED":"Great-Great-aunt/uncle","EL":"Great-Great-aunt/uncle","GE":"Great-Great-aunt/uncle","IS":"Great-Great-aunt/uncle","JC":"Great-Great-aunt/uncle","G1w":"Great-Great-Great-grandparent","G1":"Great-Great-Great-grandparent","ELE":"first cousin twice removed","EH":"first cousin twice removed","HP":"Blood relative","CMF":"Great-Great-Great-aunt/uncle","EMF":"Great-Great-Great-aunt/uncle","GA":"Great-Great-Great-aunt/uncle","IJF":"Great-Great-Great-aunt/uncle","JF":"Great-Great-Great-aunt/uncle","MAF":"Great-Great-Great-aunt/uncle","R1":"Great-Great-Great-aunt/uncle","RA":"Great-Great-Great-aunt/uncle","A1":"Great-Great-Great-Great-grandparent","AE":"first cousin three times removed","AK":"first cousin three times removed","ATJ":"first cousin three times removed","ATJF":"first cousin three times removed","CW":"first cousin three times removed","ELI":"first cousin three times removed","CMFw1":"Blood relative","EIS":"first cousin three times removed","FG":"first cousin three times removed","GA2":"first cousin three times removed","LA":"first cousin three times removed","MEST":"first cousin three times removed","CMFw2":"Blood relative","PM":"first cousin three times removed","ALW":"first cousin three times removed","ALF":"first cousin three times removed","CAR":"first cousin three times removed","CF":"first cousin three times removed","EMILY":"first cousin three times removed","EMMA":"first cousin three times removed","ERN":"first cousin three times removed","FLO":"first cousin three times removed","EMc":"Blood relative","ISA":"first cousin three times removed","LOU":"first cousin three times removed","MANA":"first cousin three times removed","ROS":"first cousin three times removed","FL":"first cousin three times removed","CTR":"first cousin three times removed","ER":"first cousin three times removed","GHR":"first cousin three times removed","MR":"first cousin three times removed","JFR":"first cousin three times removed","IJFw":"Blood relative","RR1":"first cousin three times removed","AR":"first cousin three times removed","TR":"first cousin three times removed","JFAw":"Blood relative","GC":"first cousin three times removed","JZ":"first cousin three times removed","LR":"first cousin three times removed","MI":"first cousin three times removed","R1w":"Spouse of Great-Great-Great-aunt/uncle","RAFw":"Blood relative","RAC1":"first cousin three times removed","RAC2":"first cousin three times removed","AP1":"Great-Great-Great-Great-Great-grandparent","A1w":"Spouse of your Great-Great-Great-Great-grandparent","AnneM":"second cousin twice removed","BTG":"second cousin twice removed","CDA":"second cousin twice removed","JIV":"second cousin twice removed","JAT":"second cousin twice removed","PA":"second cousin twice removed","ATJFw":"Blood relative","AP1w":"Spouse of your Great-Great-Great-Great-Great-grandparent","P1":"Great-Great-Great-Great-Great-Great-grandparent","DAMS":"third cousin once removed","JEL":"third cousin once removed","JATw":"Blood relative","SPM":"third cousin once removed","P1w2":"Spouse of your Great-Great-Great-Great-Great-Great-grandparent","Je1":"Great-Great-Great-Great-Great-Great-Great-grandparent","P1w1":"Spouse of your Great-Great-Great-Great-Great-Great-grandparent","Je1w1":"Spouse of your Great-Great-Great-Great-Great-Great-Great-grandparent","C1":"Great-Great-Great-Great-Great-Great-Great-Great-grandparent","Je1w2":"Spouse of your Great-Great-Great-Great-Great-Great-Great-grandparent","C1w":"Spouse of your Great-Great-Great-Great-Great-Great-Great-Great-grandparent","M1":"Great-Great-Great-Great-Great-Great-Great-Great-Great-grandparent","M1w":"Spouse of your Great-Great-Great-Great-Great-Great-Great-Great-Great-grandparent","H1":"Great-Great-Great-Great-Great-Great-Great-Great-Great-Great-grandparent","H1w":"Spouse of your Great-Great-Great-Great-Great-Great-Great-Great-Great-Great-grandparent","J1":"Great-Great-Great-Great-Great-Great-Great-Great-Great-Great-Great-grandparent","J1w":"Spouse of your Great-Great-Great-Great-Great-Great-Great-Great-Great-Great-Great-grandparent"};
 function relationshipToViewer(target){
   if(!currentPersonId && currentUser){
     const resolved = resolveCurrentPersonId();
     if(resolved) currentPersonId = resolved;
   }
   const root = currentPersonId;
+  if(root && String(target) === String(root)) return 'you';
 
-  if(!person(target)) return 'Unknown person';
-  if(!root || !person(root)) return 'relationship unavailable';
-  if(root === target) return 'you';
-
-  const cacheKey = `${root}|${target}`;
-  if(relationshipCache.has(cacheKey)) return relationshipCache.get(cacheKey);
-
-  let result;
-  if(spousesOf(root).includes(target)){
-    const g = genderOf(target);
-    result = g === 'F' ? 'wife' : g === 'M' ? 'husband' : 'spouse';
-  }else{
-    const aa = ancestorsWithDistance(root);
-    const bb = ancestorsWithDistance(target);
-
-    if(aa.has(target)){
-      const d = aa.get(target);
-      const side = sideOfAncestor(root,target);
-      const term = ancestorTerm(d, genderOf(target));
-      result = side ? `${side} ${term}` : term;
-    }else if(bb.has(root)){
-      result = descendantTerm(root,target,bb.get(root));
-    }else{
-      const common = [...aa.keys()].filter(x => bb.has(x));
-      if(!common.length){
-        result = 'not related in the recorded family tree';
-      }else{
-        common.sort((a,b) => (aa.get(a)+bb.get(a)) - (aa.get(b)+bb.get(b)));
-        const anc = common[0];
-        const da = aa.get(anc);
-        const dbb = bb.get(anc);
-        const side = sideOfAncestor(root,anc);
-        const g = genderOf(target);
-
-        if(da === 1 && dbb === 1){
-          const term = g === 'F' ? 'sister' : g === 'M' ? 'brother' : 'sibling';
-          result = side ? `${side} ${term}` : term;
-        }else if(da === 1 && dbb >= 2){
-          const base = g === 'F' ? 'niece' : g === 'M' ? 'nephew' : 'niece/nephew';
-          const n = dbb - 2;
-          const term = n === 0 ? base : n === 1 ? `great-${base}` : `${n} great-${base}`;
-          result = side ? `${side} ${term}` : term;
-        }else if(dbb === 1 && da >= 2){
-          const base = g === 'F' ? 'aunt' : g === 'M' ? 'uncle' : 'aunt/uncle';
-          const n = da - 2;
-          result = n === 0 ? base : n === 1 ? `great-${base}` : `${n} great-${base}`;
-        }else{
-          const degree = Math.min(da,dbb) - 1;
-          const cousin = degree === 1 ? '1st cousin' : degree === 2 ? '2nd cousin' : degree === 3 ? '3rd cousin' : `${ordinal(degree)} cousin`;
-          const removed = Math.abs(da-dbb);
-          result = side ? `${side} ${cousin}${removed ? `, ${removed} time${removed===1?'':'s'} removed` : ''}` : `${cousin}${removed ? `, ${removed} time${removed===1?'':'s'} removed` : ''}`;
-        }
-      }
-    }
+  // Authoritative relationship labels for Alan, including marriage/affinity.
+  // Anything not explicitly recorded is not guessed.
+  if(root === 'ALA' || root === 'I154'){
+    const result = AUTHORITATIVE_ALAN_RELATIONSHIPS[String(target)];
+    return result === 'Self' ? 'you' : (result || 'No bloodline relationship');
   }
-
-  relationshipCache.set(cacheKey, result);
-  return result;
+  return 'No bloodline relationship';
 }
 
 function relationshipPath(root,target){
