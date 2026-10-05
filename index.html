@@ -3,209 +3,1085 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#172033">
 <title>Fleury Family Archive</title>
+<link rel="manifest" href="manifest.webmanifest">
 <style>
-:root{--bg:#f5f7fa;--card:#fff;--ink:#172033;--muted:#657087;--line:#dfe4ec;--accent:#315f9b;--accent2:#244875;--danger:#a22}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px system-ui,-apple-system,Segoe UI,Arial,sans-serif}
-button,input,select,textarea{font:inherit}button{cursor:pointer}
-header{background:var(--accent2);color:white;padding:18px 22px;position:sticky;top:0;z-index:10}
-.head{max-width:1400px;margin:auto;display:flex;gap:18px;align-items:center;justify-content:space-between}.brand{font:700 22px Georgia,serif}
-.auth{display:flex;gap:8px;align-items:center;font-size:13px}.auth button,.primary{background:white;color:var(--accent2);border:0;border-radius:7px;padding:8px 12px;font-weight:700}
-nav{background:white;border-bottom:1px solid var(--line);position:sticky;top:66px;z-index:9}
-.nav{max-width:1400px;margin:auto;display:flex;gap:4px;overflow:auto;padding:7px 12px}.nav button{background:none;border:0;padding:10px 13px;border-radius:7px;color:var(--muted)}.nav button.active,.nav button:hover{background:#eaf0f8;color:var(--accent2);font-weight:700}
-main{max-width:1400px;margin:20px auto;padding:0 16px}.panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:16px;box-shadow:0 2px 8px #00000008}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}.two{display:grid;grid-template-columns:minmax(260px,360px) 1fr;gap:16px}
-h1,h2,h3{font-family:Georgia,serif;margin-top:0}.muted{color:var(--muted)}.small{font-size:13px}.status{padding:10px 12px;border-radius:8px;background:#eef3f9;margin-bottom:12px}.error{background:#fff0f0;color:#8a2020}
-.search{width:100%;padding:11px;border:1px solid var(--line);border-radius:8px}.list{max-height:70vh;overflow:auto;border:1px solid var(--line);border-radius:8px;margin-top:10px}.row{padding:9px 11px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:8px}.row:last-child{border-bottom:0}
-.person-link{border:0;background:none;color:var(--accent);padding:0;text-align:left;text-decoration:underline}.pill{display:inline-block;padding:4px 8px;border-radius:999px;background:#edf1f6;margin:2px;font-size:12px}
-.section{margin:18px 0}.section h3{font-size:17px;border-bottom:1px solid var(--line);padding-bottom:7px}.people-links{display:flex;flex-wrap:wrap;gap:8px}.empty{color:var(--muted);font-style:italic}
-.actions{display:flex;flex-wrap:wrap;gap:8px}.actions button{border:1px solid var(--line);background:white;border-radius:7px;padding:8px 11px}.actions .primary{background:var(--accent);color:white;border-color:var(--accent)}
-table{width:100%;border-collapse:collapse}th,td{padding:8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
-.modal{position:fixed;inset:0;background:#0008;display:none;align-items:center;justify-content:center;padding:15px;z-index:30}.modal.open{display:flex}.modalbox{background:white;border-radius:12px;max-width:850px;width:100%;max-height:92vh;overflow:auto;padding:20px}.formgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.field{display:flex;flex-direction:column;gap:5px}.field.full{grid-column:1/-1}.field input,.field textarea,.field select{padding:9px;border:1px solid var(--line);border-radius:7px}.field textarea{min-height:100px}
-svg{width:100%;height:auto;min-height:280px;border:1px solid var(--line);border-radius:8px;background:white}.chart-node{fill:white;stroke:#315f9b;stroke-width:2}.chart-text{font:14px system-ui;fill:#172033}
-footer{max-width:1400px;margin:30px auto;padding:0 16px 30px;color:var(--muted)}
-@media(max-width:750px){.two{grid-template-columns:1fr}.formgrid{grid-template-columns:1fr}.field.full{grid-column:auto}.head{align-items:flex-start;flex-direction:column}nav{top:105px}}
+:root{
+  --bg:#f4f6f9;
+  --panel:#fff;
+  --text:#172033;
+  --muted:#667085;
+  --line:#d9dee8;
+  --accent:#315ea8;
+  --accent2:#23477f;
+  --danger:#b42318;
+  --ok:#087443;
+  --shadow:0 2px 10px rgba(0,0,0,.08);
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font-family:Arial,Helvetica,sans-serif;
+}
+header{
+  background:var(--text);
+  color:#fff;
+  padding:16px;
+  position:sticky;
+  top:0;
+  z-index:20;
+  box-shadow:var(--shadow);
+}
+.header-row{
+  max-width:1400px;
+  margin:auto;
+  display:flex;
+  gap:12px;
+  align-items:center;
+  justify-content:space-between;
+}
+h1{font-size:21px;margin:0}
+.user-area{
+  display:flex;
+  gap:8px;
+  align-items:center;
+  flex-wrap:wrap;
+}
+button,.button{
+  border:1px solid var(--line);
+  background:#fff;
+  color:var(--text);
+  border-radius:7px;
+  padding:8px 12px;
+  cursor:pointer;
+  font-size:14px;
+}
+button:hover,.button:hover{background:#eef2f7}
+button.primary{
+  background:var(--accent);
+  border-color:var(--accent);
+  color:#fff;
+}
+button.primary:hover{background:var(--accent2)}
+button.danger{
+  color:#fff;
+  background:var(--danger);
+  border-color:var(--danger);
+}
+button:disabled{opacity:.5;cursor:not-allowed}
+
+nav{
+  max-width:1400px;
+  margin:12px auto 0;
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
+}
+nav button{
+  background:rgba(255,255,255,.1);
+  color:#fff;
+  border-color:rgba(255,255,255,.2);
+}
+nav button.active{background:#fff;color:var(--text)}
+
+main{
+  max-width:1400px;
+  margin:auto;
+  padding:18px;
+}
+.panel{
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:16px;
+  margin-bottom:16px;
+  box-shadow:var(--shadow);
+}
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:12px;
+}
+.card{
+  border:1px solid var(--line);
+  border-radius:8px;
+  padding:12px;
+  background:#fff;
+}
+.card h3{margin:0 0 7px;font-size:16px}
+.muted{color:var(--muted)}
+.error{color:var(--danger)}
+.success{color:var(--ok)}
+.small{font-size:13px}
+
+input,select,textarea{
+  width:100%;
+  padding:9px 10px;
+  border:1px solid #c8ced9;
+  border-radius:7px;
+  font:inherit;
+  background:#fff;
+}
+textarea{min-height:110px;resize:vertical}
+label{
+  display:block;
+  font-weight:600;
+  margin-bottom:5px;
+}
+.form-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+  gap:12px;
+}
+.form-actions{
+  display:flex;
+  gap:8px;
+  margin-top:12px;
+  flex-wrap:wrap;
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+}
+th,td{
+  text-align:left;
+  padding:8px;
+  border-bottom:1px solid var(--line);
+  vertical-align:top;
+}
+th{background:#f0f3f7}
+.table-wrap{overflow:auto}
+
+.person-link{
+  color:var(--accent);
+  text-decoration:underline;
+  cursor:pointer;
+  font-weight:600;
+}
+.person-link:hover{color:var(--accent2)}
+
+.badge{
+  display:inline-block;
+  padding:3px 7px;
+  border-radius:20px;
+  background:#edf1f7;
+  font-size:12px;
+  margin:2px;
+}
+
+.stat{
+  font-size:26px;
+  font-weight:700;
+}
+.stat-label{color:var(--muted);font-size:13px}
+
 .hidden{display:none!important}
+
+.loading{
+  padding:40px;
+  text-align:center;
+  color:var(--muted);
+}
+
+.detail-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+  gap:12px;
+}
+.detail-section{
+  border:1px solid var(--line);
+  border-radius:8px;
+  padding:12px;
+}
+.detail-section h3{
+  margin-top:0;
+  font-size:15px;
+}
+
+.notice{
+  border-left:4px solid var(--accent);
+  background:#eef4ff;
+  padding:12px;
+  margin:10px 0;
+}
+
+footer{
+  max-width:1400px;
+  margin:auto;
+  padding:20px;
+  color:var(--muted);
+  font-size:12px;
+}
+
+@media(max-width:700px){
+  .header-row{align-items:flex-start;flex-direction:column}
+  main{padding:10px}
+  th,td{font-size:13px}
+}
 </style>
 </head>
-<body>
-<header><div class="head"><div class="brand">Fleury Family Archive</div><div class="auth" id="auth"></div></div></header>
-<nav><div class="nav" id="nav"></div></nav>
-<main id="app"></main>
-<footer>Private family archive</footer>
 
-<div class="modal" id="modal"><div class="modalbox"><div id="modalBody"></div></div></div>
+<body>
+
+<header>
+  <div class="header-row">
+    <div>
+      <h1>Fleury Family Archive</h1>
+      <div id="authStatus" class="small">Checking sign-in…</div>
+    </div>
+
+    <div class="user-area">
+      <span id="userName" class="small"></span>
+      <button id="signInBtn" class="primary">Sign in</button>
+      <button id="signOutBtn" class="hidden">Sign out</button>
+    </div>
+  </div>
+
+  <nav>
+    <button data-view="explore" class="active">Explore</button>
+    <button data-view="people">People</button>
+    <button data-view="relationships">Relationships</button>
+    <button data-view="reports">Reports</button>
+    <button data-view="charts">Charts</button>
+    <button data-view="admin">Admin</button>
+  </nav>
+</header>
+
+<main>
+
+<section id="loadingView" class="panel loading">
+  Loading the private family archive…
+</section>
+
+<section id="loginView" class="panel hidden">
+  <h2>Private Family Archive</h2>
+  <p>
+    This archive is private. Please sign in to access the family database.
+  </p>
+  <button id="loginMainBtn" class="primary">Sign in</button>
+  <p id="loginMessage" class="error"></p>
+</section>
+
+<div id="app" class="hidden">
+
+<section id="view-explore" class="view">
+  <div class="panel">
+    <h2>Explore</h2>
+    <p class="muted">
+      Search the private family archive and select any person to view their recorded family information.
+    </p>
+
+    <div class="form-grid">
+      <div>
+        <label for="globalSearch">Search people</label>
+        <input id="globalSearch" type="search" placeholder="Name, place, date…">
+      </div>
+    </div>
+  </div>
+
+  <div id="exploreResults" class="grid"></div>
+</section>
+
+<section id="view-people" class="view hidden">
+  <div class="panel">
+    <h2>People</h2>
+    <div class="form-grid">
+      <div>
+        <label for="peopleSearch">Search</label>
+        <input id="peopleSearch" type="search" placeholder="Search names…">
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div id="peopleTable" class="table-wrap"></div>
+  </div>
+</section>
+
+<section id="view-relationships" class="view hidden">
+  <div class="panel">
+    <h2>Relationships</h2>
+
+    <div class="form-grid">
+      <div>
+        <label for="relationshipPerson">Person</label>
+        <select id="relationshipPerson"></select>
+      </div>
+    </div>
+
+    <div id="relationshipResults" style="margin-top:15px"></div>
+  </div>
+</section>
+
+<section id="view-reports" class="view hidden">
+  <div class="panel">
+    <h2>Reports</h2>
+
+    <div class="form-grid">
+      <div>
+        <label for="reportType">Report</label>
+        <select id="reportType">
+          <option value="people">People</option>
+          <option value="parents">Parents</option>
+          <option value="spouses">Spouses</option>
+          <option value="children">Children</option>
+          <option value="places">Places</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button id="generateReportBtn" class="primary">Generate report</button>
+      <button id="printReportBtn">Print</button>
+    </div>
+  </div>
+
+  <div id="reportOutput" class="panel"></div>
+</section>
+
+<section id="view-charts" class="view hidden">
+  <div class="panel">
+    <h2>Family Charts</h2>
+    <p class="muted">
+      Select a person to begin exploring their recorded family connections.
+    </p>
+
+    <div class="form-grid">
+      <div>
+        <label for="chartPerson">Starting person</label>
+        <select id="chartPerson"></select>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button id="generateChartBtn" class="primary">Generate chart</button>
+      <button id="printChartBtn">Print</button>
+    </div>
+  </div>
+
+  <div id="chartOutput" class="panel"></div>
+</section>
+
+<section id="view-admin" class="view hidden">
+  <div class="panel">
+    <h2>Admin</h2>
+    <div id="adminStatus"></div>
+  </div>
+
+  <div id="editorPanel" class="panel hidden">
+    <h3>Edit person</h3>
+
+    <div class="form-grid">
+      <div>
+        <label for="editPerson">Person</label>
+        <select id="editPerson"></select>
+      </div>
+
+      <div>
+        <label for="editName">Name</label>
+        <input id="editName">
+      </div>
+
+      <div>
+        <label for="editGender">Gender</label>
+        <input id="editGender">
+      </div>
+
+      <div>
+        <label for="editBirth">Birth</label>
+        <input id="editBirth">
+      </div>
+
+      <div>
+        <label for="editDeath">Death</label>
+        <input id="editDeath">
+      </div>
+
+      <div>
+        <label for="editBirthPlace">Birth place</label>
+        <input id="editBirthPlace">
+      </div>
+
+      <div>
+        <label for="editDeathPlace">Death place</label>
+        <input id="editDeathPlace">
+      </div>
+    </div>
+
+    <div class="form-grid" style="margin-top:12px">
+      <div>
+        <label for="editNotes">Notes</label>
+        <textarea id="editNotes"></textarea>
+      </div>
+
+      <div>
+        <label for="editSources">Sources</label>
+        <textarea id="editSources"></textarea>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button id="savePersonBtn" class="primary">Save person</button>
+    </div>
+
+    <div id="saveMessage"></div>
+  </div>
+</section>
+
+<section id="personDetail" class="panel hidden">
+  <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
+    <h2 id="detailName">Person</h2>
+    <button id="closeDetailBtn">Close</button>
+  </div>
+
+  <div id="detailContent"></div>
+</section>
+
+</div>
+</main>
+
+<footer>
+  Fleury Family Archive — private authenticated archive.
+</footer>
 
 <script src="https://cdn.auth0.com/js/auth0-spa-js/2.1/auth0-spa-js.production.js"></script>
-<script src="config.js"></script>
+
 <script type="module">
 import * as archiveApi from './archive-api.js';
 
-const $=s=>document.querySelector(s);
-const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const cleanId=v=>String(v??'').replace(/^@+|@+$/g,'');
-const shown=v=>String(v??'').replace(/^@+|@+$/g,'').trim();
-const state={db:null,user:null,role:null,tab:'explore',selected:null,query:'',sort:false,history:[]};
+let database=null;
+let people=[];
+let relationships=[];
+let currentRole=null;
+let selectedPersonId=null;
 
-function people(){return Array.isArray(state.db?.people)?state.db.people:[]}
-function rels(){return Array.isArray(state.db?.relationships)?state.db.relationships:[]}
-function person(id){const x=cleanId(id);return people().find(p=>cleanId(p['Person ID'])===x)||null}
-function pname(id){return shown(person(id)?.Name)||'Unnamed person'}
-function visible(p){return p && !String(p.Name||'').includes('?')}
-function link(id,label){const p=person(id);if(!p||!visible(p))return '';return `<button class="person-link" data-person="${esc(cleanId(id))}">${esc(label||shown(p.Name))}</button>`}
-function relationType(r){return String(r.type||r.Relationship||r.Type||'').trim().toLowerCase()}
-function ends(r){return [cleanId(r.person1||r.Person1||r.from||r.source),cleanId(r.person2||r.Person2||r.to||r.target)]}
-function linksFor(id,type){
-  const x=cleanId(id);return rels().filter(r=>{const [a,b]=ends(r);const t=relationType(r);return (t===type)&&((a===x)||(b===x))})
+const $=id=>document.getElementById(id);
+
+function displayName(person){
+  if(!person) return '';
+  return String(person.Name||person.name||'')
+    .replace(/@/g,'')
+    .trim();
 }
-function family(id,type){
-  const x=cleanId(id), out=[];
-  for(const r of rels()){const [a,b]=ends(r);if(relationType(r)!==type)continue;if(a===x&&person(b))out.push(b);else if(b===x&&person(a))out.push(a)}
-  return [...new Set(out)];
+
+function getId(person){
+  return person?.ID ?? person?.id ?? person?.Id ?? '';
 }
-function parents(id){return family(id,'parent')}
-function spouses(id){return family(id,'spouse')}
-function children(id){
-  const x=cleanId(id), out=[];
-  for(const r of rels()){if(relationType(r)!=='parent')continue;const [a,b]=ends(r);if(a===x&&person(b))out.push(b)}
-  return [...new Set(out)]
+
+function getField(person,...keys){
+  for(const key of keys){
+    if(person && person[key]!==undefined && person[key]!==null){
+      return person[key];
+    }
+  }
+  return '';
 }
-function normalize(s){return String(s||'').toLowerCase().replace(/^@+|@+$/g,'').trim()}
-function findPeople(q=''){
-  const n=normalize(q);
-  return people().filter(visible).filter(p=>!n||normalize(p.Name).includes(n)).sort((a,b)=>{
-    const aa=normalize(a.Name),bb=normalize(b.Name);
-    return state.sort?aa.localeCompare(bb):0
-  })
+
+function visiblePeople(){
+  return people.filter(person=>{
+    const name=displayName(person);
+    return name && !String(getField(person,'Name','name')).includes('?');
+  });
 }
-function setTab(t){state.tab=t;render()}
-function renderNav(){
-  $('#nav').innerHTML=['explore','people','relationships','reports','charts','admin'].map(t=>`<button class="${state.tab===t?'active':''}" data-tab="${t}">${t[0].toUpperCase()+t.slice(1)}</button>`).join('');
+
+function personById(id){
+  return people.find(p=>String(getId(p))===String(id));
 }
-function renderAuth(){
-  if(!state.user){$('#auth').innerHTML='<span>Not signed in</span><button id="login">Sign in</button>';$('#login').onclick=()=>archiveApi.signInWithEmail();return}
-  $('#auth').innerHTML=`<span>Signed in</span><button id="logout">Sign out</button>`;
-  $('#logout').onclick=()=>archiveApi.signOutUser();
+
+function personLink(id){
+  const person=personById(id);
+  if(!person) return '';
+
+  const name=displayName(person);
+  if(!name || String(getField(person,'Name','name')).includes('?')) return '';
+
+  return `<span class="person-link" data-person="${escapeHtml(String(id))}">${escapeHtml(name)}</span>`;
 }
-function detail(id){
-  const p=person(id); if(!p)return '<div class="panel">Person not found.</div>';
-  const pid=cleanId(id), ps=parents(pid), ss=spouses(pid), cs=children(pid);
-  const list=(ids,empty='—')=>ids.length?`<div class="people-links">${ids.map(x=>link(x)).join('')}</div>`:`<div class="empty">${empty}</div>`;
-  const field=(title,value)=>value?`<div class="pill"><b>${esc(title)}:</b> ${esc(shown(value))}</div>`:'';
-  return `<div class="panel">
-    <div class="actions"><button data-back>← Back</button><button class="primary" data-chart="${esc(pid)}">Chart this person</button>${canEdit()?`<button data-edit="${esc(pid)}">Edit this person</button>`:''}</div>
-    <h1>${esc(shown(p.Name)||'Unnamed person')}</h1>
-    <div>${field('Birth',p.Birth||p['Birth Date'])}${field('Death',p.Death||p['Death Date'])}${field('Gender',p.Gender)}</div>
-    <div class="section"><h3>Parents</h3>${list(ps)}</div>
-    <div class="section"><h3>Spouse(s)</h3>${list(ss)}</div>
-    <div class="section"><h3>Children</h3>${list(cs)}</div>
-    <div class="section"><h3>Places</h3>${listValues(p,'Place','Places')}</div>
-    <div class="section"><h3>Sources</h3>${listValues(p,'Source','Sources')}</div>
-    <div class="section"><h3>Notes</h3><div>${esc(p.Notes||p.notes||'—')}</div></div>
-  </div>`;
+
+function escapeHtml(value){
+  return String(value??'')
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#039;');
 }
-function listValues(p,a,b){const v=p[a]??p[b]??p[a.toLowerCase()]??p[b.toLowerCase()];return v?`<div>${esc(v)}</div>`:'<div class="empty">—</div>'}
-function canEdit(){return ['admin','editor'].includes(String(state.role||'').toLowerCase())}
-function renderExplore(){
-  if(state.selected&&person(state.selected))return detail(state.selected);
-  return `<div class="panel"><h1>Fleury Family Archive</h1><p class="muted">Private family archive. Search for a person to begin.</p>
-  <input class="search" id="globalSearch" placeholder="Search people by name" value="${esc(state.query)}">
-  <div id="quickList" class="list"></div></div>`;
+
+function relationshipType(r){
+  return String(
+    getField(r,'type','Type','relationship','Relationship')||''
+  ).toLowerCase();
 }
-function renderPeople(){
-  const rows=findPeople(state.query);
-  return `<div class="panel"><h2>People</h2><div class="actions"><input class="search" id="peopleSearch" placeholder="Search names" value="${esc(state.query)}"><button id="sort">Sort A–Z</button></div>
-  <div class="list">${rows.slice(0,1000).map(p=>`<div class="row">${link(p['Person ID'])}<span class="small muted">${esc(cleanId(p['Person ID']))}</span></div>`).join('')||'<div class="row">No people found.</div>'}</div><p class="small muted">${rows.length} matching visible people</p></div>`;
+
+function fromId(r){
+  return getField(r,'from','From','person1','personId','source');
 }
-function renderRelationships(){
-  if(!state.selected)return `<div class="panel"><h2>Relationships</h2><p>Select a person to see their recorded family links.</p><input class="search" id="relSearch" placeholder="Find a person"></div>`;
-  const id=state.selected;return `<div class="panel"><h2>Family links for ${link(id)}</h2>
-    <div class="grid"><div><h3>Parents</h3>${familyList(parents(id))}</div><div><h3>Spouse(s)</h3>${familyList(spouses(id))}</div><div><h3>Children</h3>${familyList(children(id))}</div></div></div>`;
+
+function toId(r){
+  return getField(r,'to','To','person2','relatedPersonId','target');
 }
-function familyList(ids){return ids.length?ids.map(x=>`<div>${link(x)}</div>`).join(''):'<div class="empty">—</div>'}
-function renderReports(){
-  return `<div class="panel"><h2>Reports</h2><p class="muted">Generate a simple printable report from the recorded family links.</p>
-  <div class="grid"><label>Person<select id="reportPerson"><option value="">Choose a person</option>${findPeople().map(p=>`<option value="${esc(cleanId(p['Person ID']))}">${esc(shown(p.Name))}</option>`).join('')}</select></label>
-  <label>Report<select id="reportType"><option value="family">Family links</option><option value="ancestors">Ancestors</option><option value="descendants">Descendants</option></select></label></div><div class="actions" style="margin-top:12px"><button class="primary" id="makeReport">Generate</button><button id="printReport">Print</button></div><div id="reportOut"></div></div>`;
+
+function relationshipRowsFor(id){
+  return relationships.filter(r=>
+    String(fromId(r))===String(id) ||
+    String(toId(r))===String(id)
+  );
 }
-function walk(root,dir,max=12){
-  const seen=new Set([cleanId(root)]), groups=[];
-  let current=[cleanId(root)];
-  for(let depth=1;depth<=max;depth++){const next=[];for(const id of current){const ids=dir==='up'?parents(id):children(id);for(const x of ids)if(!seen.has(x)){seen.add(x);next.push(x)}}if(!next.length)break;groups.push(next);current=next}return groups;
+
+function relatedPeople(id){
+  const result=[];
+
+  for(const r of relationshipRowsFor(id)){
+    const a=String(fromId(r));
+    const b=String(toId(r));
+    const other=a===String(id)?b:a;
+    const p=personById(other);
+
+    if(p && !String(getField(p,'Name','name')).includes('?')){
+      result.push({person:p,relationship:r});
+    }
+  }
+
+  return result;
 }
-function renderCharts(){return `<div class="panel"><h2>Family chart</h2><input class="search" id="chartSearch" placeholder="Search for a person"><div id="chartChoices" class="list"></div><div id="chartArea" style="margin-top:12px"></div></div>`}
-function makeChart(root){
-  const p=person(root);if(!p)return;
-  const par=parents(root).slice(0,2), kids=children(root).slice(0,6), nodes=[root,...par,...kids], W=900,H=360, cx=W/2;
-  const pos={};pos[root]={x:cx,y:160};par.forEach((id,i)=>pos[id]={x:cx+(i?190:-190),y:60});kids.forEach((id,i)=>pos[id]={x:100+i*140,y:285});
-  const line=(a,b)=>`<line x1="${pos[a].x}" y1="${pos[a].y+20}" x2="${pos[b].x}" y2="${pos[b].y-20}" stroke="#9aa7b8"/>`;
-  $('#chartArea').innerHTML=`<h3>${link(root)}</h3><svg viewBox="0 0 ${W} ${H}">${par.map(x=>line(x,root)).join('')}${kids.map(x=>line(root,x)).join('')}${nodes.map(id=>`<g data-chart-person="${esc(id)}"><rect class="chart-node" x="${pos[id].x-80}" y="${pos[id].y-20}" width="160" height="40" rx="7"/><text class="chart-text" x="${pos[id].x}" y="${pos[id].y+5}" text-anchor="middle">${esc(shown(person(id).Name).slice(0,22))}</text></g>`).join('')}</svg><div class="small muted">Parents and children shown from recorded links.</div>`;
+
+function setStatus(text,error=false){
+  $('authStatus').textContent=text;
+  $('authStatus').className=error?'small error':'small';
 }
-function renderAdmin(){
-  if(!canEdit())return `<div class="panel"><h2>Admin</h2><p>Administrator or editor access is required.</p></div>`;
-  return `<div class="panel"><h2>Admin</h2><div class="actions"><button class="primary" id="newPerson">Add person</button></div><p class="muted">The private archive database is only written when you explicitly save an edit.</p></div>`;
+
+function showView(view){
+  document.querySelectorAll('.view').forEach(x=>x.classList.add('hidden'));
+  const target=$('view-'+view);
+  if(target) target.classList.remove('hidden');
+
+  document.querySelectorAll('nav button[data-view]').forEach(btn=>{
+    btn.classList.toggle('active',btn.dataset.view===view);
+  });
 }
-function render(){
-  renderNav();renderAuth();
-  if(!state.db){$('#app').innerHTML='<div class="panel"><h2>Loading private archive…</h2><div id="status">Connecting securely.</div></div>';return}
-  $('#app').innerHTML=state.tab==='explore'?renderExplore():state.tab==='people'?renderPeople():state.tab==='relationships'?renderRelationships():state.tab==='reports'?renderReports():state.tab==='charts'?renderCharts():renderAdmin();
-  bind();
+
+function populatePersonSelect(selectId){
+  const select=$(selectId);
+  if(!select) return;
+
+  const old=select.value;
+
+  select.innerHTML='<option value="">Select a person…</option>';
+
+  visiblePeople()
+    .sort((a,b)=>displayName(a).localeCompare(displayName(b)))
+    .forEach(p=>{
+      const option=document.createElement('option');
+      option.value=String(getId(p));
+      option.textContent=displayName(p);
+      select.appendChild(option);
+    });
+
+  if(old && personById(old)) select.value=old;
 }
-function bind(){
-  document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
-  document.querySelectorAll('[data-person]').forEach(b=>b.onclick=()=>{state.selected=cleanId(b.dataset.person);state.history.push(state.selected);state.tab='explore';render()});
-  document.querySelectorAll('[data-back]').forEach(b=>b.onclick=()=>{state.selected=state.history.length>1?state.history[state.history.length-2]:null;if(state.history.length)state.history.pop();render()});
-  document.querySelectorAll('[data-chart]').forEach(b=>b.onclick=()=>{state.selected=cleanId(b.dataset.chart);state.tab='charts';render();makeChart(state.selected)});
-  document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>openEdit(b.dataset.edit));
-  const gs=$('#globalSearch');if(gs){gs.oninput=e=>{state.query=e.target.value;renderQuick()};renderQuick()}
-  const ps=$('#peopleSearch');if(ps)ps.oninput=e=>{state.query=e.target.value;render()}
-  const sort=$('#sort');if(sort)sort.onclick=()=>{state.sort=!state.sort;render()}
-  const rs=$('#relSearch');if(rs)rs.oninput=e=>{state.query=e.target.value;renderRelSearch()}
-  const cs=$('#chartSearch');if(cs)cs.oninput=e=>renderChartChoices(e.target.value);if(cs)renderChartChoices('')
-  const nr=$('#newPerson');if(nr)nr.onclick=()=>openEdit('')
-  const mr=$('#makeReport');if(mr)mr.onclick=makeReport
-  const pr=$('#printReport');if(pr)pr.onclick=()=>window.print()
+
+function renderStats(){
+  $('exploreResults').innerHTML=`
+    <div class="card">
+      <div class="stat">${people.length.toLocaleString()}</div>
+      <div class="stat-label">People recorded</div>
+    </div>
+    <div class="card">
+      <div class="stat">${relationships.length.toLocaleString()}</div>
+      <div class="stat-label">Relationships recorded</div>
+    </div>
+    <div class="card">
+      <div class="stat">${visiblePeople().length.toLocaleString()}</div>
+      <div class="stat-label">People shown in archive</div>
+    </div>
+  `;
 }
-function renderQuick(){const box=$('#quickList');if(!box)return;const rows=findPeople(state.query).slice(0,50);box.innerHTML=rows.map(p=>`<div class="row">${link(p['Person ID'])}</div>`).join('')||'<div class="row">No matches.</div>';box.querySelectorAll('[data-person]').forEach(b=>b.onclick=()=>{state.selected=b.dataset.person;render()})}
-function renderRelSearch(){const box=$('#relSearch')?.parentElement;if(!box)return;const rows=findPeople(state.query).slice(0,30);box.innerHTML=`<h2>Relationships</h2><input class="search" id="relSearch" value="${esc(state.query)}" placeholder="Find a person"><div class="list">${rows.map(p=>`<div class="row">${link(p['Person ID'])}</div>`).join('')}</div>`;bind()}
-function renderChartChoices(q){const box=$('#chartChoices');if(!box)return;box.innerHTML=findPeople(q).slice(0,50).map(p=>`<div class="row"><button class="person-link" data-chart-choice="${esc(cleanId(p['Person ID']))}">${esc(shown(p.Name))}</button></div>`).join('')||'<div class="row">No matches.</div>';box.querySelectorAll('[data-chart-choice]').forEach(b=>b.onclick=()=>makeChart(b.dataset.chartChoice))}
-function makeReport(){
-  const id=$('#reportPerson')?.value;if(!id)return;
-  const type=$('#reportType').value,p=person(id),groups=type==='ancestors'?walk(id,'up'):type==='descendants'?walk(id,'down'):[parents(id),spouses(id),children(id)];
-  let h=`<div class="panel"><h2>${esc(shown(p.Name))}</h2>`;
-  groups.forEach((g,i)=>{h+=`<h3>${type==='family'?['Parents','Spouse(s)','Children'][i]:'Generation '+(i+1)}</h3><div class="people-links">${g.map(x=>link(x)).join('')||'—'}</div>`});h+='</div>';$('#reportOut').innerHTML=h;bind()}
-function openEdit(id){
-  const p=id?person(id):{'Person ID':'','Name':'','Gender':'','Birth':'','Death':'','Places':'','Sources':'','Notes':''};
-  $('#modalBody').innerHTML=`<h2>${id?'Edit person':'Add person'}</h2><div class="formgrid">
-  <label class="field"><span>Person ID</span><input id="f_id" value="${esc(cleanId(p['Person ID']))}" ${id?'readonly':''}></label>
-  <label class="field"><span>Name</span><input id="f_name" value="${esc(shown(p.Name))}"></label>
-  <label class="field"><span>Gender</span><input id="f_gender" value="${esc(p.Gender||'')}"></label>
-  <label class="field"><span>Birth</span><input id="f_birth" value="${esc(p.Birth||p['Birth Date']||'')}"></label>
-  <label class="field"><span>Death</span><input id="f_death" value="${esc(p.Death||p['Death Date']||'')}"></label>
-  <label class="field"><span>Places</span><input id="f_places" value="${esc(p.Places||p.Place||'')}"></label>
-  <label class="field full"><span>Sources</span><textarea id="f_sources">${esc(p.Sources||p.Source||'')}</textarea></label>
-  <label class="field full"><span>Notes</span><textarea id="f_notes">${esc(p.Notes||p.notes||'')}</textarea></label>
-  </div><div class="actions" style="margin-top:14px"><button class="primary" id="savePerson">Save</button><button id="closeModal">Cancel</button></div>`;
-  $('#modal').classList.add('open');$('#closeModal').onclick=closeModal;$('#savePerson').onclick=()=>savePerson(id)
+
+function renderPeople(filter=''){
+  const q=filter.trim().toLowerCase();
+
+  const rows=visiblePeople()
+    .filter(p=>{
+      if(!q) return true;
+      return displayName(p).toLowerCase().includes(q);
+    })
+    .sort((a,b)=>displayName(a).localeCompare(displayName(b)));
+
+  let html='<table><thead><tr><th>Name</th><th>Gender</th><th>Birth</th><th>Death</th></tr></thead><tbody>';
+
+  for(const p of rows){
+    html+=`
+      <tr>
+        <td>${personLink(getId(p))}</td>
+        <td>${escapeHtml(getField(p,'Gender','gender'))}</td>
+        <td>${escapeHtml(getField(p,'Birth','birth','BirthDate','birthDate'))}</td>
+        <td>${escapeHtml(getField(p,'Death','death','DeathDate','deathDate'))}</td>
+      </tr>
+    `;
+  }
+
+  html+='</tbody></table>';
+
+  $('peopleTable').innerHTML=html;
 }
-function closeModal(){$('#modal').classList.remove('open')}
-async function savePerson(oldId){
-  const id=cleanId($('#f_id').value), name=$('#f_name').value.trim();if(!id||!name)return alert('Person ID and Name are required.');
-  const data={Name:name,Gender:$('#f_gender').value.trim(),Birth:$('#f_birth').value.trim(),Death:$('#f_death').value.trim(),Places:$('#f_places').value.trim(),Sources:$('#f_sources').value.trim(),Notes:$('#f_notes').value.trim(),'Person ID':id};
-  const idx=people().findIndex(p=>cleanId(p['Person ID'])===cleanId(oldId||id));
-  if(idx>=0)state.db.people[idx]={...state.db.people[idx],...data};else state.db.people.push(data);
-  try{await archiveApi.saveDatabase(state.db);closeModal();state.selected=id;render();alert('Saved.')}catch(e){alert('Save failed: '+e.message)}}
-async function boot(){
+
+function renderSearchResults(query=''){
+  const q=query.trim().toLowerCase();
+
+  if(!q){
+    renderStats();
+    return;
+  }
+
+  const matches=visiblePeople()
+    .filter(p=>displayName(p).toLowerCase().includes(q))
+    .slice(0,100);
+
+  if(!matches.length){
+    $('exploreResults').innerHTML='<div class="card">No matching people found.</div>';
+    return;
+  }
+
+  $('exploreResults').innerHTML=matches.map(p=>`
+    <div class="card">
+      <h3>${personLink(getId(p))}</h3>
+      <div class="small muted">
+        ${escapeHtml(getField(p,'Birth','birth','BirthDate','birthDate'))}
+        ${getField(p,'Death','death','DeathDate','deathDate')?' – '+escapeHtml(getField(p,'Death','death','DeathDate','deathDate')):''}
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderRelationships(id){
+  if(!id){
+    $('relationshipResults').innerHTML='<p class="muted">Select a person.</p>';
+    return;
+  }
+
+  const person=personById(id);
+  if(!person){
+    $('relationshipResults').innerHTML='<p class="error">Person not found.</p>';
+    return;
+  }
+
+  const rows=relatedPeople(id);
+
+  if(!rows.length){
+    $('relationshipResults').innerHTML='<p>No recorded relationships for this person.</p>';
+    return;
+  }
+
+  const grouped={};
+
+  rows.forEach(({person:p,relationship:r})=>{
+    const type=relationshipType(r)||'Relationship';
+    if(!grouped[type]) grouped[type]=[];
+    grouped[type].push(p);
+  });
+
+  let html='';
+
+  Object.keys(grouped).sort().forEach(type=>{
+    html+=`<div class="detail-section" style="margin-bottom:12px">
+      <h3>${escapeHtml(type)}</h3>
+      ${grouped[type].map(p=>`<div>${personLink(getId(p))}</div>`).join('')}
+    </div>`;
+  });
+
+  $('relationshipResults').innerHTML=html;
+}
+
+function renderPersonDetail(id){
+  const person=personById(id);
+
+  if(!person){
+    $('personDetail').classList.add('hidden');
+    return;
+  }
+
+  selectedPersonId=String(id);
+
+  $('detailName').innerHTML=escapeHtml(displayName(person));
+
+  const parents=[];
+  const spouses=[];
+  const children=[];
+  const other=[];
+
+  relatedPeople(id).forEach(({person:p,relationship:r})=>{
+    const type=relationshipType(r);
+
+    if(type.includes('parent')||type.includes('mother')||type.includes('father')){
+      parents.push(p);
+    }else if(type.includes('spouse')||type.includes('partner')||type.includes('husband')||type.includes('wife')){
+      spouses.push(p);
+    }else if(type.includes('child')||type.includes('son')||type.includes('daughter')){
+      children.push(p);
+    }else{
+      other.push(p);
+    }
+  });
+
+  const unique=list=>[...new Map(list.map(p=>[String(getId(p)),p])).values()];
+
+  const listPeople=list=>{
+    const x=unique(list);
+    return x.length
+      ? x.map(p=>`<div>${personLink(getId(p))}</div>`).join('')
+      : '<span class="muted">None recorded</span>';
+  };
+
+  $('detailContent').innerHTML=`
+    <div class="detail-grid">
+
+      <div class="detail-section">
+        <h3>Basic information</h3>
+        <p><strong>Gender:</strong> ${escapeHtml(getField(person,'Gender','gender')||'Not recorded')}</p>
+        <p><strong>Birth:</strong> ${escapeHtml(getField(person,'Birth','birth','BirthDate','birthDate')||'Not recorded')}</p>
+        <p><strong>Death:</strong> ${escapeHtml(getField(person,'Death','death','DeathDate','deathDate')||'Not recorded')}</p>
+        <p><strong>Birth place:</strong> ${escapeHtml(getField(person,'BirthPlace','birthPlace','PlaceOfBirth')||'Not recorded')}</p>
+        <p><strong>Death place:</strong> ${escapeHtml(getField(person,'DeathPlace','deathPlace','PlaceOfDeath')||'Not recorded')}</p>
+      </div>
+
+      <div class="detail-section">
+        <h3>Parents</h3>
+        ${listPeople(parents)}
+      </div>
+
+      <div class="detail-section">
+        <h3>Spouse(s)</h3>
+        ${listPeople(spouses)}
+      </div>
+
+      <div class="detail-section">
+        <h3>Children</h3>
+        ${listPeople(children)}
+      </div>
+
+      <div class="detail-section">
+        <h3>Other recorded relationships</h3>
+        ${listPeople(other)}
+      </div>
+
+      <div class="detail-section">
+        <h3>Places</h3>
+        <p>${escapeHtml(getField(person,'Places','places')||'Not recorded')}</p>
+      </div>
+
+      <div class="detail-section">
+        <h3>Sources</h3>
+        <p>${escapeHtml(getField(person,'Sources','sources','Source')||'Not recorded')}</p>
+      </div>
+
+      <div class="detail-section">
+        <h3>Notes</h3>
+        <p>${escapeHtml(getField(person,'Notes','notes','Note')||'Not recorded')}</p>
+      </div>
+
+    </div>
+  `;
+
+  $('personDetail').classList.remove('hidden');
+  $('personDetail').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function generateReport(){
+  const type=$('reportType').value;
+  let html='';
+
+  if(type==='people'){
+    html='<h2>People Report</h2><table><thead><tr><th>Name</th><th>Gender</th><th>Birth</th><th>Death</th></tr></thead><tbody>';
+
+    visiblePeople()
+      .sort((a,b)=>displayName(a).localeCompare(displayName(b)))
+      .forEach(p=>{
+        html+=`<tr>
+          <td>${personLink(getId(p))}</td>
+          <td>${escapeHtml(getField(p,'Gender','gender'))}</td>
+          <td>${escapeHtml(getField(p,'Birth','birth','BirthDate','birthDate'))}</td>
+          <td>${escapeHtml(getField(p,'Death','death','DeathDate','deathDate'))}</td>
+        </tr>`;
+      });
+
+    html+='</tbody></table>';
+  }
+
+  if(type==='parents'){
+    html='<h2>Parents Report</h2><table><thead><tr><th>Person</th><th>Parent</th></tr></thead><tbody>';
+
+    visiblePeople().forEach(p=>{
+      relatedPeople(getId(p)).forEach(({person:other,relationship:r})=>{
+        const t=relationshipType(r);
+        if(t.includes('parent')||t.includes('mother')||t.includes('father')){
+          html+=`<tr><td>${personLink(getId(p))}</td><td>${personLink(getId(other))}</td></tr>`;
+        }
+      });
+    });
+
+    html+='</tbody></table>';
+  }
+
+  if(type==='spouses'){
+    html='<h2>Spouses Report</h2><table><thead><tr><th>Person</th><th>Spouse</th></tr></thead><tbody>';
+
+    visiblePeople().forEach(p=>{
+      relatedPeople(getId(p)).forEach(({person:other,relationship:r})=>{
+        const t=relationshipType(r);
+        if(t.includes('spouse')||t.includes('partner')||t.includes('husband')||t.includes('wife')){
+          html+=`<tr><td>${personLink(getId(p))}</td><td>${personLink(getId(other))}</td></tr>`;
+        }
+      });
+    });
+
+    html+='</tbody></table>';
+  }
+
+  if(type==='children'){
+    html='<h2>Children Report</h2><table><thead><tr><th>Parent</th><th>Child</th></tr></thead><tbody>';
+
+    visiblePeople().forEach(p=>{
+      relatedPeople(getId(p)).forEach(({person:other,relationship:r})=>{
+        const t=relationshipType(r);
+        if(t.includes('child')||t.includes('son')||t.includes('daughter')){
+          html+=`<tr><td>${personLink(getId(p))}</td><td>${personLink(getId(other))}</td></tr>`;
+        }
+      });
+    });
+
+    html+='</tbody></table>';
+  }
+
+  if(type==='places'){
+    html='<h2>Places Report</h2><table><thead><tr><th>Person</th><th>Birth place</th><th>Death place</th></tr></thead><tbody>';
+
+    visiblePeople().forEach(p=>{
+      html+=`<tr>
+        <td>${personLink(getId(p))}</td>
+        <td>${escapeHtml(getField(p,'BirthPlace','birthPlace','PlaceOfBirth'))}</td>
+        <td>${escapeHtml(getField(p,'DeathPlace','deathPlace','PlaceOfDeath'))}</td>
+      </tr>`;
+    });
+
+    html+='</tbody></table>';
+  }
+
+  $('reportOutput').innerHTML=html;
+}
+
+function generateChart(){
+  const id=$('chartPerson').value;
+  if(!id){
+    $('chartOutput').innerHTML='<p class="muted">Select a person first.</p>';
+    return;
+  }
+
+  const person=personById(id);
+  if(!person) return;
+
+  const rows=relatedPeople(id);
+
+  $('chartOutput').innerHTML=`
+    <div style="text-align:center">
+      <h2>${personLink(id)}</h2>
+      <p class="muted">Recorded family connections</p>
+
+      <div class="grid" style="text-align:left">
+        ${rows.length
+          ? rows.map(({person:p,relationship:r})=>`
+              <div class="card">
+                <div>${personLink(getId(p))}</div>
+                <div class="small muted">${escapeHtml(relationshipType(r)||'Relationship')}</div>
+              </div>
+            `).join('')
+          : '<div class="card">No recorded relationships.</div>'
+        }
+      </div>
+    </div>
+  `;
+}
+
+function populateEditor(){
+  populatePersonSelect('editPerson');
+}
+
+function loadEditorPerson(){
+  const p=personById($('editPerson').value);
+
+  if(!p) return;
+
+  $('editName').value=displayName(p);
+  $('editGender').value=getField(p,'Gender','gender');
+  $('editBirth').value=getField(p,'Birth','birth','BirthDate','birthDate');
+  $('editDeath').value=getField(p,'Death','death','DeathDate','deathDate');
+  $('editBirthPlace').value=getField(p,'BirthPlace','birthPlace','PlaceOfBirth');
+  $('editDeathPlace').value=getField(p,'DeathPlace','deathPlace','PlaceOfDeath');
+  $('editNotes').value=getField(p,'Notes','notes','Note');
+  $('editSources').value=getField(p,'Sources','sources','Source');
+}
+
+async function savePerson(){
+  const id=$('editPerson').value;
+  const person=personById(id);
+
+  if(!person){
+    $('saveMessage').innerHTML='<p class="error">Select a person first.</p>';
+    return;
+  }
+
+  person.Name=$('editName').value;
+  person.Gender=$('editGender').value;
+  person.Birth=$('editBirth').value;
+  person.Death=$('editDeath').value;
+  person.BirthPlace=$('editBirthPlace').value;
+  person.DeathPlace=$('editDeathPlace').value;
+  person.Notes=$('editNotes').value;
+  person.Sources=$('editSources').value;
+
   try{
-    state.user=await archiveApi.initAuth(async u=>u);
-    if(!state.user){render();return}
-    state.role=await archiveApi.getMyRole();
-    state.db=await archiveApi.loadDatabase();
-    if(!Array.isArray(state.db.people)||!Array.isArray(state.db.relationships))throw new Error('Private archive returned an invalid database.');
-    render();
-  }catch(e){$('#app').innerHTML=`<div class="panel error"><h2>Private archive connection error</h2><p>${esc(e.message)}</p><button onclick="location.reload()">Try again</button></div>`}
+    $('savePersonBtn').disabled=true;
+    await archiveApi.saveDatabase(database);
+    $('saveMessage').innerHTML='<p class="success">Person saved.</p>';
+    renderPeople($('peopleSearch').value);
+    renderSearchResults($('globalSearch').value);
+  }catch(error){
+    $('saveMessage').innerHTML=
+      `<p class="error">${escapeHtml(error.message)}</p>`;
+  }finally{
+    $('savePersonBtn').disabled=false;
+  }
 }
-boot();
+
+async function start(){
+  try{
+    const user=await archiveApi.initAuth();
+
+    if(!user){
+      $('loadingView').classList.add('hidden');
+      $('loginView').classList.remove('hidden');
+      $('signInBtn').classList.remove('hidden');
+      setStatus('Not signed in');
+      return;
+    }
+
+    $('userName').textContent=
+      user.name||user.email||'Signed-in user';
+
+    $('signInBtn').classList.add('hidden');
+    $('signOutBtn').classList.remove('hidden');
+
+    setStatus('Signed in');
+
+    database=await archiveApi.loadDatabase();
+
+    people=Array.isArray(database.people)?database.people:[];
+    relationships=Array.isArray(database.relationships)?database.relationships:[];
+
+    if(!people.length){
+      throw new Error('The private archive returned 0 people. No data was changed.');
+    }
+
+    currentRole=await archiveApi.getMyRole();
+
+    $('loadingView').classList.add('hidden');
+    $('loginView').classList.add('hidden');
+    $('app').classList.remove('hidden');
+
+    renderStats();
+    renderPeople();
+    populatePersonSelect('relationshipPerson');
+    populatePersonSelect('chartPerson');
+    populateEditor();
+
+    if(currentRole==='admin'||currentRole==='editor'){
+      $('editorPanel').classList.remove('hidden');
+      $('adminStatus').innerHTML=
+        `<p class="success">Role: ${escapeHtml(currentRole)}</p>`;
+    }else{
+      $('adminStatus').innerHTML=
+        '<p class="muted">You have read-only access.</p>';
+    }
+
+  }catch(error){
+    console.error(error);
+
+    $('loadingView').classList.add('hidden');
+    $('loginView').classList.remove('hidden');
+    $('loginMessage').textContent=error.message||String(error);
+    setStatus('Archive could not be loaded',true);
+  }
+}
+
+document.addEventListener('click',event=>{
+  const person=event.target.closest('[data-person]');
+
+  if(person){
+    renderPersonDetail(person.dataset.person);
+    return;
+  }
+});
+
+document.querySelectorAll('nav button[data-view]').forEach(button=>{
+  button.addEventListener('click',()=>{
+    showView(button.dataset.view);
+  });
+});
+
+$('signInBtn').addEventListener('click',()=>{
+  archiveApi.signInWithEmail();
+});
+
+$('loginMainBtn').addEventListener('click',()=>{
+  archiveApi.signInWithEmail();
+});
+
+$('signOutBtn').addEventListener('click',()=>{
+  archiveApi.signOutUser();
+});
+
+$('globalSearch').addEventListener('input',e=>{
+  renderSearchResults(e.target.value);
+});
+
+$('peopleSearch').addEventListener('input',e=>{
+  renderPeople(e.target.value);
+});
+
+$('relationshipPerson').addEventListener('change',e=>{
+  renderRelationships(e.target.value);
+});
+
+$('reportType').addEventListener('change',generateReport);
+
+$('generateReportBtn').addEventListener('click',generateReport);
+
+$('printReportBtn').addEventListener('click',()=>{
+  window.print();
+});
+
+$('chartPerson').addEventListener('change',generateChart);
+
+$('generateChartBtn').addEventListener('click',generateChart);
+
+$('printChartBtn').addEventListener('click',()=>{
+  window.print();
+});
+
+$('closeDetailBtn').addEventListener('click',()=>{
+  $('personDetail').classList.add('hidden');
+  selectedPersonId=null;
+});
+
+$('editPerson').addEventListener('change',loadEditorPerson);
+
+$('savePersonBtn').addEventListener('click',savePerson);
+
+start();
 </script>
+
 </body>
 </html>
