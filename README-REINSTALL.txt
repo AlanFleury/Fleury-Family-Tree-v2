@@ -1,23 +1,16 @@
-FLEURY FAMILY ARCHIVE — CLEAN REBUILD v5
+FLEURY FAMILY ARCHIVE — CURRENT REBUILD
 
-This build is based on the user's Ancestral Quest GEDCOM export.
-
-Source:
-- 17,994 individuals
-- 8,217 family records
-- GEDCOM 5.5.1 / UTF-8
-
-Conservative duplicate cleanup:
-- 10 high-confidence duplicate groups merged.
-- Unique information from merged records is retained.
-- Ambiguous same-name people are NOT automatically merged.
-
-The bundled archive-seed.json contains 17,984 people and 30,029 unique recorded parent/spouse links.
+Architecture:
+- GitHub Pages frontend
+- Auth0 email/password authentication
+- Private Cloudflare Worker API
+- Private archive database
+- No Firestore in the current application
 
 Important:
-- The v5 Firestore collections are separate from the previous archive collections.
-- Installing the master dataset does NOT delete the previous database.
-- Firebase writes are chunked for large datasets.
-- The app includes relationship calculation and Ancestry Quest-style report/print tools.
+- Do not import or replace the private archive with archive-seed.json unless it has been independently verified.
+- Do not upload family-data exports, GEDCOM files, or JSON backups to the public GitHub repository.
+- The current frontend must load the private archive through archive-api.js.
+- Test authentication and archive loading before making genealogy-data changes.
 
-Install-Fleury-Archive.cmd updates the local GitHub Pages repository and pushes the new build.
+The old Firebase files may remain in the repository temporarily for historical reference, but they are not part of the current application.
