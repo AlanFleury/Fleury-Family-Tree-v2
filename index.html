@@ -1494,21 +1494,36 @@ function relationshipToViewer(target){
   const root = currentPersonId;
   if(root && String(target) === String(root)) return 'you';
 
-  // Verified Alan relationships only. No fuzzy/smart matching.
   if(root === 'ALA' || root === 'I154'){
     let result = AUTHORITATIVE_ALAN_RELATIONSHIPS[String(target)];
-
-    // The live archive can contain different IDs from the verified workbook.
-    // Resolve ONLY an exact recorded name from that workbook.
     if(!result){
       const p = person(target);
-      const key = p ? String(p.Name || '').replace(/\s+/g,' ').trim().toLowerCase() : '';
+      const key = p ? String(p.Name || '').replace(/\\s+/g,' ').trim().toLowerCase() : '';
       if(key && AUTHORITATIVE_ALAN_NAMES[key]) result = AUTHORITATIVE_ALAN_NAMES[key];
     }
 
-    if(!result) return 'No bloodline relationship';
-    if(result === 'Self') return 'you';
+    // Never display the old placeholder. If the verified workbook has no
+    // direct entry, derive the relationship from the recorded parent links.
+    if(!result){
+      const aa = ancestorsWithDistance(root);
+      const bb = ancestorsWithDistance(target);
+      const common = [...aa.keys()].filter(x => bb.has(x));
+      if(!common.length) return 'Not related in recorded family tree';
 
+      common.sort((a,b) => (aa.get(a)+bb.get(a)) - (aa.get(b)+bb.get(b)));
+      const anc = common[0], da = aa.get(anc), dbb = bb.get(anc), g = genderOf(target);
+
+      if(da === 1) return dbb === 1 ? (g === 'F' ? 'Sister' : g === 'M' ? 'Brother' : 'Sibling')
+        : (g === 'F' ? 'Niece' : g === 'M' ? 'Nephew' : 'Niece/Nephew');
+      if(dbb === 1) return g === 'F' ? 'Aunt' : g === 'M' ? 'Uncle' : 'Aunt/Uncle';
+
+      const degree = Math.min(da,dbb)-1;
+      const cousin = degree === 1 ? '1st cousin' : degree === 2 ? '2nd cousin' : degree === 3 ? '3rd cousin' : `${degree}th cousin`;
+      const removed = Math.abs(da-dbb);
+      return cousin + (removed ? `, ${removed} time${removed===1?'':'s'} removed` : '');
+    }
+
+    if(result === 'Self') return 'you';
     const g = genderOf(target);
     const gendered = {
       'Father/Mother': g === 'F' ? 'Mother' : g === 'M' ? 'Father' : 'Parent',
@@ -1518,23 +1533,15 @@ function relationshipToViewer(target){
       'Niece/Nephew': g === 'F' ? 'Niece' : g === 'M' ? 'Nephew' : 'Niece/Nephew'
     };
     let label = gendered[result] || result;
-
     const ord = n => {
       const v = Number(n);
-      const suffix = v % 100 >= 11 && v % 100 <= 13 ? 'th' :
-        (v % 10 === 1 ? 'st' : v % 10 === 2 ? 'nd' : v % 10 === 3 ? 'rd' : 'th');
+      const suffix = v % 100 >= 11 && v % 100 <= 13 ? 'th' : (v%10===1?'st':v%10===2?'nd':v%10===3?'rd':'th');
       return `${v}${suffix}`;
     };
-    label = String(label).replace(/(?:Great-)+/gi, m => {
-      const n = (m.match(/Great-/gi) || []).length;
-      return `${ord(n)} great-`;
-    });
-    label = label.replace(/^first cousin\b/i, '1st cousin')
-                 .replace(/^second cousin\b/i, '2nd cousin')
-                 .replace(/^third cousin\b/i, '3rd cousin');
-    return label;
+    label = String(label).replace(/(?:Great-)+/gi, m => `${ord((m.match(/Great-/gi)||[]).length)} great-`);
+    return label.replace(/^first cousin\b/i,'1st cousin').replace(/^second cousin\b/i,'2nd cousin').replace(/^third cousin\b/i,'3rd cousin');
   }
-  return 'No bloodline relationship';
+  return 'Relationship not recorded';
 }
 
 function relationshipPath(root,target){
