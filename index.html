@@ -1493,11 +1493,26 @@ function relationshipToViewer(target){
   const root = currentPersonId;
   if(root && String(target) === String(root)) return 'you';
 
-  // Authoritative relationship labels for Alan, including marriage/affinity.
-  // Anything not explicitly recorded is not guessed.
+  // Only use explicitly verified relationship records for Alan.
+  // Never infer a relationship from a similar name or an unverified match.
   if(root === 'ALA' || root === 'I154'){
     const result = AUTHORITATIVE_ALAN_RELATIONSHIPS[String(target)];
-    return result === 'Self' ? 'you' : (result || 'No bloodline relationship');
+    if(!result) return 'No bloodline relationship';
+    if(result === 'Self') return 'you';
+
+    const g = genderOf(target);
+    const gendered = {
+      'Father/Mother': g === 'F' ? 'Mother' : g === 'M' ? 'Father' : 'Parent',
+      'Grandfather/Grandmother': g === 'F' ? 'Grandmother' : g === 'M' ? 'Grandfather' : 'Grandparent',
+      'Brother/Sister': g === 'F' ? 'Sister' : g === 'M' ? 'Brother' : 'Sibling',
+      'Aunt/Uncle': g === 'F' ? 'Aunt' : g === 'M' ? 'Uncle' : 'Aunt/Uncle',
+      'Niece/Nephew': g === 'F' ? 'Niece' : g === 'M' ? 'Nephew' : 'Niece/Nephew',
+      'Great-aunt/Great-uncle': g === 'F' ? 'Great-aunt' : g === 'M' ? 'Great-uncle' : 'Great-aunt/Great-uncle',
+      'Great-Great-aunt/uncle': g === 'F' ? 'Great-great-aunt' : g === 'M' ? 'Great-great-uncle' : 'Great-great-aunt/uncle',
+      'Great-Great-Great-aunt/uncle': g === 'F' ? 'Great-great-great-aunt' : g === 'M' ? 'Great-great-great-uncle' : 'Great-great-great-aunt/uncle',
+      'Great-Great-Great-Great-aunt/uncle': g === 'F' ? 'Great-great-great-great-aunt' : g === 'M' ? 'Great-great-great-great-uncle' : 'Great-great-great-great-aunt/uncle'
+    };
+    return gendered[result] || result;
   }
   return 'No bloodline relationship';
 }
@@ -2634,36 +2649,20 @@ function renderActiveTab(){
 
 function renderPeopleList(){
 
-  let q =
-    ($('#search')?.value || '')
-      .toLowerCase();
+  const q = String($('#search')?.value || '').toLowerCase().trim();
+  const visible = db.people.filter(isVisiblePerson);
 
-  let arr =
-    db.people
-      .filter(p => isVisiblePerson(p))
-      .filter(
-        p =>
-          Object.values(p)
-            .join(' ')
-            .toLowerCase()
-            .includes(q)
-      )
-      .sort((a,b) => {
-        // Keep the People list starting with A–Z names. Any name whose
-        // first character is not a letter is placed after the alphabet.
-        const an = String(a.Name || '').trim();
-        const bn = String(b.Name || '').trim();
-        const am = an.match(/[A-Za-zÀ-ÖØ-öø-ÿ]/);
-        const bm = bn.match(/[A-Za-zÀ-ÖØ-öø-ÿ]/);
-        if (!am && !bm) return an.localeCompare(bn);
-        if (!am) return 1;
-        if (!bm) return -1;
-        const ac = am[0].toLocaleLowerCase();
-        const bc = bm[0].toLocaleLowerCase();
-        const byLetter = ac.localeCompare(bc, undefined, {sensitivity:'base'});
-        if (byLetter) return byLetter;
-        return an.localeCompare(bn, undefined, {sensitivity:'base'});
-      });
+  // Do not scan every field of all 18,000+ people on startup.
+  // With no search, sort only by the displayed name and render the first page.
+  let arr;
+  if(!q){
+    arr = visible.slice().sort(nameSort);
+  }else{
+    arr = visible.filter(p =>
+      `${p.Name || ''} ${p['Person ID'] || ''} ${p.Birth || ''} ${p.Death || ''} ${p.Places || ''}`
+        .toLowerCase().includes(q)
+    ).sort(nameSort);
+  }
 
   const total = arr.length;
   const limit = q ? 500 : 300;
