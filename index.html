@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
+<meta name="fleury-build" content="fleury-build-v14">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#6b4f2a">
@@ -785,7 +786,7 @@ input,select,textarea{
 
   <div class="panel">
     <h2>Reports & Printing</h2>
-    <p class="muted">Generate readable genealogy reports from the current family database. Reports use the <strong>signed-in family member</strong> as the point of view for relationship labels. If your account is not linked to a family person, the app will say so rather than guessing.</p>
+    <p class="muted">Generate readable genealogy reports from the current family database. Reports use the <strong>signed-in family member</strong> as the point of view for relationship labels. Relationship labels are calculated from the signed-in family member.</p>
 
     <div class="formgrid">
       <div>
@@ -1024,6 +1025,33 @@ let db = {
   meta: {}
 };
 
+let relationshipIndex = { parents:new Map(), children:new Map(), spouses:new Map() };
+let peopleIndex = new Map();
+let relationshipCache = new Map();
+
+function rebuildRelationshipIndex(){
+  relationshipIndex = { parents:new Map(), children:new Map(), spouses:new Map() };
+  peopleIndex = new Map();
+  relationshipCache = new Map();
+  for(const p of (db.people || [])){
+    const id = p['Person ID'];
+    if(id) peopleIndex.set(id, p);
+  }
+  for(const r of (db.relationships || [])){
+    if(r.type === 'parent'){
+      if(!relationshipIndex.parents.has(r.person2)) relationshipIndex.parents.set(r.person2, []);
+      relationshipIndex.parents.get(r.person2).push(r.person1);
+      if(!relationshipIndex.children.has(r.person1)) relationshipIndex.children.set(r.person1, []);
+      relationshipIndex.children.get(r.person1).push(r.person2);
+    } else if(r.type === 'spouse'){
+      if(!relationshipIndex.spouses.has(r.person1)) relationshipIndex.spouses.set(r.person1, []);
+      if(!relationshipIndex.spouses.has(r.person2)) relationshipIndex.spouses.set(r.person2, []);
+      relationshipIndex.spouses.get(r.person1).push(r.person2);
+      relationshipIndex.spouses.get(r.person2).push(r.person1);
+    }
+  }
+}
+
 let selected = null;
 let currentSort = false;
 let archiveApi = null;
@@ -1035,16 +1063,6 @@ let navigationHistory = [{tab:'explore', personId:null}];
 let navigationIndex = 0;
 let navigationApplying = false;
 let familyEditPersonId = null;
-
-// Fast in-memory indexes. The archive contains ~18k people / ~30k links;
-// repeatedly scanning the entire relationship array for every person makes
-// the browser lock up. These indexes keep family lookups O(1).
-let peopleIndex = new Map();
-let parentsIndex = new Map();
-let childrenIndex = new Map();
-let spousesIndex = new Map();
-let relationshipCache = new Map();
-let rootRelationshipCache = null;
 
 const $ = s => document.querySelector(s);
 
@@ -1141,7 +1159,9 @@ function selectPerson(id, record=true){
 }
 
 function normalizedRole(){
-  return String(currentRole || '').trim().toLowerCase();
+  if(typeof currentRole === 'string') return currentRole.trim().toLowerCase();
+  if(currentRole && typeof currentRole === 'object') return String(currentRole.role || currentRole.name || '').trim().toLowerCase();
+  return '';
 }
 
 function canEdit(){
@@ -1170,7 +1190,7 @@ function save(){
     version:'3.0'
   };
 
-  rebuildIndexes();
+  rebuildRelationshipIndex();
   renderAll();
 
   if(canEdit()){
@@ -1188,7 +1208,6 @@ function save(){
 
 async function init(){
   db = {people:[], relationships:[], meta:{}};
-  rebuildIndexes();
   renderAll();
 
   const boot = $('#bootStatus');
@@ -1201,11 +1220,14 @@ async function init(){
     return;
   }
 
-  // Remove any obsolete service worker without blocking archive startup.
-  if('serviceWorker' in navigator){
-    navigator.serviceWorker.getRegistrations()
-      .then(regs => Promise.all(regs.map(r => r.unregister())))
-      .catch(e => console.warn('Service-worker cleanup:', e));
+  // Clean up any older service worker so it cannot interfere with this rebuild.
+  try{
+    if('serviceWorker' in navigator){
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r => r.unregister()));
+    }
+  }catch(e){
+    console.warn('Service-worker cleanup:', e);
   }
 
   try{
@@ -1218,7 +1240,7 @@ async function init(){
     setBoot('Loading private archive connection…');
 
     archiveApi = await Promise.race([
-      import('./archive-api.js?v=20261004-rebuild'),
+      import('./archive-api.js?v=20261004-v14'),
       new Promise((_,reject) =>
         setTimeout(() => reject(new Error('The private archive connection timed out after 10 seconds.')),10000)
       )
@@ -1254,7 +1276,7 @@ async function init(){
           setBoot('Retrying secure sign-in…');
 
           if(!archiveApi){
-            archiveApi = await import('./archive-api.js?v=20261004-rebuild-retry');
+            archiveApi = await import('./archive-api.js?v=20261004-v14-retry');
           }
 
           await archiveApi.signInWithEmail();
@@ -1268,55 +1290,21 @@ async function init(){
   }
 }
 
-function rebuildIndexes(){
-  peopleIndex = new Map();
-  parentsIndex = new Map();
-  childrenIndex = new Map();
-  spousesIndex = new Map();
-  relationshipCache = new Map();
-  rootRelationshipCache = null;
-
-  for(const p of (db.people || [])){
-    const id = p['Person ID'];
-    if(id) peopleIndex.set(id, p);
-  }
-
-  for(const r of (db.relationships || [])){
-    const a = r.person1, b = r.person2;
-    if(!a || !b) continue;
-    if(r.type === 'parent'){
-      if(!parentsIndex.has(b)) parentsIndex.set(b, []);
-      if(!parentsIndex.get(b).includes(a)) parentsIndex.get(b).push(a);
-      if(!childrenIndex.has(a)) childrenIndex.set(a, []);
-      if(!childrenIndex.get(a).includes(b)) childrenIndex.get(a).push(b);
-    }else if(r.type === 'spouse'){
-      if(!spousesIndex.has(a)) spousesIndex.set(a, []);
-      if(!spousesIndex.has(b)) spousesIndex.set(b, []);
-      if(!spousesIndex.get(a).includes(b)) spousesIndex.get(a).push(b);
-      if(!spousesIndex.get(b).includes(a)) spousesIndex.get(b).push(a);
-    }
-  }
-}
-
 function person(id){
   return peopleIndex.get(id) || null;
 }
 
 function name(id){
+
   return person(id)?.Name || id;
+
 }
 
-function parentsOf(id){
-  return parentsIndex.get(id) || [];
-}
+function parentsOf(id){ return relationshipIndex.parents.get(id) || []; }
 
-function childrenOf(id){
-  return childrenIndex.get(id) || [];
-}
+function childrenOf(id){ return relationshipIndex.children.get(id) || []; }
 
-function spousesOf(id){
-  return spousesIndex.get(id) || [];
-}
+function spousesOf(id){ return relationshipIndex.spouses.get(id) || []; }
 
 function normalizePersonName(value){
 
@@ -1327,8 +1315,38 @@ function normalizePersonName(value){
 
 }
 
+function findAlanPersonId(){
+  const canonical = person('ALA') || person('I154');
+  if(canonical) return canonical['Person ID'];
+
+  const candidates = (db.people || []).filter(p =>
+    normalizePersonName(p.Name) === 'alan fleury'
+  );
+  if(!candidates.length) return null;
+  if(candidates.length === 1) return candidates[0]['Person ID'];
+
+  const scored = candidates.map(p => {
+    let score = 0;
+    const id = p['Person ID'];
+    const birth = normalizePersonName(p.Birth || '');
+    const gender = String(p.Gender || '').toUpperCase();
+    if(gender === 'M' || gender === 'MALE') score += 20;
+    if(birth.includes('3 apr 1969') || birth.includes('03 apr 1969') || birth === '1969-04-03') score += 100;
+    const parentNames = parentsOf(id).map(pid => normalizePersonName(name(pid)));
+    if(parentNames.includes('charles edward fleury')) score += 100;
+    if(parentNames.includes('sheila ann harrison')) score += 100;
+    if(parentNames.includes('charles fleury')) score += 25;
+    if(parentNames.includes('sheila harrison')) score += 25;
+    return {id, score};
+  }).sort((a,b) => b.score - a.score);
+
+  return scored[0]?.id || null;
+}
+
 function resolveCurrentPersonId(){
-  if(!currentUser) return null;
+
+  if(!currentUser)
+    return null;
 
   const map = db.meta?.userPersonMap || {};
   const email = String(currentUser.email || '').toLowerCase().trim();
@@ -1341,44 +1359,90 @@ function resolveCurrentPersonId(){
     currentUser.user_metadata?.displayName ||
     [currentUser.given_name, currentUser.family_name].filter(Boolean).join(' ')
   );
-  // Resolve Alan by the actual archive record. Older validated archives use I154;
-  // newer archives may use ALA. If neither ID exists, use the unique Alan Fleury record.
-  const canonicalAlanId = person('ALA') ? 'ALA' : (person('I154') ? 'I154' : '');
-  const alanMatches = db.people.filter(p => normalizePersonName(p.Name) === 'alan fleury');
-  const canonicalAlanIdByName = canonicalAlanId || (alanMatches.length === 1 ? alanMatches[0]['Person ID'] : '');
-  const canonicalAlan = canonicalAlanIdByName ? person(canonicalAlanIdByName) : null;
+
+  // Resolve Alan from the actual archive, even when this version does not
+  // contain the older ALA/I154 IDs. Duplicate Alan Fleury records can exist;
+  // findAlanPersonId() chooses the record matching Alan's known birth date
+  // and recorded parents before falling back to the strongest candidate.
+  const canonicalAlanId = findAlanPersonId() || '';
+  const canonicalAlan = canonicalAlanId ? person(canonicalAlanId) : null;
+    const rawEmailLocal = email ? email.split('@')[0] : '';
+  const emailLocal = normalizePersonName(rawEmailLocal.replace(/\d+$/,''));
+  const emailLocalCompact = emailLocal.replace(/\s+/g,'');
+  const displayCompact = display.replace(/\s+/g,'');
+  const isAlanAccount =
+    display === 'alan fleury' ||
+    emailLocal === 'alan fleury' ||
+    displayCompact === 'alanfleury' ||
+    emailLocalCompact === 'alanfleury';
+
+  if(canonicalAlanId && isAlanAccount){
+    // The signed-in owner account is Alan Fleury.  Anchor this account to
+    // the canonical ALA record so relationship labels always have a real
+    // family-person viewpoint.  This changes only account metadata, never
+    // people or relationship records.
+    return canonicalAlanId;
+  }
+
+  // Some Auth0 profiles may not expose the name fields in the same shape
+  // after redirect.  If this is the approved admin account and the archive
+  // contains exactly one canonical Alan Fleury record, use that record.
+  if(canonicalAlanId && normalizedRole() === 'admin'){
+    return canonicalAlanId;
+  }
+
   const auth0Id = String(currentUser.sub || currentUser.user_id || currentUser.uid || '').trim();
-  const emailLocal = email ? normalizePersonName(email.split('@')[0].replace(/\d+$/,'')) : '';
-
-  if(canonicalAlanIdByName && (display === 'alan fleury' || emailLocal === 'alan fleury'))
-    return canonicalAlanIdByName;
-
   const mapped = (auth0Id && map[auth0Id]) || (email && map[email]) || '';
   if(mapped && person(mapped)){
-    if(canonicalAlan && normalizePersonName(person(mapped).Name) === 'alan fleury') return canonicalAlanIdByName;
+    // If an old mapping points to a duplicate Alan Fleury record, migrate
+    // the viewpoint in memory to the canonical ALA record without changing
+    // any database data.
+    if(canonicalAlan && normalizePersonName(person(mapped).Name) === 'alan fleury')
+      return canonicalAlanId;
     return mapped;
   }
 
   if(display){
-    const matches = db.people.filter(p => normalizePersonName(p.Name) === display);
-    if(matches.length === 1) return matches[0]['Person ID'];
-    if(canonicalAlan && display === 'alan fleury') return canonicalAlanIdByName;
+    const match = db.people.find(p => {
+      const n = normalizePersonName(p.Name);
+      return n === display || n.replace(/\s+/g,'') === displayCompact;
+    });
+    if(match){
+      if(canonicalAlan && displayCompact === 'alanfleury') return canonicalAlanId;
+      return match['Person ID'];
+    }
   }
 
+  // Some sign-in providers expose only the email local-part.
   if(emailLocal){
-    const matches = db.people.filter(p => normalizePersonName(p.Name) === emailLocal);
+    const matches = db.people.filter(p => {
+      const n = normalizePersonName(p.Name);
+      return n === emailLocal || n.replace(/\s+/g,'') === emailLocalCompact;
+    });
     if(matches.length === 1) return matches[0]['Person ID'];
   }
 
-  // The family administrator account is the owner's account. If it cannot
-  // expose a name/email claim, use the unique canonical Alan record.
-  if(canonicalAlan && normalizedRole() === 'admin')
-    return canonicalAlanIdByName;
+  // Last safe identity fallback: compare the Auth0 profile's given/family
+  // names as a full name. This does not alter the database and only links
+  // when there is exactly one matching visible person.
+  const profileFullName = normalizePersonName(
+    [currentUser.given_name, currentUser.family_name].filter(Boolean).join(' ')
+  );
+  if(profileFullName){
+    const matches = db.people.filter(p => normalizePersonName(p.Name) === profileFullName);
+    if(matches.length === 1) return matches[0]['Person ID'];
+  }
 
-  if(canonicalAlan && (email.includes('alanfleury') || emailLocal.replace(/\s+/g,'') === 'alanfleury'))
-    return canonicalAlanIdByName;
+  // Final safe fallback for the authenticated archive administrator.
+  // The archive's canonical root record is ALA (Alan Fleury). This does not
+  // alter people or relationships; it only establishes the signed-in
+  // administrator's relationship viewpoint when an older account mapping
+  // is absent or stale.
+  if(canonicalAlan && normalizedRole() === 'admin')
+    return canonicalAlanId;
 
   return null;
+
 }
 
 function genderOf(id){
@@ -1424,24 +1488,6 @@ function sideOfAncestor(root,ancestor){
 
 }
 
-function descendantTerm(root,target,distance){
-
-  const g = genderOf(target);
-
-  if(distance === 1)
-    return g === 'F' ? 'daughter' : g === 'M' ? 'son' : 'child';
-
-  if(distance === 2)
-    return g === 'F' ? 'granddaughter' : g === 'M' ? 'grandson' : 'grandchild';
-
-  const base =
-    g === 'F' ? 'daughter' :
-    g === 'M' ? 'son' :
-    'child';
-
-  return `${'great-'.repeat(distance-2)}grand${base}`;
-
-}
 
 function ordinal(n){
   const v=Number(n);
@@ -1485,70 +1531,92 @@ function siblingSide(root,target){
 }
 
 function relationshipToViewer(target){
-  if(!currentPersonId && currentUser){
+
+  // Always establish the relationship viewpoint from the authenticated
+  // family member before calculating anything.  For Alan's administrator
+  // account, resolveCurrentPersonId() deliberately selects the canonical
+  // Alan record (ALA, or I154 in an older archive).  For every other
+  // account, use its explicit family-person mapping/profile match.
+  if(!currentPersonId || !person(currentPersonId)){
     const resolved = resolveCurrentPersonId();
-    if(resolved) currentPersonId = resolved;
+    if(resolved && person(resolved)) currentPersonId = resolved;
   }
+
   const root = currentPersonId;
 
-  if(!person(target)) return 'Unknown person';
-  if(!root || !person(root)) return 'relationship unavailable';
-  if(root === target) return 'you';
+  if(!person(target))
+    return 'Unknown person';
 
-  const cacheKey = `${root}|${target}`;
-  if(relationshipCache.has(cacheKey)) return relationshipCache.get(cacheKey);
+  if(!root || !person(root))
+    return 'relationship unavailable';
 
-  let result;
+  if(root === target)
+    return 'you';
+
+  const cacheKey = root + '|' + target;
+  if(relationshipCache.has(cacheKey))
+    return relationshipCache.get(cacheKey);
+
   if(spousesOf(root).includes(target)){
     const g = genderOf(target);
-    result = g === 'F' ? 'wife' : g === 'M' ? 'husband' : 'spouse';
-  }else{
-    const aa = ancestorsWithDistance(root);
-    const bb = ancestorsWithDistance(target);
-
-    if(aa.has(target)){
-      const d = aa.get(target);
-      const side = sideOfAncestor(root,target);
-      const term = ancestorTerm(d, genderOf(target));
-      result = side ? `${side} ${term}` : term;
-    }else if(bb.has(root)){
-      result = descendantTerm(root,target,bb.get(root));
-    }else{
-      const common = [...aa.keys()].filter(x => bb.has(x));
-      if(!common.length){
-        result = 'not related in the recorded family tree';
-      }else{
-        common.sort((a,b) => (aa.get(a)+bb.get(a)) - (aa.get(b)+bb.get(b)));
-        const anc = common[0];
-        const da = aa.get(anc);
-        const dbb = bb.get(anc);
-        const side = sideOfAncestor(root,anc);
-        const g = genderOf(target);
-
-        if(da === 1 && dbb === 1){
-          const term = g === 'F' ? 'sister' : g === 'M' ? 'brother' : 'sibling';
-          result = side ? `${side} ${term}` : term;
-        }else if(da === 1 && dbb >= 2){
-          const base = g === 'F' ? 'aunt' : g === 'M' ? 'uncle' : 'aunt/uncle';
-          const n = dbb - 2;
-          const term = n === 0 ? base : n === 1 ? `great-${base}` : `${n} great-${base}`;
-          result = side ? `${side} ${term}` : term;
-        }else if(dbb === 1 && da >= 2){
-          const base = g === 'F' ? 'niece' : g === 'M' ? 'nephew' : 'niece/nephew';
-          const n = da - 2;
-          result = n === 0 ? base : n === 1 ? `great-${base}` : `${n} great-${base}`;
-        }else{
-          const degree = Math.min(da,dbb) - 1;
-          const cousin = degree === 1 ? '1st cousin' : degree === 2 ? '2nd cousin' : degree === 3 ? '3rd cousin' : `${ordinal(degree)} cousin`;
-          const removed = Math.abs(da-dbb);
-          result = side ? `${side} ${cousin}${removed ? `, ${removed} time${removed===1?'':'s'} removed` : ''}` : `${cousin}${removed ? `, ${removed} time${removed===1?'':'s'} removed` : ''}`;
-        }
-      }
-    }
+    const result = g === 'F' ? 'wife' : g === 'M' ? 'husband' : 'spouse';
+    relationshipCache.set(cacheKey, result);
+    return result;
   }
 
+  const aa = ancestorsWithDistance(root);
+  const bb = ancestorsWithDistance(target);
+
+  if(aa.has(target)){
+    const d = aa.get(target);
+    const side = sideOfAncestor(root,target);
+    const term = ancestorTerm(d, genderOf(target));
+    return side ? `${side} ${term}` : term;
+  }
+
+  if(bb.has(root)){
+    return descendantTerm(root,target,bb.get(root));
+  }
+
+  const common = [...aa.keys()].filter(x => bb.has(x));
+  if(!common.length)
+    return 'not related in the recorded family tree';
+
+  common.sort((a,b) => (aa.get(a)+bb.get(a)) - (aa.get(b)+bb.get(b)));
+
+  const anc = common[0];
+  const da = aa.get(anc);
+  const dbb = bb.get(anc);
+  const side = sideOfAncestor(root,anc);
+  const g = genderOf(target);
+
+  if(da === 1 && dbb === 1){
+    const term = g === 'F' ? 'sister' : g === 'M' ? 'brother' : 'sibling';
+    return side ? `${side} ${term}` : term;
+  }
+
+  if(da === 1 && dbb >= 2){
+    const base = g === 'F' ? 'aunt' : g === 'M' ? 'uncle' : 'aunt/uncle';
+    const ordinal = dbb - 2;
+    const term = ordinal === 0 ? base : ordinal === 1 ? `great-${base}` : `${ordinal} great-${base}`;
+    return side ? `${side} ${term}` : term;
+  }
+
+  if(dbb === 1 && da >= 2){
+    const base = g === 'F' ? 'niece' : g === 'M' ? 'nephew' : 'niece/nephew';
+    const ordinal = da - 2;
+    return ordinal === 0 ? base : ordinal === 1 ? `great-${base}` : `${ordinal} great-${base}`;
+  }
+
+  const degree = Math.min(da,dbb) - 1;
+  const cousin = degree === 1 ? '1st cousin' : degree === 2 ? '2nd cousin' : degree === 3 ? '3rd cousin' : `${ordinal(degree)} cousin`;
+  const removed = Math.abs(da-dbb);
+  const result = side
+    ? `${side} ${cousin}${removed ? `, ${removed} time${removed===1?'':'s'} removed` : ''}`
+    : `${cousin}${removed ? `, ${removed} time${removed===1?'':'s'} removed` : ''}`;
   relationshipCache.set(cacheKey, result);
   return result;
+
 }
 
 function relationshipPath(root,target){
@@ -1576,9 +1644,15 @@ function updateAuthUI(){
   let nav = $('#mainNav');
   let main = $('#appMain');
 
-  let authorized =
-    !!currentUser &&
-    !!currentRole;
+  const signedIn = !!currentUser;
+  const authorized = signedIn && !!currentRole;
+
+  if(signedIn){
+    nav.classList.remove('hidden');
+    main.classList.remove('hidden');
+    $('#signInBtn').classList.add('hidden');
+    $('#signOutBtn').classList.remove('hidden');
+  }
 
   if(authorized){
 
@@ -1626,7 +1700,7 @@ function updateAuthUI(){
       </div>
     `;
 
-  }else{
+  }else if(!signedIn){
 
     nav.classList.add('hidden');
 
@@ -1646,12 +1720,11 @@ function updateAuthUI(){
     if(currentUser && !currentRole){
 
       state.innerHTML = `
-        <strong>Access pending</strong>
+        <strong>Connecting to the private family database…</strong>
 
         <div class="small muted">
           ${esc(currentUser.email || 'This account')}
-          is signed in, but has not been approved
-          for the family archive.
+          is signed in. Checking family access…
         </div>
       `;
 
@@ -1708,6 +1781,11 @@ async function startInviteAuthentication(){
 }
 
 
+function setBootStatus(msg){
+  const el = $('#bootStatus');
+  if(el) el.textContent = msg;
+}
+
 async function handleUser(user){
 
   currentUser = user;
@@ -1729,7 +1807,6 @@ async function handleUser(user){
     };
 
     currentPersonId = null;
-    rebuildIndexes();
     renderAll();
 
     setCloudStatus(
@@ -1746,10 +1823,11 @@ async function handleUser(user){
 
   try{
 
-    currentRole =
-      await archiveApi.getMyRole(
-        user.uid
-      );
+    setBootStatus('Checking private family access…');
+    currentRole = await Promise.race([
+      archiveApi.getMyRole(),
+      new Promise((_,reject) => setTimeout(() => reject(new Error('Family access check timed out after 15 seconds.')),15000))
+    ]);
 
     if(!currentRole){
 
@@ -1771,13 +1849,17 @@ async function handleUser(user){
 
     updateAuthUI();
 
-    db =
-      await archiveApi.loadDatabase();
+    setBootStatus('Loading the private family database…');
+    db = await Promise.race([
+      archiveApi.loadDatabase(),
+      new Promise((_,reject) => setTimeout(() => reject(new Error('Private family database timed out after 30 seconds.')),30000))
+    ]);
 
-    rebuildIndexes();
+    rebuildRelationshipIndex();
 
-    currentPersonId =
-      resolveCurrentPersonId();
+    // Resolve the signed-in family member once, before any relationship-aware
+    // list or detail is rendered. Never write the archive during startup.
+    currentPersonId = resolveCurrentPersonId();
 
     cloudReady = true;
 
@@ -1791,6 +1873,7 @@ async function handleUser(user){
     setCloudStatus(
       'Connected to the private family database.'
     );
+    setBootStatus('Family archive ready.');
 
     $('#adminTools')
       .classList
@@ -1893,7 +1976,7 @@ function renderPersonMappingUI(){
     return;
 
   const q = String($('#personMapSearch')?.value || '').toLowerCase().trim();
-  const arr = q ? db.people.filter(p => isVisiblePerson(p) && `${p.Name || ''} ${p['Person ID'] || ''}`.toLowerCase().includes(q)) : db.people.filter(p => isVisiblePerson(p));
+  const arr = (q ? db.people.filter(p => isVisiblePerson(p) && `${p.Name || ''} ${p['Person ID'] || ''}`.toLowerCase().includes(q)) : db.people.filter(p => isVisiblePerson(p))).slice(0, 300);
   select.innerHTML = arr.slice().sort(nameSort).map(p => { const rel=relationshipToViewer(p['Person ID']); return `<option value="${esc(p['Person ID'])}">${esc(p.Name)}${rel && rel!=='you' ? ` — ${esc(rel)}` : ''}</option>`; }).join('');
 
 }
@@ -1931,11 +2014,12 @@ function savePersonMapping(){
   // If the mapping is being saved for the currently signed-in account,
   // also store the UID. This makes the mapping survive an email-address
   // change and gives the login resolver an unambiguous key.
+  const auth0Id = String(currentUser?.sub || currentUser?.user_id || currentUser?.uid || '').trim();
   if(
-    currentUser?.uid &&
-    String(currentUser.email || '').toLowerCase().trim() === email
+    auth0Id &&
+    String(currentUser?.email || '').toLowerCase().trim() === email
   ){
-    userPersonMap[currentUser.uid] = personId;
+    userPersonMap[auth0Id] = personId;
   }
 
   db.meta = {
@@ -2054,7 +2138,6 @@ function bindAuth(){
         await archiveApi.saveDatabase(x);
 
         db = x;
-        rebuildIndexes();
 
         renderAll();
 
@@ -2085,7 +2168,7 @@ function renderKinshipSelects(){
   let bv = b.value;
 
  const q = String($('#kinSearch')?.value || '').toLowerCase().trim();
-  const arr = q ? db.people.filter(p => isVisiblePerson(p) && `${p.Name || ''} ${p['Person ID'] || ''}`.toLowerCase().includes(q)) : db.people.filter(p => isVisiblePerson(p));
+  const arr = (q ? db.people.filter(p => isVisiblePerson(p) && `${p.Name || ''} ${p['Person ID'] || ''}`.toLowerCase().includes(q)) : db.people.filter(p => isVisiblePerson(p))).slice(0, 300);
   const opts = arr.slice().sort(nameSort).map(p => {
     const rel = relationshipToViewer(p['Person ID']);
     return `<option value="${esc(p['Person ID'])}">${esc(p.Name)}${rel && rel !== 'you' ? ` — ${esc(rel)}` : ''}</option>`;
@@ -2467,10 +2550,11 @@ function fillPersonSelect(id, query, preferred=''){
   if(!el) return;
   const old = preferred || el.value || '';
   const q = String(query || '').toLowerCase().trim();
-  const arr = q
+  const arr = (q
     ? db.people.filter(p => isVisiblePerson(p) && `${p.Name || ''} ${p['Person ID'] || ''}`.toLowerCase().includes(q))
-    : db.people.filter(p => isVisiblePerson(p));
- el.innerHTML = arr.slice().sort(nameSort).map(p=>{ const rel=relationshipToViewer(p['Person ID']); return `<option value="${esc(p['Person ID'])}">${esc(p.Name)}${rel && rel!=='you' ? ` — ${esc(rel)}` : ''}</option>`; }).join('');
+    : db.people.filter(p => isVisiblePerson(p))
+  ).slice().sort(nameSort).slice(0,500);
+  el.innerHTML = arr.map(p => `<option value="${esc(p['Person ID'])}">${esc(p.Name)} [${esc(displayPersonId(p['Person ID']))}]</option>`).join('');
   if(old && arr.some(p=>p['Person ID']===old)) el.value=old;
   else if(currentPersonId && arr.some(p=>p['Person ID']===currentPersonId)) el.value=currentPersonId;
   else if(person('ALAN-FLEURY') && arr.some(p=>p['Person ID']==='ALAN-FLEURY')) el.value='ALAN-FLEURY';
@@ -2584,7 +2668,7 @@ function showGenerations(){
 }
 
 function reportPersonOptions(selectedId=''){
-  return db.people.filter(p=>isVisiblePerson(p)).slice().sort(nameSort).map(p=>{ const rel=relationshipToViewer(p['Person ID']); return `<option value="${esc(p['Person ID'])}" ${p['Person ID']===selectedId?'selected':''}>${esc(p.Name)}${rel && rel!=='you' ? ` — ${esc(rel)}` : ''} [${esc(displayPersonId(p['Person ID']))}]</option>`; }).join('');
+  return db.people.filter(p=>isVisiblePerson(p)).slice().sort(nameSort).slice(0,300).map(p=>{ const rel=relationshipToViewer(p['Person ID']); return `<option value="${esc(p['Person ID'])}" ${p['Person ID']===selectedId?'selected':''}>${esc(p.Name)}${rel && rel!=='you' ? ` — ${esc(rel)}` : ''} [${esc(displayPersonId(p['Person ID']))}]</option>`; }).join('');
 }
 
 function renderReportSelects(){
@@ -2613,7 +2697,7 @@ function generationGroups(root,mode,depth){
   return groups;
 }
 function reportHeader(title,root){
-  const signed=currentPersonId ? name(currentPersonId) : 'Not linked to a family record';
+  const signed=currentPersonId ? name(currentPersonId) : 'Relationship viewpoint unavailable';
   return `<div class="report-sheet"><h1>${esc(title)}</h1><div class="report-meta">Fleury Family Archive · Generated ${esc(new Date().toLocaleString())}<br>Relationship point of view: <strong>${currentPersonId ? personLink(currentPersonId,signed) : esc(signed)}</strong></div>`;
 }
 function generateReport(){
@@ -2652,31 +2736,37 @@ function printReport(){
 function downloadReportHtml(){ const content=$('#reportPreview')?.innerHTML; if(!content) return; download('fleury-report.html',`<!doctype html><html><head><meta charset="utf-8"><title>Fleury Family Archive Report</title></head><body>${content}</body></html>`,'text/html'); }
 
 function renderAll(){
+
   $('#stats').innerHTML =
     `<span class="stat">${db.people.length} people</span>` +
     `<span class="stat">${db.relationships.length} links</span>` +
-    `<span class="stat">Updated ${esc((db.meta?.updatedAt || '').slice(0,10) || '—')}</span>`;
+    `<span class="stat">Updated ${
+      esc(
+        (db.meta?.updatedAt || '')
+          .slice(0,10) || '—'
+      )
+    }</span>`;
 
+  // IMPORTANT: do not render the entire 18,000+ person database at login.
+  // Only the active tab is rendered; each large list is capped/paginated below.
+  renderData();
   const vp=$('#relationshipViewpoint');
-  if(vp) vp.textContent = currentPersonId && person(currentPersonId)
-    ? `Relationships shown from ${name(currentPersonId)} (signed-in family member).`
-    : 'Sign in with an approved family account to show relationship labels.';
+  if(vp) vp.textContent=currentPersonId && person(currentPersonId) ? `Relationships shown from ${name(currentPersonId)}.` : 'Relationship labels use the signed-in family member.';
 
-  if(selected && person(selected) && isVisiblePerson(selected)) showDetail(selected);
-  renderActiveTab();
+  const active = currentTabId();
+  if(active === 'explore') renderPeopleList();
+  else if(active === 'people') renderPeopleTable();
+  else if(active === 'relationships') renderRels();
+  else if(active === 'kinship') renderKinshipSelects();
+  else if(active === 'chart') renderChartSelect();
+  else if(active === 'generations') renderGenerationsSelect();
+  else if(active === 'reports') renderReportSelects();
+
+  if(selected && person(selected) && isVisiblePerson(selected))
+    showDetail(selected);
+
   bindPersonLinks();
-}
 
-function renderActiveTab(){
-  const tab = currentTabId();
-  if(tab === 'explore') renderPeopleList();
-  else if(tab === 'people') renderPeopleTable();
-  else if(tab === 'relationships') renderRels();
-  else if(tab === 'kinship') renderKinshipSelects();
-  else if(tab === 'chart') renderChartSelect();
-  else if(tab === 'generations') renderGenerationsSelect();
-  else if(tab === 'reports') renderReportSelects();
-  else if(tab === 'backup') renderData();
 }
 
 function renderPeopleList(){
@@ -2712,17 +2802,23 @@ function renderPeopleList(){
         return an.localeCompare(bn, undefined, {sensitivity:'base'});
       });
 
-  const total = arr.length;
-  const limit = q ? 500 : 300;
-  const shown = arr.slice(0, limit);
+  const visibleArr = arr.slice(0, 150);
+
   $('#peopleList').innerHTML =
-    (shown.map(p =>
-      `<div class="person" data-id="${esc(p['Person ID'])}">
-        <button type="button" class="person-link" data-person-link="${esc(p['Person ID'])}" title="Open ${esc(p.Name)}">${esc(p.Name)}</button>
-        <div class="small muted">${esc(displayPersonId(p['Person ID']))}</div>
-      </div>`
-    ).join('') || '<p class="muted" style="padding:10px">No matches.</p>') +
-    (total > limit ? `<p class="small muted" style="padding:10px">Showing ${limit} of ${total}. Use the search box to find any person.</p>` : '');
+    visibleArr
+      .map(
+        p => {
+          const rel = relationshipToViewer(p['Person ID']);
+          return `<div class="person" data-id="${esc(p['Person ID'])}">
+            ${personLink(p['Person ID'], p.Name)}
+            <div class="small muted">
+              ${esc(displayPersonId(p['Person ID']))} — ${esc(displayRelationship(rel))}
+            </div>
+          </div>`;
+        }
+      )
+      .join('') ||
+      '<p class="muted" style="padding:10px">No matches.</p>' + (arr.length > 150 ? `<p class="muted" style="padding:10px">Showing first 150 of ${arr.length}. Refine the search to find more.</p>` : '');
 
   $$('#peopleList .person')
     .forEach(
@@ -2764,10 +2860,8 @@ function showDetail(id){
     </div>` +
 
     `<div>
-      <strong>Relationship to you</strong><br>
-      ${esc(
-        displayRelationship(relationshipToViewer(id))
-      )}
+      <strong>Relationship to Alan</strong><br>
+      ${esc(displayRelationship(relationshipToViewer(id)))}
     </div>` +
 
     `<div>
@@ -2837,6 +2931,9 @@ function showDetail(id){
       </button>
     </div>`;
 
+  // Bind the clickable person names that were just inserted into the detail panel.
+  bindPersonLinks();
+
   $$('[data-jump]')
     .forEach(
       b =>
@@ -2856,6 +2953,8 @@ function showDetail(id){
       generateChart();
 
     };
+
+  bindPersonLinks();
 
   $('#detailEdit').onclick =
     () => {
@@ -2898,10 +2997,10 @@ function renderPeopleTable(){
       );
 
   const totalPeopleRows = arr.length;
-  arr = arr.slice(0, 500);
+  arr = arr.slice(0, 100);
 
   $('#peopleTable').innerHTML =
-    `${totalPeopleRows > 500 ? `<div class="small muted" style="padding:8px 0">Showing 500 of ${totalPeopleRows}. Use the search box to find any person.</div>` : ''}<table class="table">
+    `<table class="table">
       <thead>
         <tr>
           <th>Name</th>
@@ -2939,7 +3038,7 @@ function renderPeopleTable(){
         }
 
       </tbody>
-    </table>`;
+    </table>` + (totalPeopleRows > 100 ? `<p class="muted" style="padding:8px">Showing first 100 of ${totalPeopleRows}. Refine the search to find more.</p>` : '');
 
   $$('[data-edit]')
     .forEach(
@@ -2976,12 +3075,16 @@ function renderFamilySiblingChoices(){
     .filter(p => !q || `${p.Name || ''} ${p['Person ID'] || ''}`.toLowerCase().includes(q))
     .sort((a,b) => a.Name.localeCompare(b.Name));
 
-  box.innerHTML = arr.length ? arr.map(p => `
+  const shown = arr.slice(0,500);
+  box.innerHTML = shown.length ? shown.map(p => `
     <label class="sibling-row">
       <input type="checkbox" class="familySibling" value="${esc(p['Person ID'])}" ${currentSiblings.has(p['Person ID']) ? 'checked' : ''}>
       <span>${personLink(p['Person ID'], p.Name)}</span>
     </label>
   `).join('') : '<div class="muted" style="padding:10px">No matching people.</div>';
+  if(arr.length > shown.length){
+    box.insertAdjacentHTML('beforeend', `<div class="small muted" style="padding:8px">Showing ${shown.length} of ${arr.length}. Refine the search to find more.</div>`);
+  }
 
   const hint = $('#familyParentHint');
   if(hint){
@@ -2993,10 +3096,9 @@ function renderFamilySiblingChoices(){
 
 function familyPersonOptions(excludeId, selected=''){
   return '<option value="">— Select person —</option>' +
-    db.people.filter(x => isVisiblePerson(x) && x['Person ID'] !== excludeId).sort(nameSort).map(x => {
-      const rel=relationshipToViewer(x['Person ID']);
-      return `<option value="${esc(x['Person ID'])}" ${x['Person ID'] === selected ? 'selected' : ''}>${esc(x.Name)}${rel && rel!=='you' ? ` — ${esc(rel)}` : ''} [${esc(displayPersonId(x['Person ID']))}]</option>`;
-    }).join('');
+    db.people.filter(x => isVisiblePerson(x) && x['Person ID'] !== excludeId).sort(nameSort).slice(0,500).map(x =>
+      `<option value="${esc(x['Person ID'])}" ${x['Person ID'] === selected ? 'selected' : ''}>${esc(x.Name)} [${esc(displayPersonId(x['Person ID']))}]</option>`
+    ).join('');
 }
 
 function renderFamilyDynamicRows(){
@@ -3240,11 +3342,11 @@ function editPerson(id){
 
   if(id){
     const currentParents = parentsOf(id);
-    const peopleForParent = db.people.filter(x => isVisiblePerson(x) && x['Person ID'] !== id).sort((a,b) => a.Name.localeCompare(b.Name));
+    const peopleForParent = db.people.filter(x => isVisiblePerson(x) && x['Person ID'] !== id).sort(nameSort).slice(0,500);
     ['familyParent1','familyParent2'].forEach((selId, index) => {
       const sel = $('#'+selId);
       if(!sel) return;
-      sel.innerHTML = '<option value="">— None —</option>' + peopleForParent.map(x => { const rel=relationshipToViewer(x['Person ID']); return `<option value="${esc(x['Person ID'])}">${esc(x.Name)}${rel && rel!=='you' ? ` — ${esc(rel)}` : ''} [${esc(displayPersonId(x['Person ID']))}]</option>`; }).join('');
+      sel.innerHTML = '<option value="">— None —</option>' + peopleForParent.map(x => `<option value="${esc(x['Person ID'])}">${esc(x.Name)} [${esc(displayPersonId(x['Person ID']))}]</option>`).join('');
       if(currentParents[index]) sel.value = currentParents[index];
     });
     renderFamilySiblingChoices();
@@ -3364,12 +3466,12 @@ function renderRels(){
 
   const rq = String($('#relSearch')?.value || '').toLowerCase().trim();
 
-  let relRows = db.relationships
+  let relArr = db.relationships
       .filter(r => isVisiblePerson(r.person1) && isVisiblePerson(r.person2))
       .filter(r => !rq || `${r.id} ${r.type} ${name(r.person1)} ${name(r.person2)} ${r.sourceIds || ''} ${r.notes || ''}`.toLowerCase().includes(rq));
-  const totalRelRows = relRows.length;
-  relRows = relRows.slice(0, 500);
-  let rows = relRows.map(
+
+  const totalRelRows = relArr.length;
+  const rows = relArr.slice(0, 100).map(
         r =>
           `<tr>
             <td>${esc(r.id)}</td>
@@ -3389,7 +3491,7 @@ function renderRels(){
       .join('');
 
   $('#relTable').innerHTML =
-    `${totalRelRows > 500 ? `<div class="small muted" style="padding:8px 0">Showing 500 of ${totalRelRows}. Use the search box to narrow the list.</div>` : ''}<table class="table">
+    `<table class="table">
 
       <thead>
         <tr>
@@ -3406,7 +3508,7 @@ function renderRels(){
         ${rows}
       </tbody>
 
-    </table>`;
+    </table>` + (totalRelRows > 100 ? `<p class="muted" style="padding:8px">Showing first 100 of ${totalRelRows}. Refine the search to find more.</p>` : '');
 
   $$('[data-delrel]')
     .forEach(
@@ -3429,10 +3531,9 @@ function renderRels(){
 }
 
 function personOptions(sel=''){
-  return db.people.filter(isVisiblePerson).slice().sort(nameSort).map(p=>{
-    const rel=relationshipToViewer(p['Person ID']);
-    return `<option value="${esc(p['Person ID'])}" ${p['Person ID']===sel?'selected':''}>${esc(p.Name)}${rel && rel!=='you' ? ` — ${esc(rel)}` : ''}</option>`;
-  }).join('');
+  return db.people.filter(isVisiblePerson).slice().sort(nameSort).slice(0,500).map(p =>
+    `<option value="${esc(p['Person ID'])}" ${p['Person ID']===sel?'selected':''}>${esc(p.Name)} [${esc(displayPersonId(p['Person ID']))}]</option>`
+  ).join('');
 }
 
 function editRel(){
@@ -4159,7 +4260,16 @@ function openTab(id, record=true){
         )
     );
 
-  renderActiveTab();
+  // Render only the tab the user opened. This keeps the UI responsive with the full archive.
+  if(id === 'explore') renderPeopleList();
+  else if(id === 'people') renderPeopleTable();
+  else if(id === 'relationships') renderRels();
+  else if(id === 'kinship') renderKinshipSelects();
+  else if(id === 'chart') renderChartSelect();
+  else if(id === 'generations') renderGenerationsSelect();
+  else if(id === 'reports') renderReportSelects();
+  else if(id === 'backup' || id === 'sync' || id === 'gedcom') renderData();
+
   updateNavigationButtons();
 }
 
