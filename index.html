@@ -1845,7 +1845,8 @@ function renderPersonMappingUI(){
 
   const q = String($('#personMapSearch')?.value || '').toLowerCase().trim();
   const arr = q ? db.people.filter(p => isVisiblePerson(p) && `${p.Name || ''} ${p['Person ID'] || ''}`.toLowerCase().includes(q)) : db.people.filter(p => isVisiblePerson(p));
-  select.innerHTML = arr.slice().sort(nameSort).map(p => { const rel=relationshipToViewer(p['Person ID']); return `<option value="${esc(p['Person ID'])}">${esc(p.Name)}${rel && rel!=='you' ? ` — ${esc(rel)}` : ''}</option>`; }).join('');
+  const shown = arr.slice().sort(nameSort).slice(0, q ? 500 : 300);
+  select.innerHTML = shown.map(p => `<option value="${esc(p['Person ID'])}">${esc(p.Name)} [${esc(displayPersonId(p['Person ID']))}]</option>`).join('');
 
 }
 
@@ -2421,7 +2422,8 @@ function fillPersonSelect(id, query, preferred=''){
   const arr = q
     ? db.people.filter(p => isVisiblePerson(p) && `${p.Name || ''} ${p['Person ID'] || ''}`.toLowerCase().includes(q))
     : db.people.filter(p => isVisiblePerson(p));
- el.innerHTML = arr.slice().sort(nameSort).map(p=>{ const rel=relationshipToViewer(p['Person ID']); return `<option value="${esc(p['Person ID'])}">${esc(p.Name)}${rel && rel!=='you' ? ` — ${esc(rel)}` : ''}</option>`; }).join('');
+ const shown = arr.slice().sort(nameSort).slice(0, q ? 500 : 300);
+ el.innerHTML = shown.map(p=>`<option value="${esc(p['Person ID'])}">${esc(p.Name)} [${esc(displayPersonId(p['Person ID']))}]</option>`).join('');
   if(old && arr.some(p=>p['Person ID']===old)) el.value=old;
   else if(currentPersonId && arr.some(p=>p['Person ID']===currentPersonId)) el.value=currentPersonId;
   else if(person('ALAN-FLEURY') && arr.some(p=>p['Person ID']==='ALAN-FLEURY')) el.value='ALAN-FLEURY';
@@ -2535,7 +2537,7 @@ function showGenerations(){
 }
 
 function reportPersonOptions(selectedId=''){
-  return db.people.filter(p=>isVisiblePerson(p)).slice().sort(nameSort).map(p=>{ const rel=relationshipToViewer(p['Person ID']); return `<option value="${esc(p['Person ID'])}" ${p['Person ID']===selectedId?'selected':''}>${esc(p.Name)}${rel && rel!=='you' ? ` — ${esc(rel)}` : ''} [${esc(displayPersonId(p['Person ID']))}]</option>`; }).join('');
+  const arr=db.people.filter(p=>isVisiblePerson(p)).slice().sort(nameSort).slice(0,300); return arr.map(p=>`<option value="${esc(p['Person ID'])}" ${p['Person ID']===selectedId?'selected':''}>${esc(p.Name)} [${esc(displayPersonId(p['Person ID']))}]</option>`).join('');
 }
 
 function renderReportSelects(){
@@ -3195,7 +3197,7 @@ function editPerson(id){
     ['familyParent1','familyParent2'].forEach((selId, index) => {
       const sel = $('#'+selId);
       if(!sel) return;
-      sel.innerHTML = '<option value="">— None —</option>' + peopleForParent.map(x => { const rel=relationshipToViewer(x['Person ID']); return `<option value="${esc(x['Person ID'])}">${esc(x.Name)}${rel && rel!=='you' ? ` — ${esc(rel)}` : ''} [${esc(displayPersonId(x['Person ID']))}]</option>`; }).join('');
+      sel.innerHTML = '<option value="">— None —</option>' + peopleForParent.slice(0,500).map(x => `<option value="${esc(x['Person ID'])}">${esc(x.Name)} [${esc(displayPersonId(x['Person ID']))}]</option>`).join('');
       if(currentParents[index]) sel.value = currentParents[index];
     });
     renderFamilySiblingChoices();
@@ -3380,10 +3382,8 @@ function renderRels(){
 }
 
 function personOptions(sel=''){
-  return db.people.filter(isVisiblePerson).slice().sort(nameSort).map(p=>{
-    const rel=relationshipToViewer(p['Person ID']);
-    return `<option value="${esc(p['Person ID'])}" ${p['Person ID']===sel?'selected':''}>${esc(p.Name)}${rel && rel!=='you' ? ` — ${esc(rel)}` : ''}</option>`;
-  }).join('');
+  const arr = db.people.filter(isVisiblePerson).slice().sort(nameSort).slice(0,300);
+  return arr.map(p => `<option value="${esc(p['Person ID'])}" ${p['Person ID']===sel?'selected':''}>${esc(p.Name)} [${esc(displayPersonId(p['Person ID']))}]</option>`).join('');
 }
 
 function editRel(){
@@ -3532,7 +3532,8 @@ function renderChartSelect(){
 
   const q = String($('#chartSearch')?.value || '').toLowerCase().trim();
   const arr = q ? db.people.filter(p => isVisiblePerson(p) && `${p.Name || ''} ${p['Person ID'] || ''}`.toLowerCase().includes(q)) : db.people.filter(p => isVisiblePerson(p));
-  el.innerHTML = arr.slice().sort(nameSort).map(p => { const rel=relationshipToViewer(p['Person ID']); return `<option value="${esc(p['Person ID'])}">${esc(p.Name)}${rel && rel!=='you' ? ` — ${esc(rel)}` : ''}</option>`; }).join('');
+  const shown = arr.slice().sort(nameSort).slice(0, q ? 500 : 300);
+  el.innerHTML = shown.map(p => `<option value="${esc(p['Person ID'])}">${esc(p.Name)} [${esc(displayPersonId(p['Person ID']))}]</option>`).join('');
   if(
     !el.value &&
     person('ALA')
