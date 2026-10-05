@@ -2743,18 +2743,6 @@ function showDetail(id){
     </div>` +
 
     `<div>
-      <strong>Relationship to you</strong><br>
-      ${esc(
-        displayRelationship(relationshipToViewer(id))
-      )}
-    </div>` +
-
-    `<div>
-      <strong>Evidence</strong><br>
-      ${esc(p['Evidence Status'] || '—')}
-    </div>` +
-
-    `<div>
       <strong>Parents</strong><br>
       ${
         ps
