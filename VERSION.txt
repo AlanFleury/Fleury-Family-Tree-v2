@@ -1,4 +1,6 @@
-Fleury Family Archive rebuilt v5
-Google redirect auth
-Private Firestore
+Fleury Family Archive — rebuild 1.0
+Authentication: Auth0 email/password
+Data: private Cloudflare Worker API
+Frontend: GitHub Pages
+Database: private archive API — no Firestore
 No public family data
