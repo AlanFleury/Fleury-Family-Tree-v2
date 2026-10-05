@@ -1506,13 +1506,28 @@ function relationshipToViewer(target){
       'Grandfather/Grandmother': g === 'F' ? 'Grandmother' : g === 'M' ? 'Grandfather' : 'Grandparent',
       'Brother/Sister': g === 'F' ? 'Sister' : g === 'M' ? 'Brother' : 'Sibling',
       'Aunt/Uncle': g === 'F' ? 'Aunt' : g === 'M' ? 'Uncle' : 'Aunt/Uncle',
-      'Niece/Nephew': g === 'F' ? 'Niece' : g === 'M' ? 'Nephew' : 'Niece/Nephew',
-      'Great-aunt/Great-uncle': g === 'F' ? 'Great-aunt' : g === 'M' ? 'Great-uncle' : 'Great-aunt/Great-uncle',
-      'Great-Great-aunt/uncle': g === 'F' ? 'Great-great-aunt' : g === 'M' ? 'Great-great-uncle' : 'Great-great-aunt/uncle',
-      'Great-Great-Great-aunt/uncle': g === 'F' ? 'Great-great-great-aunt' : g === 'M' ? 'Great-great-great-uncle' : 'Great-great-great-aunt/uncle',
-      'Great-Great-Great-Great-aunt/uncle': g === 'F' ? 'Great-great-great-great-aunt' : g === 'M' ? 'Great-great-great-great-uncle' : 'Great-great-great-great-aunt/uncle'
+      'Niece/Nephew': g === 'F' ? 'Niece' : g === 'M' ? 'Nephew' : 'Niece/Nephew'
     };
-    return gendered[result] || result;
+    let label = gendered[result] || result;
+
+    // Use numbered genealogy terminology: 1st great-, 2nd great-, 3rd great-, etc.
+    // This applies consistently to grandparents, aunts/uncles and any other
+    // relationship containing one or more generations of "great".
+    const ord = n => {
+      const v = Number(n);
+      const suffix = v % 100 >= 11 && v % 100 <= 13 ? 'th' : (v % 10 === 1 ? 'st' : v % 10 === 2 ? 'nd' : v % 10 === 3 ? 'rd' : 'th');
+      return `${v}${suffix}`;
+    };
+    const numberedGreat = text => String(text).replace(/(?:Great-)+/gi, m => {
+      const n = (m.match(/Great-/gi) || []).length;
+      return `${ord(n)} great-`;
+    });
+
+    label = numberedGreat(label);
+    label = label.replace(/^first cousin\b/i, '1st cousin')
+                 .replace(/^second cousin\b/i, '2nd cousin')
+                 .replace(/^third cousin\b/i, '3rd cousin');
+    return label;
   }
   return 'No bloodline relationship';
 }
