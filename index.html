@@ -1421,25 +1421,16 @@ function birthYear(person){
 }
 
 function inferParentChild(aId,bId,type){
-  const a=personById(aId), b=personById(bId);
-  const ay=birthYear(a), by=birthYear(b);
   const t=String(type||'').toLowerCase();
 
-  // When dates are available, the older person is the parent.
-  if(ay!==null && by!==null && ay!==by){
-    return ay<by ? {parent:String(aId),child:String(bId)} : {parent:String(bId),child:String(aId)};
-  }
-
-  // Fall back to the stored direction. Parent-type records in the archive
-  // are normally child -> parent; child-type records are normally parent -> child.
+  // The archive relationship type defines the direction.
+  // parent/mother/father: from = parent, to = child.
+  // child/son/daughter: from = child, to = parent.
   if(t.includes('child') || t.includes('son') || t.includes('daughter')){
-    return {parent:String(aId),child:String(bId)};
+    return {parent:String(bId),child:String(aId)};
   }
-  return {parent:String(bId),child:String(aId)};
+  return {parent:String(aId),child:String(bId)};
 }
-
-let parentGraphCache=null;
-let parentGraphSignature='';
 
 function buildParentGraph(force=false){
   const signature=`${people.length}:${relationships.length}`;
@@ -1516,6 +1507,22 @@ function shortestAncestorPath(start,target,parentsOf){
       if(seen.has(parent)) continue;
       seen.add(parent);
       queue.push([parent,[...path,parent]]);
+    }
+  }
+  return [];
+}
+
+function shortestDescendantPath(start,target,childrenOf){
+  const wanted=String(target);
+  const queue=[[String(start),[]]];
+  const seen=new Set([String(start)]);
+  while(queue.length){
+    const [id,path]=queue.shift();
+    if(id===wanted) return path;
+    for(const child of (childrenOf.get(id)||[])){
+      if(seen.has(child)) continue;
+      seen.add(child);
+      queue.push([child,[...path,child]]);
     }
   }
   return [];
@@ -1614,12 +1621,11 @@ function bloodlineResults(start){
     if(c.bd===0){
       path=shortestAncestorPath(sid,id,parentsOf);
     }else if(c.ad===0){
-      const up=shortestAncestorPath(id,sid,parentsOf);
-      path=[...up].reverse();
+      path=shortestDescendantPath(sid,id,childrenOf);
     }else if(c.ancestor){
       const left=shortestAncestorPath(sid,c.ancestor,parentsOf);
       const right=shortestAncestorPath(id,c.ancestor,parentsOf);
-      path=[...left,...right.reverse()];
+      path=[...left,...right.reverse().slice(1)];
     }
 
     out.push({person:p,label,paths:path.length?[path]:[],rank:kinshipRank(label),ad:c.ad,bd:c.bd});
