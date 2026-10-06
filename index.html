@@ -777,14 +777,6 @@ let relationships=[];
 let currentRole=null;
 let selectedPersonId=null;
 
-// Fast lookup/index caches for the large 17,000+ person archive.
-let peopleById=new Map();
-let visiblePeopleCache=[];
-let relationshipIndex=new Map();
-let parentGraphCache=null;
-let parentGraphSignature='';
-let bloodlineCache=new Map();
-
 
 const $=id=>document.getElementById(id);
 
@@ -868,7 +860,9 @@ function getField(person,...keys){
 
 function visiblePeople(){
 
-  return visiblePeopleCache;
+  return people.filter(
+    person=>hasValidDisplayName(person)
+  );
 
 }
 
@@ -879,7 +873,9 @@ function visiblePeople(){
 
 function personById(id){
 
-  return peopleById.get(String(id));
+  return people.find(
+    p=>String(getId(p))===String(id)
+  );
 
 }
 
@@ -980,7 +976,11 @@ function toId(r){
 
 function relationshipRowsFor(id){
 
-  return relationshipIndex.get(String(id)) || [];
+  return relationships.filter(
+    r=>
+      String(fromId(r))===String(id) ||
+      String(toId(r))===String(id)
+  );
 
 }
 
@@ -1018,43 +1018,6 @@ function relatedPeople(id){
   }
 
   return result;
-
-}
-
-
-/* =========================================================
-   FAST ARCHIVE INDEXES
-   ========================================================= */
-
-function rebuildIndexes(){
-
-  peopleById=new Map();
-  visiblePeopleCache=[];
-  relationshipIndex=new Map();
-  parentGraphCache=null;
-  parentGraphSignature='';
-  bloodlineCache.clear();
-
-  for(const p of people){
-    const id=String(getId(p));
-    if(!id || id==='undefined') continue;
-    peopleById.set(id,p);
-    if(hasValidDisplayName(p)) visiblePeopleCache.push(p);
-  }
-
-  const addRelationship=(id,r)=>{
-    const key=String(id);
-    if(!relationshipIndex.has(key)) relationshipIndex.set(key,[]);
-    relationshipIndex.get(key).push(r);
-  };
-
-  for(const r of relationships){
-    const a=String(fromId(r));
-    const b=String(toId(r));
-    if(!a||!b||a==='undefined'||b==='undefined') continue;
-    addRelationship(a,r);
-    if(b!==a) addRelationship(b,r);
-  }
 
 }
 
@@ -1503,9 +1466,8 @@ function ancestorDistances(start,parentsOf){
   const result=new Map();
   const queue=[[String(start),0]];
   const seen=new Set([String(start)]);
-  let qi=0;
-  while(qi<queue.length){
-    const [id,d]=queue[qi++];
+  while(queue.length){
+    const [id,d]=queue.shift();
     for(const parent of (parentsOf.get(id)||[])){
       if(seen.has(parent)) continue;
       seen.add(parent);
@@ -1521,9 +1483,8 @@ function descendantDistances(start,childrenOf){
   const result=new Map();
   const queue=[[String(start),0]];
   const seen=new Set([String(start)]);
-  let qi=0;
-  while(qi<queue.length){
-    const [id,d]=queue[qi++];
+  while(queue.length){
+    const [id,d]=queue.shift();
     for(const child of (childrenOf.get(id)||[])){
       if(seen.has(child)) continue;
       seen.add(child);
@@ -1539,9 +1500,8 @@ function shortestAncestorPath(start,target,parentsOf){
   const wanted=String(target);
   const queue=[[String(start),[]]];
   const seen=new Set([String(start)]);
-  let qi=0;
-  while(qi<queue.length){
-    const [id,path]=queue[qi++];
+  while(queue.length){
+    const [id,path]=queue.shift();
     if(id===wanted) return path;
     for(const parent of (parentsOf.get(id)||[])){
       if(seen.has(parent)) continue;
@@ -1556,9 +1516,8 @@ function shortestDescendantPath(start,target,childrenOf){
   const wanted=String(target);
   const queue=[[String(start),[]]];
   const seen=new Set([String(start)]);
-  let qi=0;
-  while(qi<queue.length){
-    const [id,path]=queue[qi++];
+  while(queue.length){
+    const [id,path]=queue.shift();
     if(id===wanted) return path;
     for(const child of (childrenOf.get(id)||[])){
       if(seen.has(child)) continue;
@@ -1572,15 +1531,27 @@ function shortestDescendantPath(start,target,childrenOf){
 function ancestorLabel(person,g){
   if(g===1) return gendered(person,'Father','Mother','Parent');
   if(g===2) return gendered(person,'Grandfather','Grandmother','Grandparent');
-  const great='Great-'.repeat(g-2);
-  return gendered(person,`${great}Grandfather`,`${great}Grandmother`,`${great}Grandparent`);
+  const great=g-2;
+  const prefix=great===1 ? 'Great-' : `${ordinal(great)} Great-`;
+  return gendered(
+    person,
+    `${prefix}Grandfather`,
+    `${prefix}Grandmother`,
+    `${prefix}Grandparent`
+  );
 }
 
 function descendantLabel(person,g){
   if(g===1) return gendered(person,'Son','Daughter','Child');
   if(g===2) return gendered(person,'Grandson','Granddaughter','Grandchild');
-  const great='Great-'.repeat(g-2);
-  return gendered(person,`${great}Grandson`,`${great}Granddaughter`,`${great}Grandchild`);
+  const great=g-2;
+  const prefix=great===1 ? 'Great-' : `${ordinal(great)} Great-`;
+  return gendered(
+    person,
+    `${prefix}Grandson`,
+    `${prefix}Granddaughter`,
+    `${prefix}Grandchild`
+  );
 }
 
 function kinshipRank(label){
@@ -1599,12 +1570,8 @@ function kinshipRank(label){
 }
 
 function bloodlineResults(start){
-
-  const sid=String(start);
-  const cached=bloodlineCache.get(sid);
-  if(cached) return cached;
-
   const graph=buildParentGraph();
+  const sid=String(start);
   const {parentsOf,childrenOf}=graph;
   const startAncestors=ancestorDistances(sid,parentsOf);
   const directDesc=descendantDistances(sid,childrenOf);
@@ -1620,15 +1587,19 @@ function bloodlineResults(start){
     }
   };
 
+  // Direct ancestors.
   for(const [id,g] of startAncestors) addCandidate(id,g,0,null);
+  // Direct descendants.
   for(const [id,g] of directDesc) addCandidate(id,0,g,null);
 
+  // Walk down from every ancestor once. This finds siblings, aunts/uncles,
+  // cousins and all descendant generations without recalculating the whole
+  // tree for every person in the archive.
   for(const [ancestor,ad] of startAncestors){
     const queue=[[ancestor,0]];
-    let qi=0;
     const seen=new Set([ancestor]);
-    while(qi<queue.length){
-      const [id,depth]=queue[qi++];
+    while(queue.length){
+      const [id,depth]=queue.shift();
       for(const child of (childrenOf.get(id)||[])){
         if(seen.has(child)) continue;
         seen.add(child);
@@ -1672,9 +1643,7 @@ function bloodlineResults(start){
     out.push({person:p,label,paths:path.length?[path]:[],rank:kinshipRank(label),ad:c.ad,bd:c.bd});
   }
 
-  out.sort((a,b)=>a.rank-b.rank || a.ad-b.ad || a.bd-b.bd || displayName(a.person).localeCompare(displayName(b.person)));
-  bloodlineCache.set(sid,out);
-  return out;
+  return out.sort((a,b)=>a.rank-b.rank || a.ad-b.ad || a.bd-b.bd || displayName(a.person).localeCompare(displayName(b.person)));
 }
 
 function pathText(start,ids){
@@ -2467,7 +2436,8 @@ async function savePerson(){
       database
     );
 
-    rebuildIndexes();
+    parentGraphCache=null;
+    parentGraphSignature='';
 
 
     $('saveMessage').innerHTML=
@@ -2574,9 +2544,6 @@ async function start(){
       Array.isArray(database.relationships)
         ? database.relationships
         : [];
-
-
-    rebuildIndexes();
 
 
     if(!people.length){
