@@ -39,3 +39,4 @@ Run `run-windows.bat` from the repository directory and open the local HTTP serv
 ## Current status
 
 This is the clean rebuild foundation. Additional genealogy features should be added only after the secure archive connection has been verified.
+
