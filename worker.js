@@ -1,6 +1,8 @@
 function cors(env) {
+  const origin = "https://alanfleury.github.io";
+
   return {
-    "Access-Control-Allow-Origin": env.ALLOWED_ORIGIN,
+    "Access-Control-Allow-Origin": origin,
     "Vary": "Origin",
     "Access-Control-Allow-Headers": "Authorization, Content-Type",
     "Access-Control-Allow-Methods": "GET,PUT,OPTIONS"
