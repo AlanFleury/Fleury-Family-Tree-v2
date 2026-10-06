@@ -777,6 +777,16 @@ let relationships=[];
 let currentRole=null;
 let selectedPersonId=null;
 
+// Fast indexes for the large private archive.
+let peopleById=new Map();
+let visiblePeopleCache=[];
+let relationshipIndex=new Map();
+let parentGraphCache=null;
+let parentGraphSignature='';
+let bloodlineCache=new Map();
+let peoplePage=0;
+const PEOPLE_PAGE_SIZE=250;
+
 
 const $=id=>document.getElementById(id);
 
@@ -859,11 +869,42 @@ function getField(person,...keys){
    ========================================================= */
 
 function visiblePeople(){
+  return visiblePeopleCache;
+}
 
-  return people.filter(
-    person=>hasValidDisplayName(person)
-  );
 
+/* =========================================================
+   INDEXES
+   ========================================================= */
+
+function rebuildIndexes(){
+  peopleById=new Map();
+  for(const p of people){
+    const id=getId(p);
+    if(id!=='' && id!==null && id!==undefined){
+      peopleById.set(String(id),p);
+    }
+  }
+
+  visiblePeopleCache=people
+    .filter(hasValidDisplayName)
+    .slice()
+    .sort((a,b)=>displayName(a).localeCompare(displayName(b)));
+
+  relationshipIndex=new Map();
+  for(const r of relationships){
+    const a=String(fromId(r));
+    const b=String(toId(r));
+    if(!a || !b || a==='undefined' || b==='undefined') continue;
+    if(!relationshipIndex.has(a)) relationshipIndex.set(a,[]);
+    if(!relationshipIndex.has(b)) relationshipIndex.set(b,[]);
+    relationshipIndex.get(a).push(r);
+    if(b!==a) relationshipIndex.get(b).push(r);
+  }
+
+  parentGraphCache=null;
+  parentGraphSignature='';
+  bloodlineCache=new Map();
 }
 
 
@@ -872,11 +913,7 @@ function visiblePeople(){
    ========================================================= */
 
 function personById(id){
-
-  return people.find(
-    p=>String(getId(p))===String(id)
-  );
-
+  return peopleById.get(String(id));
 }
 
 
@@ -975,13 +1012,7 @@ function toId(r){
 
 
 function relationshipRowsFor(id){
-
-  return relationships.filter(
-    r=>
-      String(fromId(r))===String(id) ||
-      String(toId(r))===String(id)
-  );
-
+  return relationshipIndex.get(String(id)) || [];
 }
 
 
@@ -1088,17 +1119,7 @@ function populatePersonSelect(selectId){
     '<option value="">Select a person…</option>';
 
 
-  visiblePeople()
-
-    .sort(
-      (a,b)=>
-        displayName(a)
-          .localeCompare(
-            displayName(b)
-          )
-    )
-
-    .forEach(p=>{
+  visiblePeople().forEach(p=>{
 
       const option=
         document.createElement('option');
@@ -1183,6 +1204,11 @@ function renderStats(){
 
 function renderPeople(filter=''){
 
+  if(filter!==undefined && filter!==$('peopleSearch')?.dataset.lastFilter){
+    peoplePage=0;
+    if($('peopleSearch')) $('peopleSearch').dataset.lastFilter=filter;
+  }
+
   const q=
     filter
       .trim()
@@ -1191,28 +1217,26 @@ function renderPeople(filter=''){
 
   const rows=
     visiblePeople()
-
       .filter(p=>{
+        if(!q) return true;
+        return [
+          displayName(p),
+          getField(p,'Birth','birth','BirthDate','birthDate'),
+          getField(p,'Death','death','DeathDate','deathDate'),
+          getField(p,'BirthPlace','birthPlace','PlaceOfBirth'),
+          getField(p,'DeathPlace','deathPlace','PlaceOfDeath'),
+          getField(p,'Places','places')
+        ].some(v=>String(v||'').toLowerCase().includes(q));
+      });
 
-        if(!q)
-          return true;
 
-        return displayName(p)
-          .toLowerCase()
-          .includes(q);
-
-      })
-
-      .sort(
-        (a,b)=>
-          displayName(a)
-            .localeCompare(
-              displayName(b)
-            )
-      );
-
+  const totalRows=rows.length;
+  const startIndex=peoplePage*PEOPLE_PAGE_SIZE;
+  const pageRows=rows.slice(startIndex,startIndex+PEOPLE_PAGE_SIZE);
 
   let html=`
+
+    <div class="small muted" style="margin-bottom:10px">Showing ${totalRows?startIndex+1:0}–${Math.min(startIndex+PEOPLE_PAGE_SIZE,totalRows)} of ${totalRows.toLocaleString()} matching people.</div>
 
     <table>
 
@@ -1232,7 +1256,7 @@ function renderPeople(filter=''){
   `;
 
 
-  for(const p of rows){
+  for(const p of pageRows){
 
     html+=`
 
@@ -1285,7 +1309,13 @@ function renderPeople(filter=''){
 
   html+='</tbody></table>';
 
+  const pageCount=Math.max(1,Math.ceil(totalRows/PEOPLE_PAGE_SIZE));
+  html+=`<div class="form-actions"><button id="peoplePrevBtn" ${peoplePage<=0?'disabled':''}>Previous</button><span class="small muted">Page ${Math.min(peoplePage+1,pageCount)} of ${pageCount}</span><button id="peopleNextBtn" ${peoplePage>=pageCount-1?'disabled':''}>Next</button></div>`;
+
   $('peopleTable').innerHTML=html;
+
+  $('peoplePrevBtn')?.addEventListener('click',()=>{ peoplePage=Math.max(0,peoplePage-1); renderPeople($('peopleSearch').value); });
+  $('peopleNextBtn')?.addEventListener('click',()=>{ peoplePage=Math.min(pageCount-1,peoplePage+1); renderPeople($('peopleSearch').value); });
 
 }
 
@@ -1466,8 +1496,9 @@ function ancestorDistances(start,parentsOf){
   const result=new Map();
   const queue=[[String(start),0]];
   const seen=new Set([String(start)]);
-  while(queue.length){
-    const [id,d]=queue.shift();
+  let head=0;
+  while(head<queue.length){
+    const [id,d]=queue[head++];
     for(const parent of (parentsOf.get(id)||[])){
       if(seen.has(parent)) continue;
       seen.add(parent);
@@ -1483,8 +1514,9 @@ function descendantDistances(start,childrenOf){
   const result=new Map();
   const queue=[[String(start),0]];
   const seen=new Set([String(start)]);
-  while(queue.length){
-    const [id,d]=queue.shift();
+  let head=0;
+  while(head<queue.length){
+    const [id,d]=queue[head++];
     for(const child of (childrenOf.get(id)||[])){
       if(seen.has(child)) continue;
       seen.add(child);
@@ -1500,8 +1532,9 @@ function shortestAncestorPath(start,target,parentsOf){
   const wanted=String(target);
   const queue=[[String(start),[]]];
   const seen=new Set([String(start)]);
-  while(queue.length){
-    const [id,path]=queue.shift();
+  let head=0;
+  while(head<queue.length){
+    const [id,path]=queue[head++];
     if(id===wanted) return path;
     for(const parent of (parentsOf.get(id)||[])){
       if(seen.has(parent)) continue;
@@ -1516,8 +1549,9 @@ function shortestDescendantPath(start,target,childrenOf){
   const wanted=String(target);
   const queue=[[String(start),[]]];
   const seen=new Set([String(start)]);
-  while(queue.length){
-    const [id,path]=queue.shift();
+  let head=0;
+  while(head<queue.length){
+    const [id,path]=queue[head++];
     if(id===wanted) return path;
     for(const child of (childrenOf.get(id)||[])){
       if(seen.has(child)) continue;
@@ -1558,8 +1592,10 @@ function kinshipRank(label){
 }
 
 function bloodlineResults(start){
-  const graph=buildParentGraph();
   const sid=String(start);
+  if(bloodlineCache.has(sid)) return bloodlineCache.get(sid);
+
+  const graph=buildParentGraph();
   const {parentsOf,childrenOf}=graph;
   const startAncestors=ancestorDistances(sid,parentsOf);
   const directDesc=descendantDistances(sid,childrenOf);
@@ -1586,8 +1622,9 @@ function bloodlineResults(start){
   for(const [ancestor,ad] of startAncestors){
     const queue=[[ancestor,0]];
     const seen=new Set([ancestor]);
-    while(queue.length){
-      const [id,depth]=queue.shift();
+    let head=0;
+    while(head<queue.length){
+      const [id,depth]=queue[head++];
       for(const child of (childrenOf.get(id)||[])){
         if(seen.has(child)) continue;
         seen.add(child);
@@ -1631,7 +1668,9 @@ function bloodlineResults(start){
     out.push({person:p,label,paths:path.length?[path]:[],rank:kinshipRank(label),ad:c.ad,bd:c.bd});
   }
 
-  return out.sort((a,b)=>a.rank-b.rank || a.ad-b.ad || a.bd-b.bd || displayName(a.person).localeCompare(displayName(b.person)));
+  const sorted=out.sort((a,b)=>a.rank-b.rank || a.ad-b.ad || a.bd-b.bd || displayName(a.person).localeCompare(displayName(b.person)));
+  bloodlineCache.set(sid,sorted);
+  return sorted;
 }
 
 function pathText(start,ids){
@@ -1664,7 +1703,8 @@ function renderRelationships(id){
     html+='</div>';
   }else html+='<p class="muted">No recorded relationships for this person.</p>';
 
-  const blood=bloodlineResults(id);
+  let blood=[];
+  try{ blood=bloodlineResults(id); }catch(error){ console.error(error); }
   html+='<div class="detail-section" style="margin-top:12px"><h3>Calculated bloodline relationships</h3>';
   if(!blood.length) html+='<p class="muted">No bloodline relationship could be calculated from the recorded parent/child links.</p>';
   else{
@@ -1683,7 +1723,6 @@ function renderRelationships(id){
 
 function renderPersonDetail(id){
   const person=personById(id);
-
   if(!person){
     $('personDetail').classList.add('hidden');
     return;
@@ -1692,12 +1731,8 @@ function renderPersonDetail(id){
   selectedPersonId=String(id);
   $('detailName').textContent=displayName(person);
 
-  /*
-   * Show the person's basic information immediately.
-   * The parent/child graph and calculated bloodline can be
-   * expensive with the full archive, so they are calculated
-   * after the detail panel is already visible.
-   */
+  // Show the person immediately. Heavy relationship calculations happen after
+  // the browser has painted the detail panel, so clicks never appear frozen.
   $('detailContent').innerHTML=`
     <div class="detail-grid">
       <div class="detail-section">
@@ -1708,77 +1743,34 @@ function renderPersonDetail(id){
         <p><strong>Birth place:</strong> ${escapeHtml(getField(person,'BirthPlace','birthPlace','PlaceOfBirth')||'Not recorded')}</p>
         <p><strong>Death place:</strong> ${escapeHtml(getField(person,'DeathPlace','deathPlace','PlaceOfDeath')||'Not recorded')}</p>
       </div>
-
-      <div class="detail-section">
-        <h3>Parents</h3>
-        <span class="muted">Loading…</span>
-      </div>
-
-      <div class="detail-section">
-        <h3>Spouse(s)</h3>
-        <span class="muted">Loading…</span>
-      </div>
-
-      <div class="detail-section">
-        <h3>Children</h3>
-        <span class="muted">Loading…</span>
-      </div>
-
-      <div class="detail-section">
-        <h3>Other recorded relationships</h3>
-        <span class="muted">Loading…</span>
-      </div>
-
-      <div class="detail-section">
-        <h3>Bloodline relationships</h3>
-        <span class="muted">Loading…</span>
-      </div>
-
-      <div class="detail-section">
-        <h3>Places</h3>
-        <p>${escapeHtml(getField(person,'Places','places')||'Not recorded')}</p>
-      </div>
-
-      <div class="detail-section">
-        <h3>Sources</h3>
-        <p>${escapeHtml(getField(person,'Sources','sources','Source')||'Not recorded')}</p>
-      </div>
-
-      <div class="detail-section">
-        <h3>Notes</h3>
-        <p>${escapeHtml(getField(person,'Notes','notes','Note')||'Not recorded')}</p>
-      </div>
-    </div>
-  `;
+      <div class="detail-section"><h3>Parents</h3><span class="muted">Loading…</span></div>
+      <div class="detail-section"><h3>Spouse(s)</h3><span class="muted">Loading…</span></div>
+      <div class="detail-section"><h3>Children</h3><span class="muted">Loading…</span></div>
+      <div class="detail-section"><h3>Other recorded relationships</h3><span class="muted">Loading…</span></div>
+      <div class="detail-section"><h3>Bloodline relationships</h3><span class="muted">Loading…</span></div>
+      <div class="detail-section"><h3>Places</h3><p>${escapeHtml(getField(person,'Places','places')||'Not recorded')}</p></div>
+      <div class="detail-section"><h3>Sources</h3><p>${escapeHtml(getField(person,'Sources','sources','Source')||'Not recorded')}</p></div>
+      <div class="detail-section"><h3>Notes</h3><p>${escapeHtml(getField(person,'Notes','notes','Note')||'Not recorded')}</p></div>
+    </div>`;
 
   $('personDetail').classList.remove('hidden');
   $('personDetail').scrollIntoView({behavior:'smooth',block:'start'});
 
-  /*
-   * Defer the expensive family graph calculation until the
-   * browser has had a chance to paint the person detail.
-   */
-  setTimeout(()=>{
+  requestAnimationFrame(()=>{
     if(selectedPersonId!==String(id)) return;
 
     const parents=[],spouses=[],children=[],other=[];
     const graph=buildParentGraph();
-    const parentIds=new Set([...graph.parentsOf.get(String(id))||[]]);
-    const childIds=new Set([...graph.childrenOf.get(String(id))||[]]);
+    const parentIds=new Set(graph.parentsOf.get(String(id))||[]);
+    const childIds=new Set(graph.childrenOf.get(String(id))||[]);
 
     relatedPeople(id).forEach(({person:p,relationship:r})=>{
       const pid=String(getId(p));
       const type=relationshipType(r);
-
-      if(parentIds.has(pid) || type.includes('parent') || type.includes('mother') || type.includes('father')){
-        parents.push(p);
-      }else if(childIds.has(pid) || type.includes('child') || type.includes('son') || type.includes('daughter')){
-        children.push(p);
-      }else if(type.includes('spouse') || type.includes('partner') || type.includes('husband') || type.includes('wife')){
-        spouses.push(p);
-      }else{
-        other.push(p);
-      }
+      if(parentIds.has(pid) || type.includes('parent') || type.includes('mother') || type.includes('father')) parents.push(p);
+      else if(childIds.has(pid) || type.includes('child') || type.includes('son') || type.includes('daughter')) children.push(p);
+      else if(type.includes('spouse') || type.includes('partner') || type.includes('husband') || type.includes('wife')) spouses.push(p);
+      else other.push(p);
     });
 
     const unique=list=>[...new Map(list.map(p=>[String(getId(p)),p])).values()];
@@ -1787,8 +1779,8 @@ function renderPersonDetail(id){
       return x.length?x.map(p=>`<div>${personLink(getId(p))}</div>`).join(''):'<span class="muted">None recorded</span>';
     };
 
-    const blood=bloodlineResults(id);
-
+    let blood=[];
+    try{ blood=bloodlineResults(id); }catch(error){ console.error(error); }
     if(selectedPersonId!==String(id)) return;
 
     $('detailContent').innerHTML=`
@@ -1801,32 +1793,16 @@ function renderPersonDetail(id){
           <p><strong>Birth place:</strong> ${escapeHtml(getField(person,'BirthPlace','birthPlace','PlaceOfBirth')||'Not recorded')}</p>
           <p><strong>Death place:</strong> ${escapeHtml(getField(person,'DeathPlace','deathPlace','PlaceOfDeath')||'Not recorded')}</p>
         </div>
-
         <div class="detail-section"><h3>Parents</h3>${listPeople(parents)}</div>
         <div class="detail-section"><h3>Spouse(s)</h3>${listPeople(spouses)}</div>
         <div class="detail-section"><h3>Children</h3>${listPeople(children)}</div>
         <div class="detail-section"><h3>Other recorded relationships</h3>${listPeople(other)}</div>
-
-        <div class="detail-section">
-          <h3>Bloodline relationships</h3>
-          ${
-            blood.length
-            ? blood.map(x=>`
-              <div class="kinship-result">
-                <strong>${escapeHtml(x.label)}:</strong> ${personLink(getId(x.person))}
-                ${x.paths?.slice(0,3).map(path=>`<div class="kinship-path">${escapeHtml(pathText(id,path))}</div>`).join('')||''}
-              </div>
-            `).join('')
-            : '<span class="muted">No calculated bloodline relationships.</span>'
-          }
-        </div>
-
+        <div class="detail-section"><h3>Bloodline relationships</h3>${blood.length?blood.map(x=>`<div class="kinship-result"><strong>${escapeHtml(x.label)}:</strong> ${personLink(getId(x.person))}${x.paths?.slice(0,3).map(path=>`<div class="kinship-path">${escapeHtml(pathText(id,path))}</div>`).join('')||''}</div>`).join(''):'<span class="muted">No calculated bloodline relationships.</span>'}</div>
         <div class="detail-section"><h3>Places</h3><p>${escapeHtml(getField(person,'Places','places')||'Not recorded')}</p></div>
         <div class="detail-section"><h3>Sources</h3><p>${escapeHtml(getField(person,'Sources','sources','Source')||'Not recorded')}</p></div>
         <div class="detail-section"><h3>Notes</h3><p>${escapeHtml(getField(person,'Notes','notes','Note')||'Not recorded')}</p></div>
-      </div>
-    `;
-  },0);
+      </div>`;
+  });
 }
 
 
@@ -2494,8 +2470,7 @@ async function savePerson(){
       database
     );
 
-    parentGraphCache=null;
-    parentGraphSignature='';
+    rebuildIndexes();
 
 
     $('saveMessage').innerHTML=
@@ -2603,6 +2578,7 @@ async function start(){
         ? database.relationships
         : [];
 
+    rebuildIndexes();
 
     if(!people.length){
 
@@ -2634,7 +2610,7 @@ async function start(){
 
     renderStats();
 
-    renderPeople();
+    renderPeople('');
 
     populatePersonSelect(
       'relationshipPerson'
@@ -2699,6 +2675,10 @@ async function start(){
 
 }
 
+
+/* =========================================================
+   PERSON CLICK HANDLING
+   ========================================================= */
 
 /* =========================================================
    NAVIGATION
