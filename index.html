@@ -1717,9 +1717,8 @@ function renderPersonDetail(id){
     return x.length?x.map(p=>`<div>${personLink(getId(p))}</div>`).join(''):'<span class="muted">None recorded</span>';
   };
 
-  // Show the person immediately. Bloodline calculation can be expensive with
-  // the full 17,900+ person archive, so it is deliberately deferred until
-  // after the detail panel has been displayed.
+  const blood=bloodlineResults(id);
+
   $('detailContent').innerHTML=`
     <div class="detail-grid">
       <div class="detail-section">
@@ -1738,7 +1737,16 @@ function renderPersonDetail(id){
 
       <div class="detail-section">
         <h3>Bloodline relationships</h3>
-        <div id="bloodlineDetailContent"><span class="muted">Calculating…</span></div>
+        ${
+          blood.length
+          ? blood.map(x=>`
+            <div class="kinship-result">
+              <strong>${escapeHtml(x.label)}:</strong> ${personLink(getId(x.person))}
+              ${x.paths?.slice(0,3).map(path=>`<div class="kinship-path">${escapeHtml(pathText(id,path))}</div>`).join('')||''}
+            </div>
+          `).join('')
+          : '<span class="muted">No calculated bloodline relationships.</span>'
+        }
       </div>
 
       <div class="detail-section"><h3>Places</h3><p>${escapeHtml(getField(person,'Places','places')||'Not recorded')}</p></div>
@@ -1749,28 +1757,6 @@ function renderPersonDetail(id){
 
   $('personDetail').classList.remove('hidden');
   $('personDetail').scrollIntoView({behavior:'smooth',block:'start'});
-
-  // Let the browser paint the detail panel before doing the expensive
-  // bloodline calculation. Ignore the result if the user has clicked
-  // another person in the meantime.
-  setTimeout(()=>{
-    if(selectedPersonId!==String(id)) return;
-
-    const blood=bloodlineResults(id);
-    if(selectedPersonId!==String(id)) return;
-
-    const target=$('bloodlineDetailContent');
-    if(!target) return;
-
-    target.innerHTML=blood.length
-      ? blood.map(x=>`
-          <div class="kinship-result">
-            <strong>${escapeHtml(x.label)}:</strong> ${personLink(getId(x.person))}
-            ${x.paths?.slice(0,3).map(path=>`<div class="kinship-path">${escapeHtml(pathText(id,path))}</div>`).join('')||''}
-          </div>
-        `).join('')
-      : '<span class="muted">No calculated bloodline relationships.</span>';
-  },0);
 }
 
 
@@ -2818,6 +2804,24 @@ $('printChartBtn')
       window.print();
     }
   );
+
+
+/* =========================================================
+   PERSON LINKS
+   ========================================================= */
+
+document.addEventListener(
+  'click',
+  event=>{
+    const person=event.target.closest('.person-link');
+    if(!person) return;
+
+    event.preventDefault();
+
+    const id=person.dataset.person;
+    if(id) renderPersonDetail(id);
+  }
+);
 
 
 /* =========================================================
