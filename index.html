@@ -1414,37 +1414,51 @@ function ordinal(n){
   }
 }
 
+function birthYear(person){
+  const raw=String(getField(person,'Birth','birth','BirthDate','birthDate')||'');
+  const m=raw.match(/(?:^|\D)(1[5-9]\d{2}|20\d{2}|21\d{2})(?:\D|$)/);
+  return m?Number(m[1]):null;
+}
+
+function inferParentChild(aId,bId,type){
+  const a=personById(aId), b=personById(bId);
+  const ay=birthYear(a), by=birthYear(b);
+  const t=String(type||'').toLowerCase();
+
+  // When dates are available, the older person is the parent.
+  if(ay!==null && by!==null && ay!==by){
+    return ay<by ? {parent:String(aId),child:String(bId)} : {parent:String(bId),child:String(aId)};
+  }
+
+  // Fall back to the stored direction. Parent-type records in the archive
+  // are normally child -> parent; child-type records are normally parent -> child.
+  if(t.includes('child') || t.includes('son') || t.includes('daughter')){
+    return {parent:String(aId),child:String(bId)};
+  }
+  return {parent:String(bId),child:String(aId)};
+}
+
 function buildParentGraph(){
   const parentsOf=new Map();
   const childrenOf=new Map();
-
   const add=(map,key,value)=>{
     const k=String(key),v=String(value);
-    if(!k||!v) return;
+    if(!k||!v||k==='undefined'||v==='undefined') return;
     if(!map.has(k)) map.set(k,new Set());
     map.get(k).add(v);
   };
 
   for(const r of relationships){
     const type=relationshipType(r);
-    const a=String(fromId(r));
-    const b=String(toId(r));
-    if(!a||!b||a==='undefined'||b==='undefined') continue;
-
-    /*
-      Parent/child records are interpreted by their recorded direction:
-      parent relationship: child -> parent
-      child relationship: parent -> child
-    */
-    if(type.includes('parent') || type.includes('mother') || type.includes('father')){
-      add(parentsOf,a,b);
-      add(childrenOf,b,a);
-    }else if(type.includes('child') || type.includes('son') || type.includes('daughter')){
-      add(childrenOf,a,b);
-      add(parentsOf,b,a);
+    const a=String(fromId(r)), b=String(toId(r));
+    if(!a||!b||a==='undefined'||b==='undefined'||a===b) continue;
+    if(type.includes('parent')||type.includes('mother')||type.includes('father')||
+       type.includes('child')||type.includes('son')||type.includes('daughter')){
+      const pair=inferParentChild(a,b,type);
+      add(parentsOf,pair.child,pair.parent);
+      add(childrenOf,pair.parent,pair.child);
     }
   }
-
   return {parentsOf,childrenOf};
 }
 
