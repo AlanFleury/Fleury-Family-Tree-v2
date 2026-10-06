@@ -1,3 +1,6 @@
+const AUTH0_DOMAIN = "dev-rd7gx3zdpkuccxmn.uk.auth0.com";
+const AUTH0_AUDIENCE = "https://fleury-family-api";
+
 function cors(env) {
   const origin = "https://alanfleury.github.io";
 
@@ -56,17 +59,18 @@ async function verifyJwt(token, env) {
     throw new Error("Unsupported token algorithm");
   }
 
-  const issuer = `https://${env.AUTH0_DOMAIN}/`;
+  const issuer = `https://${AUTH0_DOMAIN}/`;
 
   if (payload.iss !== issuer) {
     throw new Error("Invalid token issuer");
   }
 
   const audience = payload.aud;
+
   const validAudience =
     Array.isArray(audience)
-      ? audience.includes(env.AUTH0_AUDIENCE)
-      : audience === env.AUTH0_AUDIENCE;
+      ? audience.includes(AUTH0_AUDIENCE)
+      : audience === AUTH0_AUDIENCE;
 
   if (!validAudience) {
     throw new Error("Invalid token audience");
