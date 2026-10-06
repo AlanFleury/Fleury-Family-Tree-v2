@@ -1683,6 +1683,7 @@ function renderRelationships(id){
 
 function renderPersonDetail(id){
   const person=personById(id);
+
   if(!person){
     $('personDetail').classList.add('hidden');
     return;
@@ -1691,34 +1692,12 @@ function renderPersonDetail(id){
   selectedPersonId=String(id);
   $('detailName').textContent=displayName(person);
 
-  const parents=[],spouses=[],children=[],other=[];
-  const graph=buildParentGraph();
-  const parentIds=new Set([...graph.parentsOf.get(String(id))||[]]);
-  const childIds=new Set([...graph.childrenOf.get(String(id))||[]]);
-
-  relatedPeople(id).forEach(({person:p,relationship:r})=>{
-    const pid=String(getId(p));
-    const type=relationshipType(r);
-
-    if(parentIds.has(pid) || type.includes('parent') || type.includes('mother') || type.includes('father')){
-      parents.push(p);
-    }else if(childIds.has(pid) || type.includes('child') || type.includes('son') || type.includes('daughter')){
-      children.push(p);
-    }else if(type.includes('spouse') || type.includes('partner') || type.includes('husband') || type.includes('wife')){
-      spouses.push(p);
-    }else{
-      other.push(p);
-    }
-  });
-
-  const unique=list=>[...new Map(list.map(p=>[String(getId(p)),p])).values()];
-  const listPeople=list=>{
-    const x=unique(list);
-    return x.length?x.map(p=>`<div>${personLink(getId(p))}</div>`).join(''):'<span class="muted">None recorded</span>';
-  };
-
-  const blood=bloodlineResults(id);
-
+  /*
+   * Show the person's basic information immediately.
+   * The parent/child graph and calculated bloodline can be
+   * expensive with the full archive, so they are calculated
+   * after the detail panel is already visible.
+   */
   $('detailContent').innerHTML=`
     <div class="detail-grid">
       <div class="detail-section">
@@ -1730,33 +1709,124 @@ function renderPersonDetail(id){
         <p><strong>Death place:</strong> ${escapeHtml(getField(person,'DeathPlace','deathPlace','PlaceOfDeath')||'Not recorded')}</p>
       </div>
 
-      <div class="detail-section"><h3>Parents</h3>${listPeople(parents)}</div>
-      <div class="detail-section"><h3>Spouse(s)</h3>${listPeople(spouses)}</div>
-      <div class="detail-section"><h3>Children</h3>${listPeople(children)}</div>
-      <div class="detail-section"><h3>Other recorded relationships</h3>${listPeople(other)}</div>
+      <div class="detail-section">
+        <h3>Parents</h3>
+        <span class="muted">Loading…</span>
+      </div>
+
+      <div class="detail-section">
+        <h3>Spouse(s)</h3>
+        <span class="muted">Loading…</span>
+      </div>
+
+      <div class="detail-section">
+        <h3>Children</h3>
+        <span class="muted">Loading…</span>
+      </div>
+
+      <div class="detail-section">
+        <h3>Other recorded relationships</h3>
+        <span class="muted">Loading…</span>
+      </div>
 
       <div class="detail-section">
         <h3>Bloodline relationships</h3>
-        ${
-          blood.length
-          ? blood.map(x=>`
-            <div class="kinship-result">
-              <strong>${escapeHtml(x.label)}:</strong> ${personLink(getId(x.person))}
-              ${x.paths?.slice(0,3).map(path=>`<div class="kinship-path">${escapeHtml(pathText(id,path))}</div>`).join('')||''}
-            </div>
-          `).join('')
-          : '<span class="muted">No calculated bloodline relationships.</span>'
-        }
+        <span class="muted">Loading…</span>
       </div>
 
-      <div class="detail-section"><h3>Places</h3><p>${escapeHtml(getField(person,'Places','places')||'Not recorded')}</p></div>
-      <div class="detail-section"><h3>Sources</h3><p>${escapeHtml(getField(person,'Sources','sources','Source')||'Not recorded')}</p></div>
-      <div class="detail-section"><h3>Notes</h3><p>${escapeHtml(getField(person,'Notes','notes','Note')||'Not recorded')}</p></div>
+      <div class="detail-section">
+        <h3>Places</h3>
+        <p>${escapeHtml(getField(person,'Places','places')||'Not recorded')}</p>
+      </div>
+
+      <div class="detail-section">
+        <h3>Sources</h3>
+        <p>${escapeHtml(getField(person,'Sources','sources','Source')||'Not recorded')}</p>
+      </div>
+
+      <div class="detail-section">
+        <h3>Notes</h3>
+        <p>${escapeHtml(getField(person,'Notes','notes','Note')||'Not recorded')}</p>
+      </div>
     </div>
   `;
 
   $('personDetail').classList.remove('hidden');
   $('personDetail').scrollIntoView({behavior:'smooth',block:'start'});
+
+  /*
+   * Defer the expensive family graph calculation until the
+   * browser has had a chance to paint the person detail.
+   */
+  setTimeout(()=>{
+    if(selectedPersonId!==String(id)) return;
+
+    const parents=[],spouses=[],children=[],other=[];
+    const graph=buildParentGraph();
+    const parentIds=new Set([...graph.parentsOf.get(String(id))||[]]);
+    const childIds=new Set([...graph.childrenOf.get(String(id))||[]]);
+
+    relatedPeople(id).forEach(({person:p,relationship:r})=>{
+      const pid=String(getId(p));
+      const type=relationshipType(r);
+
+      if(parentIds.has(pid) || type.includes('parent') || type.includes('mother') || type.includes('father')){
+        parents.push(p);
+      }else if(childIds.has(pid) || type.includes('child') || type.includes('son') || type.includes('daughter')){
+        children.push(p);
+      }else if(type.includes('spouse') || type.includes('partner') || type.includes('husband') || type.includes('wife')){
+        spouses.push(p);
+      }else{
+        other.push(p);
+      }
+    });
+
+    const unique=list=>[...new Map(list.map(p=>[String(getId(p)),p])).values()];
+    const listPeople=list=>{
+      const x=unique(list);
+      return x.length?x.map(p=>`<div>${personLink(getId(p))}</div>`).join(''):'<span class="muted">None recorded</span>';
+    };
+
+    const blood=bloodlineResults(id);
+
+    if(selectedPersonId!==String(id)) return;
+
+    $('detailContent').innerHTML=`
+      <div class="detail-grid">
+        <div class="detail-section">
+          <h3>Basic information</h3>
+          <p><strong>Gender:</strong> ${escapeHtml(getField(person,'Gender','gender')||'Not recorded')}</p>
+          <p><strong>Birth:</strong> ${escapeHtml(getField(person,'Birth','birth','BirthDate','birthDate')||'Not recorded')}</p>
+          <p><strong>Death:</strong> ${escapeHtml(getField(person,'Death','death','DeathDate','deathDate')||'Not recorded')}</p>
+          <p><strong>Birth place:</strong> ${escapeHtml(getField(person,'BirthPlace','birthPlace','PlaceOfBirth')||'Not recorded')}</p>
+          <p><strong>Death place:</strong> ${escapeHtml(getField(person,'DeathPlace','deathPlace','PlaceOfDeath')||'Not recorded')}</p>
+        </div>
+
+        <div class="detail-section"><h3>Parents</h3>${listPeople(parents)}</div>
+        <div class="detail-section"><h3>Spouse(s)</h3>${listPeople(spouses)}</div>
+        <div class="detail-section"><h3>Children</h3>${listPeople(children)}</div>
+        <div class="detail-section"><h3>Other recorded relationships</h3>${listPeople(other)}</div>
+
+        <div class="detail-section">
+          <h3>Bloodline relationships</h3>
+          ${
+            blood.length
+            ? blood.map(x=>`
+              <div class="kinship-result">
+                <strong>${escapeHtml(x.label)}:</strong> ${personLink(getId(x.person))}
+                ${x.paths?.slice(0,3).map(path=>`<div class="kinship-path">${escapeHtml(pathText(id,path))}</div>`).join('')||''}
+              </div>
+            `).join('')
+            : '<span class="muted">No calculated bloodline relationships.</span>'
+          }
+        </div>
+
+        <div class="detail-section"><h3>Places</h3><p>${escapeHtml(getField(person,'Places','places')||'Not recorded')}</p></div>
+        <div class="detail-section"><h3>Sources</h3><p>${escapeHtml(getField(person,'Sources','sources','Source')||'Not recorded')}</p></div>
+        <div class="detail-section"><h3>Notes</h3><p>${escapeHtml(getField(person,'Notes','notes','Note')||'Not recorded')}</p></div>
+      </div>
+    `;
+  },0);
 }
 
 
@@ -2628,34 +2698,6 @@ async function start(){
   }
 
 }
-
-
-/* =========================================================
-   PERSON CLICK HANDLING
-   ========================================================= */
-
-document.addEventListener(
-  'click',
-  event=>{
-
-    const person=
-      event.target.closest(
-        '[data-person]'
-      );
-
-
-    if(person){
-
-      renderPersonDetail(
-        person.dataset.person
-      );
-
-      return;
-
-    }
-
-  }
-);
 
 
 /* =========================================================
