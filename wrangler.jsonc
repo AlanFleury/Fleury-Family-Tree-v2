@@ -1,0 +1,12 @@
+{
+  "name": "fleury-family-api",
+  "main": "worker.js",
+  "compatibility_date": "2026-10-06",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "fleury-family",
+      "database_id": "bfcb1511-4d2a-4869-81d7-7c8689b63886"
+    }
+  ]
+}
