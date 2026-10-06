@@ -303,6 +303,14 @@ footer{
     font-size:13px;
   }
 }
+
+.kinship-result{border:1px solid var(--line);border-radius:8px;padding:10px;margin:7px 0;background:#fff}
+.kinship-result strong{font-size:14px}
+.kinship-path{margin-top:4px;color:var(--muted);font-size:12px}
+.kinship-group{margin-top:12px}
+.kinship-group h4{margin:0 0 7px;font-size:14px}
+.relationship-note{color:var(--muted);font-size:12px}
+
 </style>
 </head>
 
@@ -1378,447 +1386,375 @@ function renderSearchResults(query=''){
 }
 
 
+
 /* =========================================================
-   RELATIONSHIPS
+   RELATIONSHIP ENGINE
    ========================================================= */
 
-function renderRelationships(id){
-
-  if(!id){
-
-    $('relationshipResults').innerHTML=
-      '<p class="muted">Select a person.</p>';
-
-    return;
-
-  }
-
-
-  const person=personById(id);
-
-
-  if(!person){
-
-    $('relationshipResults').innerHTML=
-      '<p class="error">Person not found.</p>';
-
-    return;
-
-  }
-
-
-  const rows=relatedPeople(id);
-
-
-  if(!rows.length){
-
-    $('relationshipResults').innerHTML=
-      '<p>No recorded relationships for this person.</p>';
-
-    return;
-
-  }
-
-
-  const grouped={};
-
-
-  rows.forEach(
-    ({person:p,relationship:r})=>{
-
-      const type=
-        relationshipType(r) ||
-        'Relationship';
-
-
-      if(!grouped[type])
-        grouped[type]=[];
-
-
-      grouped[type].push(p);
-
-    }
-  );
-
-
-  let html='';
-
-
-  Object.keys(grouped)
-    .sort()
-    .forEach(type=>{
-
-      html+=`
-
-        <div
-          class="detail-section"
-          style="margin-bottom:12px"
-        >
-
-          <h3>
-            ${escapeHtml(type)}
-          </h3>
-
-          ${
-            grouped[type]
-              .map(
-                p=>
-                  `<div>
-                    ${personLink(getId(p))}
-                  </div>`
-              )
-              .join('')
-          }
-
-        </div>
-
-      `;
-
-    });
-
-
-  $('relationshipResults').innerHTML=html;
-
+function genderOf(person){
+  const g=String(getField(person,'Gender','gender')||'').toLowerCase().trim();
+  if(g.startsWith('m') || g==='male' || g==='man') return 'm';
+  if(g.startsWith('f') || g==='female' || g==='woman') return 'f';
+  return '';
 }
 
+function gendered(person,male,female,neutral=''){
+  const g=genderOf(person);
+  return g==='m'?male:g==='f'?female:neutral;
+}
 
-/* =========================================================
-   PERSON DETAIL
-   ========================================================= */
-
-function renderPersonDetail(id){
-
-  const person=personById(id);
-
-
-  if(!person){
-
-    $('personDetail')
-      .classList
-      .add('hidden');
-
-    return;
-
+function ordinal(n){
+  const v=n%100;
+  if(v>=11&&v<=13) return `${n}th`;
+  switch(n%10){
+    case 1:return `${n}st`;
+    case 2:return `${n}nd`;
+    case 3:return `${n}rd`;
+    default:return `${n}th`;
   }
+}
 
+function buildParentGraph(){
+  const parentsOf=new Map();
+  const childrenOf=new Map();
 
-  selectedPersonId=
-    String(id);
-
-
-  $('detailName').innerHTML=
-    escapeHtml(
-      displayName(person)
-    );
-
-
-  const parents=[];
-  const spouses=[];
-  const children=[];
-  const other=[];
-
-
-  relatedPeople(id)
-    .forEach(
-      ({person:p,relationship:r})=>{
-
-        const type=
-          relationshipType(r);
-
-
-        if(
-          type.includes('parent') ||
-          type.includes('mother') ||
-          type.includes('father')
-        ){
-
-          parents.push(p);
-
-        }
-
-        else if(
-          type.includes('spouse') ||
-          type.includes('partner') ||
-          type.includes('husband') ||
-          type.includes('wife')
-        ){
-
-          spouses.push(p);
-
-        }
-
-        else if(
-          type.includes('child') ||
-          type.includes('son') ||
-          type.includes('daughter')
-        ){
-
-          children.push(p);
-
-        }
-
-        else{
-
-          other.push(p);
-
-        }
-
-      }
-    );
-
-
-  const unique=list=>
-    [
-      ...new Map(
-        list.map(
-          p=>[
-            String(getId(p)),
-            p
-          ]
-        )
-      ).values()
-    ];
-
-
-  const listPeople=list=>{
-
-    const x=unique(list);
-
-
-    return x.length
-
-      ? x
-          .map(
-            p=>
-              `<div>
-                ${personLink(getId(p))}
-              </div>`
-          )
-          .join('')
-
-      : '<span class="muted">None recorded</span>';
-
+  const add=(map,key,value)=>{
+    const k=String(key),v=String(value);
+    if(!k||!v) return;
+    if(!map.has(k)) map.set(k,new Set());
+    map.get(k).add(v);
   };
 
+  for(const r of relationships){
+    const type=relationshipType(r);
+    const a=String(fromId(r));
+    const b=String(toId(r));
+    if(!a||!b||a==='undefined'||b==='undefined') continue;
 
-  $('detailContent').innerHTML=`
+    /*
+      Parent/child records are interpreted by their recorded direction:
+      parent relationship: child -> parent
+      child relationship: parent -> child
+    */
+    if(type.includes('parent') || type.includes('mother') || type.includes('father')){
+      add(parentsOf,a,b);
+      add(childrenOf,b,a);
+    }else if(type.includes('child') || type.includes('son') || type.includes('daughter')){
+      add(childrenOf,a,b);
+      add(parentsOf,b,a);
+    }
+  }
 
-    <div class="detail-grid">
+  return {parentsOf,childrenOf};
+}
 
+function ancestorDistances(start,parentsOf){
+  const result=new Map();
+  const queue=[[String(start),0]];
+  const seen=new Set([String(start)]);
 
-      <div class="detail-section">
+  while(queue.length){
+    const [id,d]=queue.shift();
+    for(const parent of (parentsOf.get(id)||[])){
+      if(seen.has(parent)) continue;
+      seen.add(parent);
+      const nd=d+1;
+      result.set(parent,nd);
+      queue.push([parent,nd]);
+    }
+  }
+  return result;
+}
 
-        <h3>
-          Basic information
-        </h3>
+function descendantDistances(start,childrenOf){
+  const result=new Map();
+  const queue=[[String(start),0]];
+  const seen=new Set([String(start)]);
 
-        <p>
-          <strong>Gender:</strong>
-          ${
-            escapeHtml(
-              getField(
-                person,
-                'Gender',
-                'gender'
-              ) ||
-              'Not recorded'
-            )
-          }
-        </p>
+  while(queue.length){
+    const [id,d]=queue.shift();
+    for(const child of (childrenOf.get(id)||[])){
+      if(seen.has(child)) continue;
+      seen.add(child);
+      const nd=d+1;
+      result.set(child,nd);
+      queue.push([child,nd]);
+    }
+  }
+  return result;
+}
 
-        <p>
-          <strong>Birth:</strong>
-          ${
-            escapeHtml(
-              getField(
-                person,
-                'Birth',
-                'birth',
-                'BirthDate',
-                'birthDate'
-              ) ||
-              'Not recorded'
-            )
-          }
-        </p>
+function shortestAncestorPaths(start,target,parentsOf){
+  const wanted=String(target);
+  const queue=[[String(start),[]]];
+  const bestDepth=new Map([[String(start),0]]);
+  const paths=[];
 
-        <p>
-          <strong>Death:</strong>
-          ${
-            escapeHtml(
-              getField(
-                person,
-                'Death',
-                'death',
-                'DeathDate',
-                'deathDate'
-              ) ||
-              'Not recorded'
-            )
-          }
-        </p>
+  while(queue.length){
+    const [id,path]=queue.shift();
+    const depth=path.length;
 
-        <p>
-          <strong>Birth place:</strong>
-          ${
-            escapeHtml(
-              getField(
-                person,
-                'BirthPlace',
-                'birthPlace',
-                'PlaceOfBirth'
-              ) ||
-              'Not recorded'
-            )
-          }
-        </p>
+    if(id===wanted){
+      paths.push(path);
+      continue;
+    }
 
-        <p>
-          <strong>Death place:</strong>
-          ${
-            escapeHtml(
-              getField(
-                person,
-                'DeathPlace',
-                'deathPlace',
-                'PlaceOfDeath'
-              ) ||
-              'Not recorded'
-            )
-          }
-        </p>
+    for(const parent of (parentsOf.get(id)||[])){
+      const nextDepth=depth+1;
+      const old=bestDepth.get(parent);
+      if(old!==undefined && old<nextDepth) continue;
+      if(old===undefined || nextDepth<old) bestDepth.set(parent,nextDepth);
+      queue.push([parent,[...path,parent]]);
+    }
+  }
+  return paths;
+}
 
-      </div>
+function ancestorLabel(person,g){
+  if(g===1) return gendered(person,'Father','Mother','Parent');
+  if(g===2) return gendered(person,'Grandfather','Grandmother','Grandparent');
+  const great='Great-'.repeat(g-2);
+  return gendered(person,`${great}Grandfather`,`${great}Grandmother`,`${great}Grandparent`);
+}
 
+function descendantLabel(person,g){
+  if(g===1) return gendered(person,'Son','Daughter','Child');
+  if(g===2) return gendered(person,'Grandson','Granddaughter','Grandchild');
+  const great='Great-'.repeat(g-2);
+  return gendered(person,`${great}Grandson`,`${great}Granddaughter`,`${great}Grandchild`);
+}
 
-      <div class="detail-section">
+function kinshipBetween(start,target,graph){
+  const sid=String(start), tid=String(target);
+  if(sid===tid) return {label:'Self',paths:[]};
 
-        <h3>
-          Parents
-        </h3>
+  const {parentsOf}=graph;
+  const a=ancestorDistances(sid,parentsOf);
+  const b=ancestorDistances(tid,parentsOf);
 
-        ${listPeople(parents)}
+  if(a.has(tid)){
+    const g=a.get(tid);
+    return {label:ancestorLabel(personById(tid),g),paths:shortestAncestorPaths(sid,tid,parentsOf)};
+  }
+  if(b.has(sid)){
+    const g=b.get(sid);
+    const paths=shortestAncestorPaths(tid,sid,parentsOf).map(p=>[...p].reverse());
+    return {label:descendantLabel(personById(tid),g),paths};
+  }
 
-      </div>
+  const common=[];
+  for(const [ancestor,ad] of a){
+    if(b.has(ancestor)) common.push([ancestor,ad,b.get(ancestor)]);
+  }
+  if(!common.length) return null;
 
+  const minTotal=Math.min(...common.map(x=>x[1]+x[2]));
+  const nearest=common.filter(x=>x[1]+x[2]===minTotal);
 
-      <div class="detail-section">
+  const first=nearest[0];
+  const [ancestor,ad,bd]=first;
 
-        <h3>
-          Spouse(s)
-        </h3>
+  if(ad===1 && bd===1){
+    return {
+      label:'Sibling',
+      paths:nearest.flatMap(([anc])=>{
+        const left=shortestAncestorPaths(sid,anc,parentsOf);
+        const right=shortestAncestorPaths(tid,anc,parentsOf);
+        return left.flatMap(lp=>right.map(rp=>[...lp,...rp.reverse()]));
+      })
+    };
+  }
 
-        ${listPeople(spouses)}
+  if(ad===1 && bd>=2){
+    const label=gendered(personById(ancestor),'Uncle','Aunt','Aunt/Uncle');
+    return {label,paths:[]};
+  }
 
-      </div>
+  if(bd===1 && ad>=2){
+    const label=gendered(personById(ancestor),'Nephew','Niece','Niece/Nephew');
+    return {label,paths:[]};
+  }
 
+  const cousin=Math.min(ad,bd)-1;
+  const removal=Math.abs(ad-bd);
+  let label=`${ordinal(cousin)} cousin`;
+  if(removal===1) label+=' once removed';
+  else if(removal>1) label+=` ${removal} times removed`;
 
-      <div class="detail-section">
+  const pathResults=[];
+  for(const [anc] of nearest){
+    const left=shortestAncestorPaths(sid,anc,parentsOf);
+    const right=shortestAncestorPaths(tid,anc,parentsOf);
+    for(const lp of left) for(const rp of right){
+      pathResults.push({ancestor:anc,path:[...lp,...rp.reverse()]});
+    }
+  }
+  return {label,paths:pathResults.map(x=>x.path)};
+}
 
-        <h3>
-          Children
-        </h3>
+function bloodlineResults(start){
+  const graph=buildParentGraph();
+  const out=[];
+  for(const p of visiblePeople()){
+    const id=String(getId(p));
+    if(id===String(start)) continue;
+    const k=kinshipBetween(start,id,graph);
+    if(k) out.push({person:p,...k});
+  }
+  return out;
+}
 
-        ${listPeople(children)}
+function pathText(start,ids){
+  const names=[displayName(personById(start))];
+  for(const id of ids){
+    const p=personById(id);
+    if(p) names.push(displayName(p));
+  }
+  return names.join(' → ');
+}
 
-      </div>
+function renderRelationships(id){
+  if(!id){
+    $('relationshipResults').innerHTML='<p class="muted">Select a person.</p>';
+    return;
+  }
 
+  const person=personById(id);
+  if(!person){
+    $('relationshipResults').innerHTML='<p class="error">Person not found.</p>';
+    return;
+  }
 
-      <div class="detail-section">
+  const rows=relatedPeople(id);
+  let html='';
 
-        <h3>
-          Other recorded relationships
-        </h3>
-
-        ${listPeople(other)}
-
-      </div>
-
-
-      <div class="detail-section">
-
-        <h3>
-          Places
-        </h3>
-
-        <p>
-          ${
-            escapeHtml(
-              getField(
-                person,
-                'Places',
-                'places'
-              ) ||
-              'Not recorded'
-            )
-          }
-        </p>
-
-      </div>
-
-
-      <div class="detail-section">
-
-        <h3>
-          Sources
-        </h3>
-
-        <p>
-          ${
-            escapeHtml(
-              getField(
-                person,
-                'Sources',
-                'sources',
-                'Source'
-              ) ||
-              'Not recorded'
-            )
-          }
-        </p>
-
-      </div>
-
-
-      <div class="detail-section">
-
-        <h3>
-          Notes
-        </h3>
-
-        <p>
-          ${
-            escapeHtml(
-              getField(
-                person,
-                'Notes',
-                'notes',
-                'Note'
-              ) ||
-              'Not recorded'
-            )
-          }
-        </p>
-
-      </div>
-
-
-    </div>
-
-  `;
-
-
-  $('personDetail')
-    .classList
-    .remove('hidden');
-
-
-  $('personDetail')
-    .scrollIntoView({
-      behavior:'smooth',
-      block:'start'
+  if(rows.length){
+    const grouped={};
+    rows.forEach(({person:p,relationship:r})=>{
+      const type=relationshipType(r)||'Relationship';
+      if(!grouped[type]) grouped[type]=[];
+      grouped[type].push(p);
     });
 
+    html+='<div class="detail-grid">';
+    Object.keys(grouped).sort().forEach(type=>{
+      html+=`<div class="detail-section"><h3>${escapeHtml(type)}</h3>${
+        grouped[type].map(p=>`<div>${personLink(getId(p))}</div>`).join('')
+      }</div>`;
+    });
+    html+='</div>';
+  }else{
+    html+='<p class="muted">No recorded relationships for this person.</p>';
+  }
+
+  const blood=bloodlineResults(id);
+  html+='<div class="detail-section" style="margin-top:12px">';
+  html+='<h3>Calculated bloodline relationships</h3>';
+
+  if(!blood.length){
+    html+='<p class="muted">No bloodline relationship could be calculated from the recorded parent/child links.</p>';
+  }else{
+    const groups={};
+    blood.forEach(x=>{
+      if(!groups[x.label]) groups[x.label]=[];
+      groups[x.label].push(x);
+    });
+
+    Object.keys(groups).sort().forEach(label=>{
+      html+=`<div class="kinship-group"><h4>${escapeHtml(label)}</h4>`;
+      groups[label].sort((a,b)=>displayName(a.person).localeCompare(displayName(b.person))).forEach(x=>{
+        html+=`<div class="kinship-result"><strong>${personLink(getId(x.person))}</strong>`;
+        if(x.paths?.length){
+          const shown=x.paths.slice(0,3);
+          html+=shown.map(path=>`<div class="kinship-path">${escapeHtml(pathText(id,path))}</div>`).join('');
+          if(x.paths.length>3) html+=`<div class="relationship-note">${x.paths.length-3} additional bloodline path(s)</div>`;
+        }
+        html+='</div>';
+      });
+      html+='</div>';
+    });
+  }
+
+  html+='</div>';
+  $('relationshipResults').innerHTML=html;
+}
+
+function renderPersonDetail(id){
+  const person=personById(id);
+  if(!person){
+    $('personDetail').classList.add('hidden');
+    return;
+  }
+
+  selectedPersonId=String(id);
+  $('detailName').textContent=displayName(person);
+
+  const parents=[],spouses=[],children=[],other=[];
+  const graph=buildParentGraph();
+  const parentIds=new Set([...graph.parentsOf.get(String(id))||[]]);
+  const childIds=new Set([...graph.childrenOf.get(String(id))||[]]);
+
+  relatedPeople(id).forEach(({person:p,relationship:r})=>{
+    const pid=String(getId(p));
+    const type=relationshipType(r);
+
+    if(parentIds.has(pid) || type.includes('parent') || type.includes('mother') || type.includes('father')){
+      parents.push(p);
+    }else if(childIds.has(pid) || type.includes('child') || type.includes('son') || type.includes('daughter')){
+      children.push(p);
+    }else if(type.includes('spouse') || type.includes('partner') || type.includes('husband') || type.includes('wife')){
+      spouses.push(p);
+    }else{
+      other.push(p);
+    }
+  });
+
+  const unique=list=>[...new Map(list.map(p=>[String(getId(p)),p])).values()];
+  const listPeople=list=>{
+    const x=unique(list);
+    return x.length?x.map(p=>`<div>${personLink(getId(p))}</div>`).join(''):'<span class="muted">None recorded</span>';
+  };
+
+  const blood=bloodlineResults(id);
+
+  $('detailContent').innerHTML=`
+    <div class="detail-grid">
+      <div class="detail-section">
+        <h3>Basic information</h3>
+        <p><strong>Gender:</strong> ${escapeHtml(getField(person,'Gender','gender')||'Not recorded')}</p>
+        <p><strong>Birth:</strong> ${escapeHtml(getField(person,'Birth','birth','BirthDate','birthDate')||'Not recorded')}</p>
+        <p><strong>Death:</strong> ${escapeHtml(getField(person,'Death','death','DeathDate','deathDate')||'Not recorded')}</p>
+        <p><strong>Birth place:</strong> ${escapeHtml(getField(person,'BirthPlace','birthPlace','PlaceOfBirth')||'Not recorded')}</p>
+        <p><strong>Death place:</strong> ${escapeHtml(getField(person,'DeathPlace','deathPlace','PlaceOfDeath')||'Not recorded')}</p>
+      </div>
+
+      <div class="detail-section"><h3>Parents</h3>${listPeople(parents)}</div>
+      <div class="detail-section"><h3>Spouse(s)</h3>${listPeople(spouses)}</div>
+      <div class="detail-section"><h3>Children</h3>${listPeople(children)}</div>
+      <div class="detail-section"><h3>Other recorded relationships</h3>${listPeople(other)}</div>
+
+      <div class="detail-section">
+        <h3>Bloodline relationships</h3>
+        ${
+          blood.length
+          ? blood.map(x=>`
+            <div class="kinship-result">
+              <strong>${escapeHtml(x.label)}:</strong> ${personLink(getId(x.person))}
+              ${x.paths?.slice(0,3).map(path=>`<div class="kinship-path">${escapeHtml(pathText(id,path))}</div>`).join('')||''}
+            </div>
+          `).join('')
+          : '<span class="muted">No calculated bloodline relationships.</span>'
+        }
+      </div>
+
+      <div class="detail-section"><h3>Places</h3><p>${escapeHtml(getField(person,'Places','places')||'Not recorded')}</p></div>
+      <div class="detail-section"><h3>Sources</h3><p>${escapeHtml(getField(person,'Sources','sources','Source')||'Not recorded')}</p></div>
+      <div class="detail-section"><h3>Notes</h3><p>${escapeHtml(getField(person,'Notes','notes','Note')||'Not recorded')}</p></div>
+    </div>
+  `;
+
+  $('personDetail').classList.remove('hidden');
+  $('personDetail').scrollIntoView({behavior:'smooth',block:'start'});
 }
 
 
