@@ -1531,27 +1531,15 @@ function shortestDescendantPath(start,target,childrenOf){
 function ancestorLabel(person,g){
   if(g===1) return gendered(person,'Father','Mother','Parent');
   if(g===2) return gendered(person,'Grandfather','Grandmother','Grandparent');
-  const great=g-2;
-  const prefix=great===1 ? 'Great-' : `${ordinal(great)} Great-`;
-  return gendered(
-    person,
-    `${prefix}Grandfather`,
-    `${prefix}Grandmother`,
-    `${prefix}Grandparent`
-  );
+  const great='Great-'.repeat(g-2);
+  return gendered(person,`${great}Grandfather`,`${great}Grandmother`,`${great}Grandparent`);
 }
 
 function descendantLabel(person,g){
   if(g===1) return gendered(person,'Son','Daughter','Child');
   if(g===2) return gendered(person,'Grandson','Granddaughter','Grandchild');
-  const great=g-2;
-  const prefix=great===1 ? 'Great-' : `${ordinal(great)} Great-`;
-  return gendered(
-    person,
-    `${prefix}Grandson`,
-    `${prefix}Granddaughter`,
-    `${prefix}Grandchild`
-  );
+  const great='Great-'.repeat(g-2);
+  return gendered(person,`${great}Grandson`,`${great}Granddaughter`,`${great}Grandchild`);
 }
 
 function kinshipRank(label){
@@ -1729,8 +1717,9 @@ function renderPersonDetail(id){
     return x.length?x.map(p=>`<div>${personLink(getId(p))}</div>`).join(''):'<span class="muted">None recorded</span>';
   };
 
-  const blood=bloodlineResults(id);
-
+  // Show the person immediately. Bloodline calculation can be expensive with
+  // the full 17,900+ person archive, so it is deliberately deferred until
+  // after the detail panel has been displayed.
   $('detailContent').innerHTML=`
     <div class="detail-grid">
       <div class="detail-section">
@@ -1749,16 +1738,7 @@ function renderPersonDetail(id){
 
       <div class="detail-section">
         <h3>Bloodline relationships</h3>
-        ${
-          blood.length
-          ? blood.map(x=>`
-            <div class="kinship-result">
-              <strong>${escapeHtml(x.label)}:</strong> ${personLink(getId(x.person))}
-              ${x.paths?.slice(0,3).map(path=>`<div class="kinship-path">${escapeHtml(pathText(id,path))}</div>`).join('')||''}
-            </div>
-          `).join('')
-          : '<span class="muted">No calculated bloodline relationships.</span>'
-        }
+        <div id="bloodlineDetailContent"><span class="muted">Calculating…</span></div>
       </div>
 
       <div class="detail-section"><h3>Places</h3><p>${escapeHtml(getField(person,'Places','places')||'Not recorded')}</p></div>
@@ -1769,6 +1749,28 @@ function renderPersonDetail(id){
 
   $('personDetail').classList.remove('hidden');
   $('personDetail').scrollIntoView({behavior:'smooth',block:'start'});
+
+  // Let the browser paint the detail panel before doing the expensive
+  // bloodline calculation. Ignore the result if the user has clicked
+  // another person in the meantime.
+  setTimeout(()=>{
+    if(selectedPersonId!==String(id)) return;
+
+    const blood=bloodlineResults(id);
+    if(selectedPersonId!==String(id)) return;
+
+    const target=$('bloodlineDetailContent');
+    if(!target) return;
+
+    target.innerHTML=blood.length
+      ? blood.map(x=>`
+          <div class="kinship-result">
+            <strong>${escapeHtml(x.label)}:</strong> ${personLink(getId(x.person))}
+            ${x.paths?.slice(0,3).map(path=>`<div class="kinship-path">${escapeHtml(pathText(id,path))}</div>`).join('')||''}
+          </div>
+        `).join('')
+      : '<span class="muted">No calculated bloodline relationships.</span>';
+  },0);
 }
 
 
