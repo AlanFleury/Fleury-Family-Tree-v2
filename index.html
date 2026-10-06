@@ -784,6 +784,7 @@ let relationshipIndex=new Map();
 let parentGraphCache=null;
 let parentGraphSignature='';
 let bloodlineCache=new Map();
+let parentGraphBuildPromise=null;
 let peoplePage=0;
 const PEOPLE_PAGE_SIZE=250;
 
@@ -904,6 +905,7 @@ function rebuildIndexes(){
 
   parentGraphCache=null;
   parentGraphSignature='';
+  parentGraphBuildPromise=null;
   bloodlineCache=new Map();
 }
 
@@ -1492,6 +1494,54 @@ function buildParentGraph(force=false){
   return parentGraphCache;
 }
 
+function buildParentGraphAsync(force=false){
+  const signature=`${people.length}:${relationships.length}`;
+  if(!force && parentGraphCache && parentGraphSignature===signature){
+    return Promise.resolve(parentGraphCache);
+  }
+  if(!force && parentGraphBuildPromise) return parentGraphBuildPromise;
+
+  parentGraphBuildPromise=new Promise(resolve=>{
+    const parentsOf=new Map();
+    const childrenOf=new Map();
+    const add=(map,key,value)=>{
+      const k=String(key),v=String(value);
+      if(!k||!v||k==='undefined'||v==='undefined'||k===v) return;
+      if(!map.has(k)) map.set(k,new Set());
+      map.get(k).add(v);
+    };
+
+    let i=0;
+    const chunk=500;
+    const step=()=>{
+      const end=Math.min(i+chunk,relationships.length);
+      for(;i<end;i++){
+        const r=relationships[i];
+        const type=relationshipType(r);
+        const a=String(fromId(r)), b=String(toId(r));
+        if(!a||!b||a==='undefined'||b==='undefined'||a===b) continue;
+        if(type.includes('parent')||type.includes('mother')||type.includes('father')||
+           type.includes('child')||type.includes('son')||type.includes('daughter')){
+          const pair=inferParentChild(a,b,type);
+          add(parentsOf,pair.child,pair.parent);
+          add(childrenOf,pair.parent,pair.child);
+        }
+      }
+      if(i<relationships.length){
+        setTimeout(step,0);
+      }else{
+        parentGraphCache={parentsOf,childrenOf};
+        parentGraphSignature=signature;
+        parentGraphBuildPromise=null;
+        resolve(parentGraphCache);
+      }
+    };
+    setTimeout(step,0);
+  });
+
+  return parentGraphBuildPromise;
+}
+
 function ancestorDistances(start,parentsOf){
   const result=new Map();
   const queue=[[String(start),0]];
@@ -1731,8 +1781,33 @@ function renderPersonDetail(id){
   selectedPersonId=String(id);
   $('detailName').textContent=displayName(person);
 
-  // Show the person immediately. Heavy relationship calculations happen after
-  // the browser has painted the detail panel, so clicks never appear frozen.
+  const parents=[],spouses=[],children=[],other=[];
+  const directRows=relatedPeople(id);
+
+  // Classify the directly recorded relationships immediately. This does not
+  // require scanning the entire 17,900+ person archive.
+  directRows.forEach(({person:p,relationship:r})=>{
+    const pid=String(getId(p));
+    const type=relationshipType(r);
+    if(type.includes('parent')||type.includes('mother')||type.includes('father')||
+       type.includes('child')||type.includes('son')||type.includes('daughter')){
+      const pair=inferParentChild(fromId(r),toId(r),type);
+      if(String(pair.parent)===String(id) && pid===String(pair.child)) children.push(p);
+      else if(String(pair.child)===String(id) && pid===String(pair.parent)) parents.push(p);
+      else other.push(p);
+    }else if(type.includes('spouse') || type.includes('partner') || type.includes('husband') || type.includes('wife')){
+      spouses.push(p);
+    }else{
+      other.push(p);
+    }
+  });
+
+  const unique=list=>[...new Map(list.map(p=>[String(getId(p)),p])).values()];
+  const listPeople=list=>{
+    const x=unique(list);
+    return x.length?x.map(p=>`<div>${personLink(getId(p))}</div>`).join(''):'<span class="muted">None recorded</span>';
+  };
+
   $('detailContent').innerHTML=`
     <div class="detail-grid">
       <div class="detail-section">
@@ -1743,11 +1818,11 @@ function renderPersonDetail(id){
         <p><strong>Birth place:</strong> ${escapeHtml(getField(person,'BirthPlace','birthPlace','PlaceOfBirth')||'Not recorded')}</p>
         <p><strong>Death place:</strong> ${escapeHtml(getField(person,'DeathPlace','deathPlace','PlaceOfDeath')||'Not recorded')}</p>
       </div>
-      <div class="detail-section"><h3>Parents</h3><span class="muted">Loading…</span></div>
-      <div class="detail-section"><h3>Spouse(s)</h3><span class="muted">Loading…</span></div>
-      <div class="detail-section"><h3>Children</h3><span class="muted">Loading…</span></div>
-      <div class="detail-section"><h3>Other recorded relationships</h3><span class="muted">Loading…</span></div>
-      <div class="detail-section"><h3>Bloodline relationships</h3><span class="muted">Loading…</span></div>
+      <div class="detail-section"><h3>Parents</h3>${listPeople(parents)}</div>
+      <div class="detail-section"><h3>Spouse(s)</h3>${listPeople(spouses)}</div>
+      <div class="detail-section"><h3>Children</h3>${listPeople(children)}</div>
+      <div class="detail-section"><h3>Other recorded relationships</h3>${listPeople(other)}</div>
+      <div class="detail-section" id="detailBloodline"><h3>Bloodline relationships</h3><span class="muted">Calculating…</span></div>
       <div class="detail-section"><h3>Places</h3><p>${escapeHtml(getField(person,'Places','places')||'Not recorded')}</p></div>
       <div class="detail-section"><h3>Sources</h3><p>${escapeHtml(getField(person,'Sources','sources','Source')||'Not recorded')}</p></div>
       <div class="detail-section"><h3>Notes</h3><p>${escapeHtml(getField(person,'Notes','notes','Note')||'Not recorded')}</p></div>
@@ -1756,55 +1831,23 @@ function renderPersonDetail(id){
   $('personDetail').classList.remove('hidden');
   $('personDetail').scrollIntoView({behavior:'smooth',block:'start'});
 
-  requestAnimationFrame(()=>{
+  // Build the archive-wide parent graph in small browser-friendly chunks.
+  // The detail panel is already usable while this happens.
+  buildParentGraphAsync().then(()=>{
     if(selectedPersonId!==String(id)) return;
-
-    const parents=[],spouses=[],children=[],other=[];
-    const graph=buildParentGraph();
-    const parentIds=new Set(graph.parentsOf.get(String(id))||[]);
-    const childIds=new Set(graph.childrenOf.get(String(id))||[]);
-
-    relatedPeople(id).forEach(({person:p,relationship:r})=>{
-      const pid=String(getId(p));
-      const type=relationshipType(r);
-      if(parentIds.has(pid) || type.includes('parent') || type.includes('mother') || type.includes('father')) parents.push(p);
-      else if(childIds.has(pid) || type.includes('child') || type.includes('son') || type.includes('daughter')) children.push(p);
-      else if(type.includes('spouse') || type.includes('partner') || type.includes('husband') || type.includes('wife')) spouses.push(p);
-      else other.push(p);
-    });
-
-    const unique=list=>[...new Map(list.map(p=>[String(getId(p)),p])).values()];
-    const listPeople=list=>{
-      const x=unique(list);
-      return x.length?x.map(p=>`<div>${personLink(getId(p))}</div>`).join(''):'<span class="muted">None recorded</span>';
-    };
-
-    let blood=[];
-    try{ blood=bloodlineResults(id); }catch(error){ console.error(error); }
-    if(selectedPersonId!==String(id)) return;
-
-    $('detailContent').innerHTML=`
-      <div class="detail-grid">
-        <div class="detail-section">
-          <h3>Basic information</h3>
-          <p><strong>Gender:</strong> ${escapeHtml(getField(person,'Gender','gender')||'Not recorded')}</p>
-          <p><strong>Birth:</strong> ${escapeHtml(getField(person,'Birth','birth','BirthDate','birthDate')||'Not recorded')}</p>
-          <p><strong>Death:</strong> ${escapeHtml(getField(person,'Death','death','DeathDate','deathDate')||'Not recorded')}</p>
-          <p><strong>Birth place:</strong> ${escapeHtml(getField(person,'BirthPlace','birthPlace','PlaceOfBirth')||'Not recorded')}</p>
-          <p><strong>Death place:</strong> ${escapeHtml(getField(person,'DeathPlace','deathPlace','PlaceOfDeath')||'Not recorded')}</p>
-        </div>
-        <div class="detail-section"><h3>Parents</h3>${listPeople(parents)}</div>
-        <div class="detail-section"><h3>Spouse(s)</h3>${listPeople(spouses)}</div>
-        <div class="detail-section"><h3>Children</h3>${listPeople(children)}</div>
-        <div class="detail-section"><h3>Other recorded relationships</h3>${listPeople(other)}</div>
-        <div class="detail-section"><h3>Bloodline relationships</h3>${blood.length?blood.map(x=>`<div class="kinship-result"><strong>${escapeHtml(x.label)}:</strong> ${personLink(getId(x.person))}${x.paths?.slice(0,3).map(path=>`<div class="kinship-path">${escapeHtml(pathText(id,path))}</div>`).join('')||''}</div>`).join(''):'<span class="muted">No calculated bloodline relationships.</span>'}</div>
-        <div class="detail-section"><h3>Places</h3><p>${escapeHtml(getField(person,'Places','places')||'Not recorded')}</p></div>
-        <div class="detail-section"><h3>Sources</h3><p>${escapeHtml(getField(person,'Sources','sources','Source')||'Not recorded')}</p></div>
-        <div class="detail-section"><h3>Notes</h3><p>${escapeHtml(getField(person,'Notes','notes','Note')||'Not recorded')}</p></div>
-      </div>`;
+    const blood=bloodlineResults(id);
+    const box=$('detailBloodline');
+    if(!box) return;
+    box.innerHTML=`<h3>Bloodline relationships</h3>` + (
+      blood.length
+        ? blood.map(x=>`<div class="kinship-result"><strong>${escapeHtml(x.label)}:</strong> ${personLink(getId(x.person))}${x.paths?.slice(0,3).map(path=>`<div class="kinship-path">${escapeHtml(pathText(id,path))}</div>`).join('')||''}</div>`).join('')
+        : '<span class="muted">No calculated bloodline relationships.</span>'
+    );
+  }).catch(error=>{
+    const box=$('detailBloodline');
+    if(box) box.innerHTML=`<h3>Bloodline relationships</h3><span class="error">${escapeHtml(error.message||String(error))}</span>`;
   });
 }
-
 
 /* =========================================================
    REPORTS
