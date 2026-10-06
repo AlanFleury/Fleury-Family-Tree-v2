@@ -6,6 +6,7 @@
 <meta name="theme-color" content="#172033">
 <title>Fleury Family Archive</title>
 <link rel="manifest" href="manifest.webmanifest">
+
 <style>
 :root{
   --bg:#f4f6f9;
@@ -19,13 +20,16 @@
   --ok:#087443;
   --shadow:0 2px 10px rgba(0,0,0,.08);
 }
+
 *{box-sizing:border-box}
+
 body{
   margin:0;
   background:var(--bg);
   color:var(--text);
   font-family:Arial,Helvetica,sans-serif;
 }
+
 header{
   background:var(--text);
   color:#fff;
@@ -35,6 +39,7 @@ header{
   z-index:20;
   box-shadow:var(--shadow);
 }
+
 .header-row{
   max-width:1400px;
   margin:auto;
@@ -43,13 +48,19 @@ header{
   align-items:center;
   justify-content:space-between;
 }
-h1{font-size:21px;margin:0}
+
+h1{
+  font-size:21px;
+  margin:0;
+}
+
 .user-area{
   display:flex;
   gap:8px;
   align-items:center;
   flex-wrap:wrap;
 }
+
 button,.button{
   border:1px solid var(--line);
   background:#fff;
@@ -59,19 +70,31 @@ button,.button{
   cursor:pointer;
   font-size:14px;
 }
-button:hover,.button:hover{background:#eef2f7}
+
+button:hover,.button:hover{
+  background:#eef2f7;
+}
+
 button.primary{
   background:var(--accent);
   border-color:var(--accent);
   color:#fff;
 }
-button.primary:hover{background:var(--accent2)}
+
+button.primary:hover{
+  background:var(--accent2);
+}
+
 button.danger{
   color:#fff;
   background:var(--danger);
   border-color:var(--danger);
 }
-button:disabled{opacity:.5;cursor:not-allowed}
+
+button:disabled{
+  opacity:.5;
+  cursor:not-allowed;
+}
 
 nav{
   max-width:1400px;
@@ -80,18 +103,24 @@ nav{
   gap:6px;
   flex-wrap:wrap;
 }
+
 nav button{
   background:rgba(255,255,255,.1);
   color:#fff;
   border-color:rgba(255,255,255,.2);
 }
-nav button.active{background:#fff;color:var(--text)}
+
+nav button.active{
+  background:#fff;
+  color:var(--text);
+}
 
 main{
   max-width:1400px;
   margin:auto;
   padding:18px;
 }
+
 .panel{
   background:var(--panel);
   border:1px solid var(--line);
@@ -100,22 +129,40 @@ main{
   margin-bottom:16px;
   box-shadow:var(--shadow);
 }
+
 .grid{
   display:grid;
   grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
   gap:12px;
 }
+
 .card{
   border:1px solid var(--line);
   border-radius:8px;
   padding:12px;
   background:#fff;
 }
-.card h3{margin:0 0 7px;font-size:16px}
-.muted{color:var(--muted)}
-.error{color:var(--danger)}
-.success{color:var(--ok)}
-.small{font-size:13px}
+
+.card h3{
+  margin:0 0 7px;
+  font-size:16px;
+}
+
+.muted{
+  color:var(--muted);
+}
+
+.error{
+  color:var(--danger);
+}
+
+.success{
+  color:var(--ok);
+}
+
+.small{
+  font-size:13px;
+}
 
 input,select,textarea{
   width:100%;
@@ -125,17 +172,24 @@ input,select,textarea{
   font:inherit;
   background:#fff;
 }
-textarea{min-height:110px;resize:vertical}
+
+textarea{
+  min-height:110px;
+  resize:vertical;
+}
+
 label{
   display:block;
   font-weight:600;
   margin-bottom:5px;
 }
+
 .form-grid{
   display:grid;
   grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
   gap:12px;
 }
+
 .form-actions{
   display:flex;
   gap:8px;
@@ -147,14 +201,21 @@ table{
   width:100%;
   border-collapse:collapse;
 }
+
 th,td{
   text-align:left;
   padding:8px;
   border-bottom:1px solid var(--line);
   vertical-align:top;
 }
-th{background:#f0f3f7}
-.table-wrap{overflow:auto}
+
+th{
+  background:#f0f3f7;
+}
+
+.table-wrap{
+  overflow:auto;
+}
 
 .person-link{
   color:var(--accent);
@@ -162,7 +223,10 @@ th{background:#f0f3f7}
   cursor:pointer;
   font-weight:600;
 }
-.person-link:hover{color:var(--accent2)}
+
+.person-link:hover{
+  color:var(--accent2);
+}
 
 .badge{
   display:inline-block;
@@ -177,9 +241,15 @@ th{background:#f0f3f7}
   font-size:26px;
   font-weight:700;
 }
-.stat-label{color:var(--muted);font-size:13px}
 
-.hidden{display:none!important}
+.stat-label{
+  color:var(--muted);
+  font-size:13px;
+}
+
+.hidden{
+  display:none!important;
+}
 
 .loading{
   padding:40px;
@@ -192,11 +262,13 @@ th{background:#f0f3f7}
   grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
   gap:12px;
 }
+
 .detail-section{
   border:1px solid var(--line);
   border-radius:8px;
   padding:12px;
 }
+
 .detail-section h3{
   margin-top:0;
   font-size:15px;
@@ -218,9 +290,18 @@ footer{
 }
 
 @media(max-width:700px){
-  .header-row{align-items:flex-start;flex-direction:column}
-  main{padding:10px}
-  th,td{font-size:13px}
+  .header-row{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+
+  main{
+    padding:10px;
+  }
+
+  th,td{
+    font-size:13px;
+  }
 }
 </style>
 </head>
@@ -229,6 +310,7 @@ footer{
 
 <header>
   <div class="header-row">
+
     <div>
       <h1>Fleury Family Archive</h1>
       <div id="authStatus" class="small">Checking sign-in…</div>
@@ -239,6 +321,7 @@ footer{
       <button id="signInBtn" class="primary">Sign in</button>
       <button id="signOutBtn" class="hidden">Sign out</button>
     </div>
+
   </div>
 
   <nav>
@@ -259,200 +342,426 @@ footer{
 
 <section id="loginView" class="panel hidden">
   <h2>Private Family Archive</h2>
+
   <p>
     This archive is private. Please sign in to access the family database.
   </p>
-  <button id="loginMainBtn" class="primary">Sign in</button>
+
+  <button id="loginMainBtn" class="primary">
+    Sign in
+  </button>
+
   <p id="loginMessage" class="error"></p>
 </section>
 
 <div id="app" class="hidden">
 
 <section id="view-explore" class="view">
+
   <div class="panel">
+
     <h2>Explore</h2>
+
     <p class="muted">
       Search the private family archive and select any person to view their recorded family information.
     </p>
 
     <div class="form-grid">
+
       <div>
-        <label for="globalSearch">Search people</label>
-        <input id="globalSearch" type="search" placeholder="Name, place, date…">
+        <label for="globalSearch">
+          Search people
+        </label>
+
+        <input
+          id="globalSearch"
+          type="search"
+          placeholder="Name, place, date…"
+        >
       </div>
+
     </div>
+
   </div>
 
   <div id="exploreResults" class="grid"></div>
+
 </section>
+
 
 <section id="view-people" class="view hidden">
+
   <div class="panel">
+
     <h2>People</h2>
+
     <div class="form-grid">
+
       <div>
-        <label for="peopleSearch">Search</label>
-        <input id="peopleSearch" type="search" placeholder="Search names…">
+        <label for="peopleSearch">
+          Search
+        </label>
+
+        <input
+          id="peopleSearch"
+          type="search"
+          placeholder="Search names…"
+        >
       </div>
+
     </div>
+
   </div>
 
   <div class="panel">
+
     <div id="peopleTable" class="table-wrap"></div>
+
   </div>
+
 </section>
 
+
 <section id="view-relationships" class="view hidden">
+
   <div class="panel">
+
     <h2>Relationships</h2>
 
     <div class="form-grid">
+
       <div>
-        <label for="relationshipPerson">Person</label>
+
+        <label for="relationshipPerson">
+          Person
+        </label>
+
         <select id="relationshipPerson"></select>
+
       </div>
+
     </div>
 
-    <div id="relationshipResults" style="margin-top:15px"></div>
+    <div
+      id="relationshipResults"
+      style="margin-top:15px"
+    ></div>
+
   </div>
+
 </section>
 
+
 <section id="view-reports" class="view hidden">
+
   <div class="panel">
+
     <h2>Reports</h2>
 
     <div class="form-grid">
+
       <div>
-        <label for="reportType">Report</label>
+
+        <label for="reportType">
+          Report
+        </label>
+
         <select id="reportType">
-          <option value="people">People</option>
-          <option value="parents">Parents</option>
-          <option value="spouses">Spouses</option>
-          <option value="children">Children</option>
-          <option value="places">Places</option>
+
+          <option value="people">
+            People
+          </option>
+
+          <option value="parents">
+            Parents
+          </option>
+
+          <option value="spouses">
+            Spouses
+          </option>
+
+          <option value="children">
+            Children
+          </option>
+
+          <option value="places">
+            Places
+          </option>
+
         </select>
+
       </div>
+
     </div>
 
     <div class="form-actions">
-      <button id="generateReportBtn" class="primary">Generate report</button>
-      <button id="printReportBtn">Print</button>
+
+      <button
+        id="generateReportBtn"
+        class="primary"
+      >
+        Generate report
+      </button>
+
+      <button id="printReportBtn">
+        Print
+      </button>
+
     </div>
+
   </div>
 
-  <div id="reportOutput" class="panel"></div>
+  <div
+    id="reportOutput"
+    class="panel"
+  ></div>
+
 </section>
 
+
 <section id="view-charts" class="view hidden">
+
   <div class="panel">
+
     <h2>Family Charts</h2>
+
     <p class="muted">
       Select a person to begin exploring their recorded family connections.
     </p>
 
     <div class="form-grid">
+
       <div>
-        <label for="chartPerson">Starting person</label>
+
+        <label for="chartPerson">
+          Starting person
+        </label>
+
         <select id="chartPerson"></select>
+
       </div>
+
     </div>
 
     <div class="form-actions">
-      <button id="generateChartBtn" class="primary">Generate chart</button>
-      <button id="printChartBtn">Print</button>
+
+      <button
+        id="generateChartBtn"
+        class="primary"
+      >
+        Generate chart
+      </button>
+
+      <button id="printChartBtn">
+        Print
+      </button>
+
     </div>
+
   </div>
 
-  <div id="chartOutput" class="panel"></div>
+  <div
+    id="chartOutput"
+    class="panel"
+  ></div>
+
 </section>
 
+
 <section id="view-admin" class="view hidden">
+
   <div class="panel">
+
     <h2>Admin</h2>
+
     <div id="adminStatus"></div>
+
   </div>
 
-  <div id="editorPanel" class="panel hidden">
+
+  <div
+    id="editorPanel"
+    class="panel hidden"
+  >
+
     <h3>Edit person</h3>
 
     <div class="form-grid">
+
       <div>
-        <label for="editPerson">Person</label>
+
+        <label for="editPerson">
+          Person
+        </label>
+
         <select id="editPerson"></select>
+
       </div>
 
+
       <div>
-        <label for="editName">Name</label>
+
+        <label for="editName">
+          Name
+        </label>
+
         <input id="editName">
+
       </div>
 
+
       <div>
-        <label for="editGender">Gender</label>
+
+        <label for="editGender">
+          Gender
+        </label>
+
         <input id="editGender">
+
       </div>
 
+
       <div>
-        <label for="editBirth">Birth</label>
+
+        <label for="editBirth">
+          Birth
+        </label>
+
         <input id="editBirth">
+
       </div>
 
+
       <div>
-        <label for="editDeath">Death</label>
+
+        <label for="editDeath">
+          Death
+        </label>
+
         <input id="editDeath">
+
       </div>
 
+
       <div>
-        <label for="editBirthPlace">Birth place</label>
+
+        <label for="editBirthPlace">
+          Birth place
+        </label>
+
         <input id="editBirthPlace">
+
       </div>
 
+
       <div>
-        <label for="editDeathPlace">Death place</label>
+
+        <label for="editDeathPlace">
+          Death place
+        </label>
+
         <input id="editDeathPlace">
+
       </div>
+
     </div>
 
-    <div class="form-grid" style="margin-top:12px">
+
+    <div
+      class="form-grid"
+      style="margin-top:12px"
+    >
+
       <div>
-        <label for="editNotes">Notes</label>
+
+        <label for="editNotes">
+          Notes
+        </label>
+
         <textarea id="editNotes"></textarea>
+
       </div>
 
+
       <div>
-        <label for="editSources">Sources</label>
+
+        <label for="editSources">
+          Sources
+        </label>
+
         <textarea id="editSources"></textarea>
+
       </div>
+
     </div>
+
 
     <div class="form-actions">
-      <button id="savePersonBtn" class="primary">Save person</button>
+
+      <button
+        id="savePersonBtn"
+        class="primary"
+      >
+        Save person
+      </button>
+
     </div>
 
+
     <div id="saveMessage"></div>
+
   </div>
+
 </section>
 
-<section id="personDetail" class="panel hidden">
-  <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
-    <h2 id="detailName">Person</h2>
-    <button id="closeDetailBtn">Close</button>
+
+<section
+  id="personDetail"
+  class="panel hidden"
+>
+
+  <div
+    style="
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      align-items:center
+    "
+  >
+
+    <h2 id="detailName">
+      Person
+    </h2>
+
+    <button id="closeDetailBtn">
+      Close
+    </button>
+
   </div>
 
   <div id="detailContent"></div>
+
 </section>
 
 </div>
+
 </main>
+
 
 <footer>
   Fleury Family Archive — private authenticated archive.
 </footer>
 
-  <script src="./config.js"></script> 
+
+<script src="./config.js"></script>
+
 <script src="https://cdn.auth0.com/js/auth0-spa-js/2.1/auth0-spa-js.production.js"></script>
 
+
 <script type="module">
+
 import * as archiveApi from './archive-api.js';
+
 
 let database=null;
 let people=[];
@@ -460,628 +769,2145 @@ let relationships=[];
 let currentRole=null;
 let selectedPersonId=null;
 
+
 const $=id=>document.getElementById(id);
 
+
+/* =========================================================
+   DISPLAY NAME
+   ========================================================= */
+
 function displayName(person){
+
   if(!person) return '';
-  return String(person.Name||person.name||'')
+
+  return String(
+    person.Name ||
+    person.name ||
+    ''
+  )
     .replace(/@/g,'')
     .trim();
 }
 
-function getId(person){
-  return person?.ID ?? person?.id ?? person?.Id ?? '';
+
+/*
+ * Only people whose displayed name begins with a letter
+ * are shown in the normal user interface.
+ *
+ * Records containing ? remain in the database but are hidden.
+ */
+function hasValidDisplayName(person){
+
+  const name=displayName(person);
+
+  return /^\p{L}/u.test(name) &&
+    !String(
+      getField(person,'Name','name')
+    ).includes('?');
 }
 
+
+/* =========================================================
+   PERSON ID
+   ========================================================= */
+
+function getId(person){
+
+  return person?.['Person ID'] ??
+         person?.ID ??
+         person?.id ??
+         person?.Id ??
+         '';
+}
+
+
+/* =========================================================
+   GENERIC FIELD READER
+   ========================================================= */
+
 function getField(person,...keys){
+
   for(const key of keys){
-    if(person && person[key]!==undefined && person[key]!==null){
+
+    if(
+      person &&
+      person[key]!==undefined &&
+      person[key]!==null
+    ){
+
       return person[key];
+
     }
+
   }
+
   return '';
 }
 
+
+/* =========================================================
+   VISIBLE PEOPLE
+   ========================================================= */
+
 function visiblePeople(){
-  return people.filter(person=>{
-    const name=displayName(person);
-    return name && !String(getField(person,'Name','name')).includes('?');
-  });
+
+  return people.filter(
+    person=>hasValidDisplayName(person)
+  );
+
 }
+
+
+/* =========================================================
+   FIND PERSON
+   ========================================================= */
 
 function personById(id){
-  return people.find(p=>String(getId(p))===String(id));
+
+  return people.find(
+    p=>String(getId(p))===String(id)
+  );
+
 }
 
+
+/* =========================================================
+   PERSON LINK
+   ========================================================= */
+
 function personLink(id){
+
   const person=personById(id);
+
   if(!person) return '';
 
   const name=displayName(person);
-  if(!name || String(getField(person,'Name','name')).includes('?')) return '';
 
-  return `<span class="person-link" data-person="${escapeHtml(String(id))}">${escapeHtml(name)}</span>`;
+  if(!hasValidDisplayName(person)) return '';
+
+  return `
+    <span
+      class="person-link"
+      data-person="${escapeHtml(String(id))}"
+    >
+      ${escapeHtml(name)}
+    </span>
+  `;
+
 }
+
+
+/* =========================================================
+   HTML ESCAPING
+   ========================================================= */
 
 function escapeHtml(value){
+
   return String(value??'')
+
     .replace(/&/g,'&amp;')
+
     .replace(/</g,'&lt;')
+
     .replace(/>/g,'&gt;')
+
     .replace(/"/g,'&quot;')
+
     .replace(/'/g,'&#039;');
+
 }
+
+
+/* =========================================================
+   RELATIONSHIP HELPERS
+   ========================================================= */
 
 function relationshipType(r){
+
   return String(
-    getField(r,'type','Type','relationship','Relationship')||''
+    getField(
+      r,
+      'type',
+      'Type',
+      'relationship',
+      'Relationship'
+    ) || ''
   ).toLowerCase();
+
 }
+
 
 function fromId(r){
-  return getField(r,'from','From','person1','personId','source');
+
+  return getField(
+    r,
+    'from',
+    'From',
+    'person1',
+    'personId',
+    'source'
+  );
+
 }
+
 
 function toId(r){
-  return getField(r,'to','To','person2','relatedPersonId','target');
+
+  return getField(
+    r,
+    'to',
+    'To',
+    'person2',
+    'relatedPersonId',
+    'target'
+  );
+
 }
+
 
 function relationshipRowsFor(id){
-  return relationships.filter(r=>
-    String(fromId(r))===String(id) ||
-    String(toId(r))===String(id)
+
+  return relationships.filter(
+    r=>
+      String(fromId(r))===String(id) ||
+      String(toId(r))===String(id)
   );
+
 }
 
+
 function relatedPeople(id){
+
   const result=[];
 
   for(const r of relationshipRowsFor(id)){
+
     const a=String(fromId(r));
     const b=String(toId(r));
-    const other=a===String(id)?b:a;
+
+    const other=
+      a===String(id)
+        ? b
+        : a;
+
     const p=personById(other);
 
-    if(p && !String(getField(p,'Name','name')).includes('?')){
-      result.push({person:p,relationship:r});
+    if(
+      p &&
+      !String(
+        getField(p,'Name','name')
+      ).includes('?')
+    ){
+
+      result.push({
+        person:p,
+        relationship:r
+      });
+
     }
+
   }
 
   return result;
+
 }
+
+
+/* =========================================================
+   STATUS
+   ========================================================= */
 
 function setStatus(text,error=false){
+
   $('authStatus').textContent=text;
-  $('authStatus').className=error?'small error':'small';
+
+  $('authStatus').className=
+    error
+      ? 'small error'
+      : 'small';
+
 }
+
+
+/* =========================================================
+   VIEW SWITCHING
+   ========================================================= */
 
 function showView(view){
-  document.querySelectorAll('.view').forEach(x=>x.classList.add('hidden'));
-  const target=$('view-'+view);
-  if(target) target.classList.remove('hidden');
 
-  document.querySelectorAll('nav button[data-view]').forEach(btn=>{
-    btn.classList.toggle('active',btn.dataset.view===view);
-  });
+  document
+    .querySelectorAll('.view')
+    .forEach(
+      x=>x.classList.add('hidden')
+    );
+
+  const target=$('view-'+view);
+
+  if(target)
+    target.classList.remove('hidden');
+
+
+  document
+    .querySelectorAll(
+      'nav button[data-view]'
+    )
+    .forEach(btn=>{
+
+      btn.classList.toggle(
+        'active',
+        btn.dataset.view===view
+      );
+
+    });
+
 }
 
+
+/* =========================================================
+   PERSON SELECTS
+   ========================================================= */
+
 function populatePersonSelect(selectId){
+
   const select=$(selectId);
+
   if(!select) return;
 
   const old=select.value;
 
-  select.innerHTML='<option value="">Select a person…</option>';
+  select.innerHTML=
+    '<option value="">Select a person…</option>';
+
 
   visiblePeople()
-    .sort((a,b)=>displayName(a).localeCompare(displayName(b)))
+
+    .sort(
+      (a,b)=>
+        displayName(a)
+          .localeCompare(
+            displayName(b)
+          )
+    )
+
     .forEach(p=>{
-      const option=document.createElement('option');
-      option.value=String(getId(p));
-      option.textContent=displayName(p);
+
+      const option=
+        document.createElement('option');
+
+      option.value=
+        String(getId(p));
+
+      option.textContent=
+        displayName(p);
+
       select.appendChild(option);
+
     });
 
-  if(old && personById(old)) select.value=old;
+
+  if(
+    old &&
+    personById(old)
+  ){
+
+    select.value=old;
+
+  }
+
 }
+
+
+/* =========================================================
+   STATS
+   ========================================================= */
 
 function renderStats(){
+
   $('exploreResults').innerHTML=`
+
     <div class="card">
-      <div class="stat">${people.length.toLocaleString()}</div>
-      <div class="stat-label">People recorded</div>
+
+      <div class="stat">
+        ${people.length.toLocaleString()}
+      </div>
+
+      <div class="stat-label">
+        People recorded
+      </div>
+
     </div>
+
+
     <div class="card">
-      <div class="stat">${relationships.length.toLocaleString()}</div>
-      <div class="stat-label">Relationships recorded</div>
+
+      <div class="stat">
+        ${relationships.length.toLocaleString()}
+      </div>
+
+      <div class="stat-label">
+        Relationships recorded
+      </div>
+
     </div>
+
+
     <div class="card">
-      <div class="stat">${visiblePeople().length.toLocaleString()}</div>
-      <div class="stat-label">People shown in archive</div>
+
+      <div class="stat">
+        ${visiblePeople().length.toLocaleString()}
+      </div>
+
+      <div class="stat-label">
+        People shown in archive
+      </div>
+
     </div>
+
   `;
+
 }
 
+
+/* =========================================================
+   PEOPLE TABLE
+   ========================================================= */
+
 function renderPeople(filter=''){
-  const q=filter.trim().toLowerCase();
 
-  const rows=visiblePeople()
-    .filter(p=>{
-      if(!q) return true;
-      return displayName(p).toLowerCase().includes(q);
-    })
-    .sort((a,b)=>displayName(a).localeCompare(displayName(b)));
+  const q=
+    filter
+      .trim()
+      .toLowerCase();
 
-  let html='<table><thead><tr><th>Name</th><th>Gender</th><th>Birth</th><th>Death</th></tr></thead><tbody>';
+
+  const rows=
+    visiblePeople()
+
+      .filter(p=>{
+
+        if(!q)
+          return true;
+
+        return displayName(p)
+          .toLowerCase()
+          .includes(q);
+
+      })
+
+      .sort(
+        (a,b)=>
+          displayName(a)
+            .localeCompare(
+              displayName(b)
+            )
+      );
+
+
+  let html=`
+
+    <table>
+
+      <thead>
+
+        <tr>
+          <th>Name</th>
+          <th>Gender</th>
+          <th>Birth</th>
+          <th>Death</th>
+        </tr>
+
+      </thead>
+
+      <tbody>
+
+  `;
+
 
   for(const p of rows){
+
     html+=`
+
       <tr>
-        <td>${personLink(getId(p))}</td>
-        <td>${escapeHtml(getField(p,'Gender','gender'))}</td>
-        <td>${escapeHtml(getField(p,'Birth','birth','BirthDate','birthDate'))}</td>
-        <td>${escapeHtml(getField(p,'Death','death','DeathDate','deathDate'))}</td>
+
+        <td>
+          ${personLink(getId(p))}
+        </td>
+
+        <td>
+          ${escapeHtml(
+            getField(
+              p,
+              'Gender',
+              'gender'
+            )
+          )}
+        </td>
+
+        <td>
+          ${escapeHtml(
+            getField(
+              p,
+              'Birth',
+              'birth',
+              'BirthDate',
+              'birthDate'
+            )
+          )}
+        </td>
+
+        <td>
+          ${escapeHtml(
+            getField(
+              p,
+              'Death',
+              'death',
+              'DeathDate',
+              'deathDate'
+            )
+          )}
+        </td>
+
       </tr>
+
     `;
+
   }
+
 
   html+='</tbody></table>';
 
   $('peopleTable').innerHTML=html;
+
 }
+
+
+/* =========================================================
+   SEARCH
+   ========================================================= */
 
 function renderSearchResults(query=''){
-  const q=query.trim().toLowerCase();
+
+  const q=
+    query
+      .trim()
+      .toLowerCase();
+
 
   if(!q){
+
     renderStats();
+
     return;
+
   }
 
-  const matches=visiblePeople()
-    .filter(p=>displayName(p).toLowerCase().includes(q))
-    .slice(0,100);
+
+  const matches=
+    visiblePeople()
+
+      .filter(
+        p=>
+          displayName(p)
+            .toLowerCase()
+            .includes(q)
+      )
+
+      .slice(0,100);
+
 
   if(!matches.length){
-    $('exploreResults').innerHTML='<div class="card">No matching people found.</div>';
+
+    $('exploreResults').innerHTML=
+      '<div class="card">No matching people found.</div>';
+
     return;
+
   }
 
-  $('exploreResults').innerHTML=matches.map(p=>`
-    <div class="card">
-      <h3>${personLink(getId(p))}</h3>
-      <div class="small muted">
-        ${escapeHtml(getField(p,'Birth','birth','BirthDate','birthDate'))}
-        ${getField(p,'Death','death','DeathDate','deathDate')?' – '+escapeHtml(getField(p,'Death','death','DeathDate','deathDate')):''}
+
+  $('exploreResults').innerHTML=
+
+    matches.map(p=>`
+
+      <div class="card">
+
+        <h3>
+          ${personLink(getId(p))}
+        </h3>
+
+        <div class="small muted">
+
+          ${escapeHtml(
+            getField(
+              p,
+              'Birth',
+              'birth',
+              'BirthDate',
+              'birthDate'
+            )
+          )}
+
+          ${
+            getField(
+              p,
+              'Death',
+              'death',
+              'DeathDate',
+              'deathDate'
+            )
+              ? ' – '+
+                escapeHtml(
+                  getField(
+                    p,
+                    'Death',
+                    'death',
+                    'DeathDate',
+                    'deathDate'
+                  )
+                )
+              : ''
+          }
+
+        </div>
+
       </div>
-    </div>
-  `).join('');
+
+    `).join('');
+
 }
 
+
+/* =========================================================
+   RELATIONSHIPS
+   ========================================================= */
+
 function renderRelationships(id){
+
   if(!id){
-    $('relationshipResults').innerHTML='<p class="muted">Select a person.</p>';
+
+    $('relationshipResults').innerHTML=
+      '<p class="muted">Select a person.</p>';
+
     return;
+
   }
 
+
   const person=personById(id);
+
+
   if(!person){
-    $('relationshipResults').innerHTML='<p class="error">Person not found.</p>';
+
+    $('relationshipResults').innerHTML=
+      '<p class="error">Person not found.</p>';
+
     return;
+
   }
+
 
   const rows=relatedPeople(id);
 
+
   if(!rows.length){
-    $('relationshipResults').innerHTML='<p>No recorded relationships for this person.</p>';
+
+    $('relationshipResults').innerHTML=
+      '<p>No recorded relationships for this person.</p>';
+
     return;
+
   }
+
 
   const grouped={};
 
-  rows.forEach(({person:p,relationship:r})=>{
-    const type=relationshipType(r)||'Relationship';
-    if(!grouped[type]) grouped[type]=[];
-    grouped[type].push(p);
-  });
+
+  rows.forEach(
+    ({person:p,relationship:r})=>{
+
+      const type=
+        relationshipType(r) ||
+        'Relationship';
+
+
+      if(!grouped[type])
+        grouped[type]=[];
+
+
+      grouped[type].push(p);
+
+    }
+  );
+
 
   let html='';
 
-  Object.keys(grouped).sort().forEach(type=>{
-    html+=`<div class="detail-section" style="margin-bottom:12px">
-      <h3>${escapeHtml(type)}</h3>
-      ${grouped[type].map(p=>`<div>${personLink(getId(p))}</div>`).join('')}
-    </div>`;
-  });
+
+  Object.keys(grouped)
+    .sort()
+    .forEach(type=>{
+
+      html+=`
+
+        <div
+          class="detail-section"
+          style="margin-bottom:12px"
+        >
+
+          <h3>
+            ${escapeHtml(type)}
+          </h3>
+
+          ${
+            grouped[type]
+              .map(
+                p=>
+                  `<div>
+                    ${personLink(getId(p))}
+                  </div>`
+              )
+              .join('')
+          }
+
+        </div>
+
+      `;
+
+    });
+
 
   $('relationshipResults').innerHTML=html;
+
 }
 
+
+/* =========================================================
+   PERSON DETAIL
+   ========================================================= */
+
 function renderPersonDetail(id){
+
   const person=personById(id);
 
+
   if(!person){
-    $('personDetail').classList.add('hidden');
+
+    $('personDetail')
+      .classList
+      .add('hidden');
+
     return;
+
   }
 
-  selectedPersonId=String(id);
 
-  $('detailName').innerHTML=escapeHtml(displayName(person));
+  selectedPersonId=
+    String(id);
+
+
+  $('detailName').innerHTML=
+    escapeHtml(
+      displayName(person)
+    );
+
 
   const parents=[];
   const spouses=[];
   const children=[];
   const other=[];
 
-  relatedPeople(id).forEach(({person:p,relationship:r})=>{
-    const type=relationshipType(r);
 
-    if(type.includes('parent')||type.includes('mother')||type.includes('father')){
-      parents.push(p);
-    }else if(type.includes('spouse')||type.includes('partner')||type.includes('husband')||type.includes('wife')){
-      spouses.push(p);
-    }else if(type.includes('child')||type.includes('son')||type.includes('daughter')){
-      children.push(p);
-    }else{
-      other.push(p);
-    }
-  });
+  relatedPeople(id)
+    .forEach(
+      ({person:p,relationship:r})=>{
 
-  const unique=list=>[...new Map(list.map(p=>[String(getId(p)),p])).values()];
+        const type=
+          relationshipType(r);
+
+
+        if(
+          type.includes('parent') ||
+          type.includes('mother') ||
+          type.includes('father')
+        ){
+
+          parents.push(p);
+
+        }
+
+        else if(
+          type.includes('spouse') ||
+          type.includes('partner') ||
+          type.includes('husband') ||
+          type.includes('wife')
+        ){
+
+          spouses.push(p);
+
+        }
+
+        else if(
+          type.includes('child') ||
+          type.includes('son') ||
+          type.includes('daughter')
+        ){
+
+          children.push(p);
+
+        }
+
+        else{
+
+          other.push(p);
+
+        }
+
+      }
+    );
+
+
+  const unique=list=>
+    [
+      ...new Map(
+        list.map(
+          p=>[
+            String(getId(p)),
+            p
+          ]
+        )
+      ).values()
+    ];
+
 
   const listPeople=list=>{
+
     const x=unique(list);
+
+
     return x.length
-      ? x.map(p=>`<div>${personLink(getId(p))}</div>`).join('')
+
+      ? x
+          .map(
+            p=>
+              `<div>
+                ${personLink(getId(p))}
+              </div>`
+          )
+          .join('')
+
       : '<span class="muted">None recorded</span>';
+
   };
 
+
   $('detailContent').innerHTML=`
+
     <div class="detail-grid">
 
-      <div class="detail-section">
-        <h3>Basic information</h3>
-        <p><strong>Gender:</strong> ${escapeHtml(getField(person,'Gender','gender')||'Not recorded')}</p>
-        <p><strong>Birth:</strong> ${escapeHtml(getField(person,'Birth','birth','BirthDate','birthDate')||'Not recorded')}</p>
-        <p><strong>Death:</strong> ${escapeHtml(getField(person,'Death','death','DeathDate','deathDate')||'Not recorded')}</p>
-        <p><strong>Birth place:</strong> ${escapeHtml(getField(person,'BirthPlace','birthPlace','PlaceOfBirth')||'Not recorded')}</p>
-        <p><strong>Death place:</strong> ${escapeHtml(getField(person,'DeathPlace','deathPlace','PlaceOfDeath')||'Not recorded')}</p>
-      </div>
 
       <div class="detail-section">
-        <h3>Parents</h3>
+
+        <h3>
+          Basic information
+        </h3>
+
+        <p>
+          <strong>Gender:</strong>
+          ${
+            escapeHtml(
+              getField(
+                person,
+                'Gender',
+                'gender'
+              ) ||
+              'Not recorded'
+            )
+          }
+        </p>
+
+        <p>
+          <strong>Birth:</strong>
+          ${
+            escapeHtml(
+              getField(
+                person,
+                'Birth',
+                'birth',
+                'BirthDate',
+                'birthDate'
+              ) ||
+              'Not recorded'
+            )
+          }
+        </p>
+
+        <p>
+          <strong>Death:</strong>
+          ${
+            escapeHtml(
+              getField(
+                person,
+                'Death',
+                'death',
+                'DeathDate',
+                'deathDate'
+              ) ||
+              'Not recorded'
+            )
+          }
+        </p>
+
+        <p>
+          <strong>Birth place:</strong>
+          ${
+            escapeHtml(
+              getField(
+                person,
+                'BirthPlace',
+                'birthPlace',
+                'PlaceOfBirth'
+              ) ||
+              'Not recorded'
+            )
+          }
+        </p>
+
+        <p>
+          <strong>Death place:</strong>
+          ${
+            escapeHtml(
+              getField(
+                person,
+                'DeathPlace',
+                'deathPlace',
+                'PlaceOfDeath'
+              ) ||
+              'Not recorded'
+            )
+          }
+        </p>
+
+      </div>
+
+
+      <div class="detail-section">
+
+        <h3>
+          Parents
+        </h3>
+
         ${listPeople(parents)}
+
       </div>
 
+
       <div class="detail-section">
-        <h3>Spouse(s)</h3>
+
+        <h3>
+          Spouse(s)
+        </h3>
+
         ${listPeople(spouses)}
+
       </div>
 
+
       <div class="detail-section">
-        <h3>Children</h3>
+
+        <h3>
+          Children
+        </h3>
+
         ${listPeople(children)}
+
       </div>
 
+
       <div class="detail-section">
-        <h3>Other recorded relationships</h3>
+
+        <h3>
+          Other recorded relationships
+        </h3>
+
         ${listPeople(other)}
+
       </div>
 
-      <div class="detail-section">
-        <h3>Places</h3>
-        <p>${escapeHtml(getField(person,'Places','places')||'Not recorded')}</p>
-      </div>
 
       <div class="detail-section">
-        <h3>Sources</h3>
-        <p>${escapeHtml(getField(person,'Sources','sources','Source')||'Not recorded')}</p>
+
+        <h3>
+          Places
+        </h3>
+
+        <p>
+          ${
+            escapeHtml(
+              getField(
+                person,
+                'Places',
+                'places'
+              ) ||
+              'Not recorded'
+            )
+          }
+        </p>
+
       </div>
 
+
       <div class="detail-section">
-        <h3>Notes</h3>
-        <p>${escapeHtml(getField(person,'Notes','notes','Note')||'Not recorded')}</p>
+
+        <h3>
+          Sources
+        </h3>
+
+        <p>
+          ${
+            escapeHtml(
+              getField(
+                person,
+                'Sources',
+                'sources',
+                'Source'
+              ) ||
+              'Not recorded'
+            )
+          }
+        </p>
+
       </div>
+
+
+      <div class="detail-section">
+
+        <h3>
+          Notes
+        </h3>
+
+        <p>
+          ${
+            escapeHtml(
+              getField(
+                person,
+                'Notes',
+                'notes',
+                'Note'
+              ) ||
+              'Not recorded'
+            )
+          }
+        </p>
+
+      </div>
+
 
     </div>
+
   `;
 
-  $('personDetail').classList.remove('hidden');
-  $('personDetail').scrollIntoView({behavior:'smooth',block:'start'});
+
+  $('personDetail')
+    .classList
+    .remove('hidden');
+
+
+  $('personDetail')
+    .scrollIntoView({
+      behavior:'smooth',
+      block:'start'
+    });
+
 }
+
+
+/* =========================================================
+   REPORTS
+   ========================================================= */
 
 function generateReport(){
-  const type=$('reportType').value;
+
+  const type=
+    $('reportType').value;
+
   let html='';
 
+
   if(type==='people'){
-    html='<h2>People Report</h2><table><thead><tr><th>Name</th><th>Gender</th><th>Birth</th><th>Death</th></tr></thead><tbody>';
+
+    html=`
+
+      <h2>
+        People Report
+      </h2>
+
+      <table>
+
+        <thead>
+
+          <tr>
+            <th>Name</th>
+            <th>Gender</th>
+            <th>Birth</th>
+            <th>Death</th>
+          </tr>
+
+        </thead>
+
+        <tbody>
+
+    `;
+
 
     visiblePeople()
-      .sort((a,b)=>displayName(a).localeCompare(displayName(b)))
+
+      .sort(
+        (a,b)=>
+          displayName(a)
+            .localeCompare(
+              displayName(b)
+            )
+      )
+
       .forEach(p=>{
-        html+=`<tr>
-          <td>${personLink(getId(p))}</td>
-          <td>${escapeHtml(getField(p,'Gender','gender'))}</td>
-          <td>${escapeHtml(getField(p,'Birth','birth','BirthDate','birthDate'))}</td>
-          <td>${escapeHtml(getField(p,'Death','death','DeathDate','deathDate'))}</td>
-        </tr>`;
+
+        html+=`
+
+          <tr>
+
+            <td>
+              ${personLink(getId(p))}
+            </td>
+
+            <td>
+              ${escapeHtml(
+                getField(
+                  p,
+                  'Gender',
+                  'gender'
+                )
+              )}
+            </td>
+
+            <td>
+              ${escapeHtml(
+                getField(
+                  p,
+                  'Birth',
+                  'birth',
+                  'BirthDate',
+                  'birthDate'
+                )
+              )}
+            </td>
+
+            <td>
+              ${escapeHtml(
+                getField(
+                  p,
+                  'Death',
+                  'death',
+                  'DeathDate',
+                  'deathDate'
+                )
+              )}
+            </td>
+
+          </tr>
+
+        `;
+
       });
 
+
     html+='</tbody></table>';
+
   }
+
 
   if(type==='parents'){
-    html='<h2>Parents Report</h2><table><thead><tr><th>Person</th><th>Parent</th></tr></thead><tbody>';
 
-    visiblePeople().forEach(p=>{
-      relatedPeople(getId(p)).forEach(({person:other,relationship:r})=>{
-        const t=relationshipType(r);
-        if(t.includes('parent')||t.includes('mother')||t.includes('father')){
-          html+=`<tr><td>${personLink(getId(p))}</td><td>${personLink(getId(other))}</td></tr>`;
-        }
+    html=`
+
+      <h2>
+        Parents Report
+      </h2>
+
+      <table>
+
+        <thead>
+
+          <tr>
+            <th>Person</th>
+            <th>Parent</th>
+          </tr>
+
+        </thead>
+
+        <tbody>
+
+    `;
+
+
+    visiblePeople()
+      .forEach(p=>{
+
+        relatedPeople(getId(p))
+          .forEach(
+            ({
+              person:other,
+              relationship:r
+            })=>{
+
+              const t=
+                relationshipType(r);
+
+
+              if(
+                t.includes('parent') ||
+                t.includes('mother') ||
+                t.includes('father')
+              ){
+
+                html+=`
+
+                  <tr>
+
+                    <td>
+                      ${personLink(getId(p))}
+                    </td>
+
+                    <td>
+                      ${personLink(
+                        getId(other)
+                      )}
+                    </td>
+
+                  </tr>
+
+                `;
+
+              }
+
+            }
+          );
+
       });
-    });
+
 
     html+='</tbody></table>';
+
   }
+
 
   if(type==='spouses'){
-    html='<h2>Spouses Report</h2><table><thead><tr><th>Person</th><th>Spouse</th></tr></thead><tbody>';
 
-    visiblePeople().forEach(p=>{
-      relatedPeople(getId(p)).forEach(({person:other,relationship:r})=>{
-        const t=relationshipType(r);
-        if(t.includes('spouse')||t.includes('partner')||t.includes('husband')||t.includes('wife')){
-          html+=`<tr><td>${personLink(getId(p))}</td><td>${personLink(getId(other))}</td></tr>`;
-        }
+    html=`
+
+      <h2>
+        Spouses Report
+      </h2>
+
+      <table>
+
+        <thead>
+
+          <tr>
+            <th>Person</th>
+            <th>Spouse</th>
+          </tr>
+
+        </thead>
+
+        <tbody>
+
+    `;
+
+
+    visiblePeople()
+      .forEach(p=>{
+
+        relatedPeople(getId(p))
+          .forEach(
+            ({
+              person:other,
+              relationship:r
+            })=>{
+
+              const t=
+                relationshipType(r);
+
+
+              if(
+                t.includes('spouse') ||
+                t.includes('partner') ||
+                t.includes('husband') ||
+                t.includes('wife')
+              ){
+
+                html+=`
+
+                  <tr>
+
+                    <td>
+                      ${personLink(getId(p))}
+                    </td>
+
+                    <td>
+                      ${personLink(
+                        getId(other)
+                      )}
+                    </td>
+
+                  </tr>
+
+                `;
+
+              }
+
+            }
+          );
+
       });
-    });
+
 
     html+='</tbody></table>';
+
   }
+
 
   if(type==='children'){
-    html='<h2>Children Report</h2><table><thead><tr><th>Parent</th><th>Child</th></tr></thead><tbody>';
 
-    visiblePeople().forEach(p=>{
-      relatedPeople(getId(p)).forEach(({person:other,relationship:r})=>{
-        const t=relationshipType(r);
-        if(t.includes('child')||t.includes('son')||t.includes('daughter')){
-          html+=`<tr><td>${personLink(getId(p))}</td><td>${personLink(getId(other))}</td></tr>`;
-        }
+    html=`
+
+      <h2>
+        Children Report
+      </h2>
+
+      <table>
+
+        <thead>
+
+          <tr>
+            <th>Parent</th>
+            <th>Child</th>
+          </tr>
+
+        </thead>
+
+        <tbody>
+
+    `;
+
+
+    visiblePeople()
+      .forEach(p=>{
+
+        relatedPeople(getId(p))
+          .forEach(
+            ({
+              person:other,
+              relationship:r
+            })=>{
+
+              const t=
+                relationshipType(r);
+
+
+              if(
+                t.includes('child') ||
+                t.includes('son') ||
+                t.includes('daughter')
+              ){
+
+                html+=`
+
+                  <tr>
+
+                    <td>
+                      ${personLink(
+                        getId(p)
+                      )}
+                    </td>
+
+                    <td>
+                      ${personLink(
+                        getId(other)
+                      )}
+                    </td>
+
+                  </tr>
+
+                `;
+
+              }
+
+            }
+          );
+
       });
-    });
+
 
     html+='</tbody></table>';
+
   }
+
 
   if(type==='places'){
-    html='<h2>Places Report</h2><table><thead><tr><th>Person</th><th>Birth place</th><th>Death place</th></tr></thead><tbody>';
 
-    visiblePeople().forEach(p=>{
-      html+=`<tr>
-        <td>${personLink(getId(p))}</td>
-        <td>${escapeHtml(getField(p,'BirthPlace','birthPlace','PlaceOfBirth'))}</td>
-        <td>${escapeHtml(getField(p,'DeathPlace','deathPlace','PlaceOfDeath'))}</td>
-      </tr>`;
-    });
+    html=`
+
+      <h2>
+        Places Report
+      </h2>
+
+      <table>
+
+        <thead>
+
+          <tr>
+            <th>Person</th>
+            <th>Birth place</th>
+            <th>Death place</th>
+          </tr>
+
+        </thead>
+
+        <tbody>
+
+    `;
+
+
+    visiblePeople()
+      .forEach(p=>{
+
+        html+=`
+
+          <tr>
+
+            <td>
+              ${personLink(getId(p))}
+            </td>
+
+            <td>
+              ${escapeHtml(
+                getField(
+                  p,
+                  'BirthPlace',
+                  'birthPlace',
+                  'PlaceOfBirth'
+                )
+              )}
+            </td>
+
+            <td>
+              ${escapeHtml(
+                getField(
+                  p,
+                  'DeathPlace',
+                  'deathPlace',
+                  'PlaceOfDeath'
+                )
+              )}
+            </td>
+
+          </tr>
+
+        `;
+
+      });
+
 
     html+='</tbody></table>';
+
   }
+
 
   $('reportOutput').innerHTML=html;
+
 }
+
+
+/* =========================================================
+   CHART
+   ========================================================= */
 
 function generateChart(){
-  const id=$('chartPerson').value;
+
+  const id=
+    $('chartPerson').value;
+
+
   if(!id){
-    $('chartOutput').innerHTML='<p class="muted">Select a person first.</p>';
+
+    $('chartOutput').innerHTML=
+      '<p class="muted">Select a person first.</p>';
+
     return;
+
   }
 
-  const person=personById(id);
-  if(!person) return;
 
-  const rows=relatedPeople(id);
+  const person=
+    personById(id);
+
+
+  if(!person)
+    return;
+
+
+  const rows=
+    relatedPeople(id);
+
 
   $('chartOutput').innerHTML=`
-    <div style="text-align:center">
-      <h2>${personLink(id)}</h2>
-      <p class="muted">Recorded family connections</p>
 
-      <div class="grid" style="text-align:left">
-        ${rows.length
-          ? rows.map(({person:p,relationship:r})=>`
+    <div style="text-align:center">
+
+      <h2>
+        ${personLink(id)}
+      </h2>
+
+      <p class="muted">
+        Recorded family connections
+      </p>
+
+
+      <div
+        class="grid"
+        style="text-align:left"
+      >
+
+        ${
+          rows.length
+
+            ? rows
+                .map(
+                  ({
+                    person:p,
+                    relationship:r
+                  })=>`
+
+                    <div class="card">
+
+                      <div>
+                        ${personLink(
+                          getId(p)
+                        )}
+                      </div>
+
+                      <div class="small muted">
+                        ${escapeHtml(
+                          relationshipType(r) ||
+                          'Relationship'
+                        )}
+                      </div>
+
+                    </div>
+
+                  `
+                )
+                .join('')
+
+            : `
               <div class="card">
-                <div>${personLink(getId(p))}</div>
-                <div class="small muted">${escapeHtml(relationshipType(r)||'Relationship')}</div>
+                No recorded relationships.
               </div>
-            `).join('')
-          : '<div class="card">No recorded relationships.</div>'
+            `
         }
+
       </div>
+
     </div>
+
   `;
+
 }
+
+
+/* =========================================================
+   EDITOR
+   ========================================================= */
 
 function populateEditor(){
-  populatePersonSelect('editPerson');
+
+  populatePersonSelect(
+    'editPerson'
+  );
+
 }
+
 
 function loadEditorPerson(){
-  const p=personById($('editPerson').value);
 
-  if(!p) return;
+  const p=
+    personById(
+      $('editPerson').value
+    );
 
-  $('editName').value=displayName(p);
-  $('editGender').value=getField(p,'Gender','gender');
-  $('editBirth').value=getField(p,'Birth','birth','BirthDate','birthDate');
-  $('editDeath').value=getField(p,'Death','death','DeathDate','deathDate');
-  $('editBirthPlace').value=getField(p,'BirthPlace','birthPlace','PlaceOfBirth');
-  $('editDeathPlace').value=getField(p,'DeathPlace','deathPlace','PlaceOfDeath');
-  $('editNotes').value=getField(p,'Notes','notes','Note');
-  $('editSources').value=getField(p,'Sources','sources','Source');
+
+  if(!p)
+    return;
+
+
+  $('editName').value=
+    displayName(p);
+
+
+  $('editGender').value=
+    getField(
+      p,
+      'Gender',
+      'gender'
+    );
+
+
+  $('editBirth').value=
+    getField(
+      p,
+      'Birth',
+      'birth',
+      'BirthDate',
+      'birthDate'
+    );
+
+
+  $('editDeath').value=
+    getField(
+      p,
+      'Death',
+      'death',
+      'DeathDate',
+      'deathDate'
+    );
+
+
+  $('editBirthPlace').value=
+    getField(
+      p,
+      'BirthPlace',
+      'birthPlace',
+      'PlaceOfBirth'
+    );
+
+
+  $('editDeathPlace').value=
+    getField(
+      p,
+      'DeathPlace',
+      'deathPlace',
+      'PlaceOfDeath'
+    );
+
+
+  $('editNotes').value=
+    getField(
+      p,
+      'Notes',
+      'notes',
+      'Note'
+    );
+
+
+  $('editSources').value=
+    getField(
+      p,
+      'Sources',
+      'sources',
+      'Source'
+    );
+
 }
+
+
+/* =========================================================
+   SAVE PERSON
+   ========================================================= */
 
 async function savePerson(){
-  const id=$('editPerson').value;
-  const person=personById(id);
+
+  const id=
+    $('editPerson').value;
+
+
+  const person=
+    personById(id);
+
 
   if(!person){
-    $('saveMessage').innerHTML='<p class="error">Select a person first.</p>';
+
+    $('saveMessage').innerHTML=
+      '<p class="error">Select a person first.</p>';
+
     return;
+
   }
 
-  person.Name=$('editName').value;
-  person.Gender=$('editGender').value;
-  person.Birth=$('editBirth').value;
-  person.Death=$('editDeath').value;
-  person.BirthPlace=$('editBirthPlace').value;
-  person.DeathPlace=$('editDeathPlace').value;
-  person.Notes=$('editNotes').value;
-  person.Sources=$('editSources').value;
+
+  person.Name=
+    $('editName').value;
+
+
+  person.Gender=
+    $('editGender').value;
+
+
+  person.Birth=
+    $('editBirth').value;
+
+
+  person.Death=
+    $('editDeath').value;
+
+
+  person.BirthPlace=
+    $('editBirthPlace').value;
+
+
+  person.DeathPlace=
+    $('editDeathPlace').value;
+
+
+  person.Notes=
+    $('editNotes').value;
+
+
+  person.Sources=
+    $('editSources').value;
+
 
   try{
+
     $('savePersonBtn').disabled=true;
-    await archiveApi.saveDatabase(database);
-    $('saveMessage').innerHTML='<p class="success">Person saved.</p>';
-    renderPeople($('peopleSearch').value);
-    renderSearchResults($('globalSearch').value);
-  }catch(error){
+
+
+    await archiveApi.saveDatabase(
+      database
+    );
+
+
     $('saveMessage').innerHTML=
-      `<p class="error">${escapeHtml(error.message)}</p>`;
+      '<p class="success">Person saved.</p>';
+
+
+    renderPeople(
+      $('peopleSearch').value
+    );
+
+
+    renderSearchResults(
+      $('globalSearch').value
+    );
+
+
+  }catch(error){
+
+    $('saveMessage').innerHTML=
+      `<p class="error">
+        ${escapeHtml(error.message)}
+      </p>`;
+
   }finally{
+
     $('savePersonBtn').disabled=false;
+
   }
+
 }
+
+
+/* =========================================================
+   START APPLICATION
+   ========================================================= */
 
 async function start(){
+
   try{
-    const user=await archiveApi.initAuth();
+
+    const user=
+      await archiveApi.initAuth();
+
 
     if(!user){
-      $('loadingView').classList.add('hidden');
-      $('loginView').classList.remove('hidden');
-      $('signInBtn').classList.remove('hidden');
-      setStatus('Not signed in');
+
+      $('loadingView')
+        .classList
+        .add('hidden');
+
+
+      $('loginView')
+        .classList
+        .remove('hidden');
+
+
+      $('signInBtn')
+        .classList
+        .remove('hidden');
+
+
+      setStatus(
+        'Not signed in'
+      );
+
+
       return;
+
     }
+
 
     $('userName').textContent=
-      user.name||user.email||'Signed-in user';
+      user.name ||
+      user.email ||
+      'Signed-in user';
 
-    $('signInBtn').classList.add('hidden');
-    $('signOutBtn').classList.remove('hidden');
 
-    setStatus('Signed in');
+    $('signInBtn')
+      .classList
+      .add('hidden');
 
-    database=await archiveApi.loadDatabase();
 
-    people=Array.isArray(database.people)?database.people:[];
-    relationships=Array.isArray(database.relationships)?database.relationships:[];
+    $('signOutBtn')
+      .classList
+      .remove('hidden');
+
+
+    setStatus(
+      'Signed in'
+    );
+
+
+    database=
+      await archiveApi.loadDatabase();
+
+
+    people=
+      Array.isArray(database.people)
+        ? database.people
+        : [];
+
+
+    relationships=
+      Array.isArray(database.relationships)
+        ? database.relationships
+        : [];
+
 
     if(!people.length){
-      throw new Error('The private archive returned 0 people. No data was changed.');
+
+      throw new Error(
+        'The private archive returned 0 people. No data was changed.'
+      );
+
     }
 
-    currentRole=await archiveApi.getMyRole();
 
-    $('loadingView').classList.add('hidden');
-    $('loginView').classList.add('hidden');
-    $('app').classList.remove('hidden');
+    currentRole=
+      await archiveApi.getMyRole();
+
+
+    $('loadingView')
+      .classList
+      .add('hidden');
+
+
+    $('loginView')
+      .classList
+      .add('hidden');
+
+
+    $('app')
+      .classList
+      .remove('hidden');
+
 
     renderStats();
+
     renderPeople();
-    populatePersonSelect('relationshipPerson');
-    populatePersonSelect('chartPerson');
+
+    populatePersonSelect(
+      'relationshipPerson'
+    );
+
+    populatePersonSelect(
+      'chartPerson'
+    );
+
     populateEditor();
 
-    if(currentRole==='admin'||currentRole==='editor'){
-      $('editorPanel').classList.remove('hidden');
+
+    if(
+      currentRole==='admin' ||
+      currentRole==='editor'
+    ){
+
+      $('editorPanel')
+        .classList
+        .remove('hidden');
+
+
       $('adminStatus').innerHTML=
-        `<p class="success">Role: ${escapeHtml(currentRole)}</p>`;
+        `<p class="success">
+          Role: ${escapeHtml(currentRole)}
+        </p>`;
+
     }else{
+
       $('adminStatus').innerHTML=
         '<p class="muted">You have read-only access.</p>';
+
     }
 
+
   }catch(error){
+
     console.error(error);
 
-    $('loadingView').classList.add('hidden');
-    $('loginView').classList.remove('hidden');
-    $('loginMessage').textContent=error.message||String(error);
-    setStatus('Archive could not be loaded',true);
+
+    $('loadingView')
+      .classList
+      .add('hidden');
+
+
+    $('loginView')
+      .classList
+      .remove('hidden');
+
+
+    $('loginMessage').textContent=
+      error.message ||
+      String(error);
+
+
+    setStatus(
+      'Archive could not be loaded',
+      true
+    );
+
   }
+
 }
 
-document.addEventListener('click',event=>{
-  const person=event.target.closest('[data-person]');
 
-  if(person){
-    renderPersonDetail(person.dataset.person);
-    return;
+/* =========================================================
+   PERSON CLICK HANDLING
+   ========================================================= */
+
+document.addEventListener(
+  'click',
+  event=>{
+
+    const person=
+      event.target.closest(
+        '[data-person]'
+      );
+
+
+    if(person){
+
+      renderPersonDetail(
+        person.dataset.person
+      );
+
+      return;
+
+    }
+
   }
-});
+);
 
-document.querySelectorAll('nav button[data-view]').forEach(button=>{
-  button.addEventListener('click',()=>{
-    showView(button.dataset.view);
+
+/* =========================================================
+   NAVIGATION
+   ========================================================= */
+
+document
+  .querySelectorAll(
+    'nav button[data-view]'
+  )
+  .forEach(button=>{
+
+    button.addEventListener(
+      'click',
+      ()=>{
+        showView(
+          button.dataset.view
+        );
+      }
+    );
+
   });
-});
 
-$('signInBtn').addEventListener('click',()=>{
-  archiveApi.signInWithEmail();
-});
 
-$('loginMainBtn').addEventListener('click',()=>{
-  archiveApi.signInWithEmail();
-});
+/* =========================================================
+   AUTHENTICATION
+   ========================================================= */
 
-$('signOutBtn').addEventListener('click',()=>{
-  archiveApi.signOutUser();
-});
+$('signInBtn')
+  .addEventListener(
+    'click',
+    ()=>{
+      archiveApi.signInWithEmail();
+    }
+  );
 
-$('globalSearch').addEventListener('input',e=>{
-  renderSearchResults(e.target.value);
-});
 
-$('peopleSearch').addEventListener('input',e=>{
-  renderPeople(e.target.value);
-});
+$('loginMainBtn')
+  .addEventListener(
+    'click',
+    ()=>{
+      archiveApi.signInWithEmail();
+    }
+  );
 
-$('relationshipPerson').addEventListener('change',e=>{
-  renderRelationships(e.target.value);
-});
 
-$('reportType').addEventListener('change',generateReport);
+$('signOutBtn')
+  .addEventListener(
+    'click',
+    ()=>{
+      archiveApi.signOutUser();
+    }
+  );
 
-$('generateReportBtn').addEventListener('click',generateReport);
 
-$('printReportBtn').addEventListener('click',()=>{
-  window.print();
-});
+/* =========================================================
+   SEARCH
+   ========================================================= */
 
-$('chartPerson').addEventListener('change',generateChart);
+$('globalSearch')
+  .addEventListener(
+    'input',
+    e=>{
+      renderSearchResults(
+        e.target.value
+      );
+    }
+  );
 
-$('generateChartBtn').addEventListener('click',generateChart);
 
-$('printChartBtn').addEventListener('click',()=>{
-  window.print();
-});
+$('peopleSearch')
+  .addEventListener(
+    'input',
+    e=>{
+      renderPeople(
+        e.target.value
+      );
+    }
+  );
 
-$('closeDetailBtn').addEventListener('click',()=>{
-  $('personDetail').classList.add('hidden');
-  selectedPersonId=null;
-});
 
-$('editPerson').addEventListener('change',loadEditorPerson);
+/* =========================================================
+   RELATIONSHIPS
+   ========================================================= */
 
-$('savePersonBtn').addEventListener('click',savePerson);
+$('relationshipPerson')
+  .addEventListener(
+    'change',
+    e=>{
+      renderRelationships(
+        e.target.value
+      );
+    }
+  );
+
+
+/* =========================================================
+   REPORTS
+   ========================================================= */
+
+$('reportType')
+  .addEventListener(
+    'change',
+    generateReport
+  );
+
+
+$('generateReportBtn')
+  .addEventListener(
+    'click',
+    generateReport
+  );
+
+
+$('printReportBtn')
+  .addEventListener(
+    'click',
+    ()=>{
+      window.print();
+    }
+  );
+
+
+/* =========================================================
+   CHARTS
+   ========================================================= */
+
+$('chartPerson')
+  .addEventListener(
+    'change',
+    generateChart
+  );
+
+
+$('generateChartBtn')
+  .addEventListener(
+    'click',
+    generateChart
+  );
+
+
+$('printChartBtn')
+  .addEventListener(
+    'click',
+    ()=>{
+      window.print();
+    }
+  );
+
+
+/* =========================================================
+   PERSON DETAIL
+   ========================================================= */
+
+$('closeDetailBtn')
+  .addEventListener(
+    'click',
+    ()=>{
+
+      $('personDetail')
+        .classList
+        .add('hidden');
+
+      selectedPersonId=null;
+
+    }
+  );
+
+
+/* =========================================================
+   EDITOR
+   ========================================================= */
+
+$('editPerson')
+  .addEventListener(
+    'change',
+    loadEditorPerson
+  );
+
+
+$('savePersonBtn')
+  .addEventListener(
+    'click',
+    savePerson
+  );
+
+
+/* =========================================================
+   START
+   ========================================================= */
 
 start();
+
 </script>
 
 </body>
