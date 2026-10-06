@@ -1438,12 +1438,18 @@ function inferParentChild(aId,bId,type){
   return {parent:String(bId),child:String(aId)};
 }
 
-function buildParentGraph(){
+let parentGraphCache=null;
+let parentGraphSignature='';
+
+function buildParentGraph(force=false){
+  const signature=`${people.length}:${relationships.length}`;
+  if(!force && parentGraphCache && parentGraphSignature===signature) return parentGraphCache;
+
   const parentsOf=new Map();
   const childrenOf=new Map();
   const add=(map,key,value)=>{
     const k=String(key),v=String(value);
-    if(!k||!v||k==='undefined'||v==='undefined') return;
+    if(!k||!v||k==='undefined'||v==='undefined'||k===v) return;
     if(!map.has(k)) map.set(k,new Set());
     map.get(k).add(v);
   };
@@ -1459,14 +1465,16 @@ function buildParentGraph(){
       add(childrenOf,pair.parent,pair.child);
     }
   }
-  return {parentsOf,childrenOf};
+
+  parentGraphCache={parentsOf,childrenOf};
+  parentGraphSignature=signature;
+  return parentGraphCache;
 }
 
 function ancestorDistances(start,parentsOf){
   const result=new Map();
   const queue=[[String(start),0]];
   const seen=new Set([String(start)]);
-
   while(queue.length){
     const [id,d]=queue.shift();
     for(const parent of (parentsOf.get(id)||[])){
@@ -1484,7 +1492,6 @@ function descendantDistances(start,childrenOf){
   const result=new Map();
   const queue=[[String(start),0]];
   const seen=new Set([String(start)]);
-
   while(queue.length){
     const [id,d]=queue.shift();
     for(const child of (childrenOf.get(id)||[])){
@@ -1498,30 +1505,20 @@ function descendantDistances(start,childrenOf){
   return result;
 }
 
-function shortestAncestorPaths(start,target,parentsOf){
+function shortestAncestorPath(start,target,parentsOf){
   const wanted=String(target);
   const queue=[[String(start),[]]];
-  const bestDepth=new Map([[String(start),0]]);
-  const paths=[];
-
+  const seen=new Set([String(start)]);
   while(queue.length){
     const [id,path]=queue.shift();
-    const depth=path.length;
-
-    if(id===wanted){
-      paths.push(path);
-      continue;
-    }
-
+    if(id===wanted) return path;
     for(const parent of (parentsOf.get(id)||[])){
-      const nextDepth=depth+1;
-      const old=bestDepth.get(parent);
-      if(old!==undefined && old<nextDepth) continue;
-      if(old===undefined || nextDepth<old) bestDepth.set(parent,nextDepth);
+      if(seen.has(parent)) continue;
+      seen.add(parent);
       queue.push([parent,[...path,parent]]);
     }
   }
-  return paths;
+  return [];
 }
 
 function ancestorLabel(person,g){
@@ -1538,84 +1535,97 @@ function descendantLabel(person,g){
   return gendered(person,`${great}Grandson`,`${great}Granddaughter`,`${great}Grandchild`);
 }
 
-function kinshipBetween(start,target,graph){
-  const sid=String(start), tid=String(target);
-  if(sid===tid) return {label:'Self',paths:[]};
-
-  const {parentsOf}=graph;
-  const a=ancestorDistances(sid,parentsOf);
-  const b=ancestorDistances(tid,parentsOf);
-
-  if(a.has(tid)){
-    const g=a.get(tid);
-    return {label:ancestorLabel(personById(tid),g),paths:shortestAncestorPaths(sid,tid,parentsOf)};
-  }
-  if(b.has(sid)){
-    const g=b.get(sid);
-    const paths=shortestAncestorPaths(tid,sid,parentsOf).map(p=>[...p].reverse());
-    return {label:descendantLabel(personById(tid),g),paths};
-  }
-
-  const common=[];
-  for(const [ancestor,ad] of a){
-    if(b.has(ancestor)) common.push([ancestor,ad,b.get(ancestor)]);
-  }
-  if(!common.length) return null;
-
-  const minTotal=Math.min(...common.map(x=>x[1]+x[2]));
-  const nearest=common.filter(x=>x[1]+x[2]===minTotal);
-
-  const first=nearest[0];
-  const [ancestor,ad,bd]=first;
-
-  if(ad===1 && bd===1){
-    return {
-      label:'Sibling',
-      paths:nearest.flatMap(([anc])=>{
-        const left=shortestAncestorPaths(sid,anc,parentsOf);
-        const right=shortestAncestorPaths(tid,anc,parentsOf);
-        return left.flatMap(lp=>right.map(rp=>[...lp,...rp.reverse()]));
-      })
-    };
-  }
-
-  if(ad===1 && bd>=2){
-    const label=gendered(personById(ancestor),'Uncle','Aunt','Aunt/Uncle');
-    return {label,paths:[]};
-  }
-
-  if(bd===1 && ad>=2){
-    const label=gendered(personById(ancestor),'Nephew','Niece','Niece/Nephew');
-    return {label,paths:[]};
-  }
-
-  const cousin=Math.min(ad,bd)-1;
-  const removal=Math.abs(ad-bd);
-  let label=`${ordinal(cousin)} cousin`;
-  if(removal===1) label+=' once removed';
-  else if(removal>1) label+=` ${removal} times removed`;
-
-  const pathResults=[];
-  for(const [anc] of nearest){
-    const left=shortestAncestorPaths(sid,anc,parentsOf);
-    const right=shortestAncestorPaths(tid,anc,parentsOf);
-    for(const lp of left) for(const rp of right){
-      pathResults.push({ancestor:anc,path:[...lp,...rp.reverse()]});
-    }
-  }
-  return {label,paths:pathResults.map(x=>x.path)};
+function kinshipRank(label){
+  const l=label.toLowerCase();
+  if(l==='father'||l==='mother'||l==='parent') return 10;
+  if(l.includes('grandparent')) return 20;
+  if(l.includes('grandfather')||l.includes('grandmother')) return 20;
+  if(l==='son'||l==='daughter'||l==='child') return 30;
+  if(l.includes('grandson')||l.includes('granddaughter')||l.includes('grandchild')) return 40;
+  if(l==='brother'||l==='sister'||l==='sibling') return 50;
+  if(l==='uncle'||l==='aunt'||l==='aunt/uncle') return 60;
+  if(l==='nephew'||l==='niece'||l==='niece/nephew') return 70;
+  const m=l.match(/^(\d+)(st|nd|rd|th) cousin/);
+  if(m) return 100+Number(m[1])*10+(l.includes('removed')?1:0);
+  return 1000;
 }
 
 function bloodlineResults(start){
   const graph=buildParentGraph();
-  const out=[];
-  for(const p of visiblePeople()){
-    const id=String(getId(p));
-    if(id===String(start)) continue;
-    const k=kinshipBetween(start,id,graph);
-    if(k) out.push({person:p,...k});
+  const sid=String(start);
+  const {parentsOf,childrenOf}=graph;
+  const startAncestors=ancestorDistances(sid,parentsOf);
+  const directDesc=descendantDistances(sid,childrenOf);
+  const candidates=new Map();
+
+  const addCandidate=(id,ad,bd,ancestor)=>{
+    const tid=String(id);
+    if(tid===sid) return;
+    const total=ad+bd;
+    const old=candidates.get(tid);
+    if(!old || total<old.total || (total===old.total && ad<old.ad)){
+      candidates.set(tid,{ad,bd,ancestor,total});
+    }
+  };
+
+  // Direct ancestors.
+  for(const [id,g] of startAncestors) addCandidate(id,g,0,null);
+  // Direct descendants.
+  for(const [id,g] of directDesc) addCandidate(id,0,g,null);
+
+  // Walk down from every ancestor once. This finds siblings, aunts/uncles,
+  // cousins and all descendant generations without recalculating the whole
+  // tree for every person in the archive.
+  for(const [ancestor,ad] of startAncestors){
+    const queue=[[ancestor,0]];
+    const seen=new Set([ancestor]);
+    while(queue.length){
+      const [id,depth]=queue.shift();
+      for(const child of (childrenOf.get(id)||[])){
+        if(seen.has(child)) continue;
+        seen.add(child);
+        const bd=depth+1;
+        if(child!==sid) addCandidate(child,ad,bd,ancestor);
+        queue.push([child,bd]);
+      }
+    }
   }
-  return out;
+
+  const out=[];
+  for(const [id,c] of candidates){
+    const p=personById(id);
+    if(!p || !hasValidDisplayName(p)) continue;
+
+    let label='';
+    if(c.bd===0) label=ancestorLabel(p,c.ad);
+    else if(c.ad===0) label=descendantLabel(p,c.bd);
+    else if(c.ad===1 && c.bd===1) label=gendered(p,'Brother','Sister','Sibling');
+    else if(c.ad===1 && c.bd>=2) label=gendered(p,'Uncle','Aunt','Aunt/Uncle');
+    else if(c.bd===1 && c.ad>=2) label=gendered(p,'Nephew','Niece','Niece/Nephew');
+    else{
+      const cousin=Math.min(c.ad,c.bd)-1;
+      const removal=Math.abs(c.ad-c.bd);
+      label=`${ordinal(cousin)} cousin`;
+      if(removal===1) label+=' once removed';
+      else if(removal>1) label+=` ${removal} times removed`;
+    }
+
+    let path=[];
+    if(c.bd===0){
+      path=shortestAncestorPath(sid,id,parentsOf);
+    }else if(c.ad===0){
+      const up=shortestAncestorPath(id,sid,parentsOf);
+      path=[...up].reverse();
+    }else if(c.ancestor){
+      const left=shortestAncestorPath(sid,c.ancestor,parentsOf);
+      const right=shortestAncestorPath(id,c.ancestor,parentsOf);
+      path=[...left,...right.reverse()];
+    }
+
+    out.push({person:p,label,paths:path.length?[path]:[],rank:kinshipRank(label),ad:c.ad,bd:c.bd});
+  }
+
+  return out.sort((a,b)=>a.rank-b.rank || a.ad-b.ad || a.bd-b.bd || displayName(a.person).localeCompare(displayName(b.person)));
 }
 
 function pathText(start,ids){
@@ -1628,20 +1638,12 @@ function pathText(start,ids){
 }
 
 function renderRelationships(id){
-  if(!id){
-    $('relationshipResults').innerHTML='<p class="muted">Select a person.</p>';
-    return;
-  }
-
+  if(!id){ $('relationshipResults').innerHTML='<p class="muted">Select a person.</p>'; return; }
   const person=personById(id);
-  if(!person){
-    $('relationshipResults').innerHTML='<p class="error">Person not found.</p>';
-    return;
-  }
+  if(!person){ $('relationshipResults').innerHTML='<p class="error">Person not found.</p>'; return; }
 
   const rows=relatedPeople(id);
   let html='';
-
   if(rows.length){
     const grouped={};
     rows.forEach(({person:p,relationship:r})=>{
@@ -1649,46 +1651,26 @@ function renderRelationships(id){
       if(!grouped[type]) grouped[type]=[];
       grouped[type].push(p);
     });
-
     html+='<div class="detail-grid">';
     Object.keys(grouped).sort().forEach(type=>{
-      html+=`<div class="detail-section"><h3>${escapeHtml(type)}</h3>${
-        grouped[type].map(p=>`<div>${personLink(getId(p))}</div>`).join('')
-      }</div>`;
+      html+=`<div class="detail-section"><h3>${escapeHtml(type)}</h3>${grouped[type].map(p=>`<div>${personLink(getId(p))}</div>`).join('')}</div>`;
     });
     html+='</div>';
-  }else{
-    html+='<p class="muted">No recorded relationships for this person.</p>';
-  }
+  }else html+='<p class="muted">No recorded relationships for this person.</p>';
 
   const blood=bloodlineResults(id);
-  html+='<div class="detail-section" style="margin-top:12px">';
-  html+='<h3>Calculated bloodline relationships</h3>';
-
-  if(!blood.length){
-    html+='<p class="muted">No bloodline relationship could be calculated from the recorded parent/child links.</p>';
-  }else{
-    const groups={};
+  html+='<div class="detail-section" style="margin-top:12px"><h3>Calculated bloodline relationships</h3>';
+  if(!blood.length) html+='<p class="muted">No bloodline relationship could be calculated from the recorded parent/child links.</p>';
+  else{
+    let lastRank=null;
     blood.forEach(x=>{
-      if(!groups[x.label]) groups[x.label]=[];
-      groups[x.label].push(x);
-    });
-
-    Object.keys(groups).sort().forEach(label=>{
-      html+=`<div class="kinship-group"><h4>${escapeHtml(label)}</h4>`;
-      groups[label].sort((a,b)=>displayName(a.person).localeCompare(displayName(b.person))).forEach(x=>{
-        html+=`<div class="kinship-result"><strong>${personLink(getId(x.person))}</strong>`;
-        if(x.paths?.length){
-          const shown=x.paths.slice(0,3);
-          html+=shown.map(path=>`<div class="kinship-path">${escapeHtml(pathText(id,path))}</div>`).join('');
-          if(x.paths.length>3) html+=`<div class="relationship-note">${x.paths.length-3} additional bloodline path(s)</div>`;
-        }
-        html+='</div>';
-      });
+      if(lastRank!==null && x.rank!==lastRank) html+='';
+      lastRank=x.rank;
+      html+=`<div class="kinship-result"><strong>${escapeHtml(x.label)}:</strong> ${personLink(getId(x.person))}`;
+      if(x.paths?.length) html+=x.paths.slice(0,1).map(path=>`<div class="kinship-path">${escapeHtml(pathText(id,path))}</div>`).join('');
       html+='</div>';
     });
   }
-
   html+='</div>';
   $('relationshipResults').innerHTML=html;
 }
@@ -2435,6 +2417,9 @@ async function savePerson(){
     await archiveApi.saveDatabase(
       database
     );
+
+    parentGraphCache=null;
+    parentGraphSignature='';
 
 
     $('saveMessage').innerHTML=
