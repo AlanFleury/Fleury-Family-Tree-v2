@@ -1455,13 +1455,18 @@ function birthYear(person){
 function inferParentChild(aId,bId,type){
   const t=String(type||'').toLowerCase();
 
-  // The archive relationship type defines the direction.
+  // Parent/child relationship labels are directional.
   // parent/mother/father: from = parent, to = child.
   // child/son/daughter: from = child, to = parent.
-  if(t.includes('child') || t.includes('son') || t.includes('daughter')){
+  // Check the child forms first because "daughter"/"son" also
+  // contain the word "other" patterns in some imported labels.
+  if(t.includes('daughter') || t.includes('son') || t.includes('child')){
     return {parent:String(bId),child:String(aId)};
   }
-  return {parent:String(aId),child:String(bId)};
+  if(t.includes('mother') || t.includes('father') || t.includes('parent')){
+    return {parent:String(aId),child:String(bId)};
+  }
+  return null;
 }
 
 function buildParentGraph(force=false){
@@ -1523,6 +1528,7 @@ function buildParentGraphAsync(force=false){
         if(type.includes('parent')||type.includes('mother')||type.includes('father')||
            type.includes('child')||type.includes('son')||type.includes('daughter')){
           const pair=inferParentChild(a,b,type);
+          if(!pair) continue;
           add(parentsOf,pair.child,pair.parent);
           add(childrenOf,pair.parent,pair.child);
         }
@@ -1792,8 +1798,8 @@ function renderPersonDetail(id){
     if(type.includes('parent')||type.includes('mother')||type.includes('father')||
        type.includes('child')||type.includes('son')||type.includes('daughter')){
       const pair=inferParentChild(fromId(r),toId(r),type);
-      if(String(pair.parent)===String(id) && pid===String(pair.child)) children.push(p);
-      else if(String(pair.child)===String(id) && pid===String(pair.parent)) parents.push(p);
+      if(pair && String(pair.parent)===String(id) && pid===String(pair.child)) children.push(p);
+      else if(pair && String(pair.child)===String(id) && pid===String(pair.parent)) parents.push(p);
       else other.push(p);
     }else if(type.includes('spouse') || type.includes('partner') || type.includes('husband') || type.includes('wife')){
       spouses.push(p);
