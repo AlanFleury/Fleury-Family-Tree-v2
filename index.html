@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#172033">
-<title>Family Archive</title>
+<title>Fleury Family Archive</title>
 <link rel="manifest" href="manifest.webmanifest">
 
 <style>
@@ -444,11 +444,35 @@ footer{
           Person
         </label>
 
-        <select id="relationshipPerson"></select>
+        <input
+          id="relationshipPerson"
+          type="text"
+          list="relationshipPeopleList"
+          placeholder="Type a person's name…"
+          autocomplete="off"
+        >
+
+      </div>
+
+      <div>
+
+        <label for="relationshipToWhom">
+          Relationship to whom
+        </label>
+
+        <input
+          id="relationshipToWhom"
+          type="text"
+          list="relationshipPeopleList"
+          placeholder="Type the other person's name…"
+          autocomplete="off"
+        >
 
       </div>
 
     </div>
+
+    <datalist id="relationshipPeopleList"></datalist>
 
     <div
       id="relationshipResults"
@@ -1128,6 +1152,87 @@ function showView(view){
 /* =========================================================
    PERSON SELECTS
    ========================================================= */
+
+function populateRelationshipPeopleList(){
+
+  const list=$('relationshipPeopleList');
+  if(!list) return;
+
+  list.innerHTML=visiblePeople()
+    .map(p=>`<option value="${escapeHtml(displayName(p))}"></option>`)
+    .join('');
+
+}
+
+function findPersonByTypedName(value){
+
+  const wanted=String(value||'').trim().toLocaleLowerCase();
+  if(!wanted) return null;
+
+  return visiblePeople().find(p=>
+    displayName(p).toLocaleLowerCase()===wanted
+  ) || null;
+
+}
+
+function renderRelationshipFromTypedInputs(){
+
+  const first=findPersonByTypedName($('relationshipPerson')?.value);
+  const second=findPersonByTypedName($('relationshipToWhom')?.value);
+
+  if(!first){
+    $('relationshipResults').innerHTML='<p class="muted">Type and select a person from the archive.</p>';
+    return;
+  }
+
+  if(!second){
+    renderRelationships(getId(first));
+    return;
+  }
+
+  renderRelationshipBetween(getId(first),getId(second));
+
+}
+
+function renderRelationshipBetween(firstId,secondId){
+
+  const first=personById(firstId);
+  const second=personById(secondId);
+  if(!first || !second){
+    $('relationshipResults').innerHTML='<p class="error">Person not found.</p>';
+    return;
+  }
+
+  let html=`<div class="detail-section"><h3>Relationship between ${escapeHtml(displayName(first))} and ${escapeHtml(displayName(second))}</h3>`;
+
+  const recorded=relatedPeople(firstId).filter(x=>String(getId(x.person))===String(secondId));
+  if(recorded.length){
+    html+='<p><strong>Recorded relationship:</strong></p>';
+    recorded.forEach(x=>{
+      html+=`<div>${escapeHtml(relationshipType(x.relationship)||'Relationship')}</div>`;
+    });
+  }else{
+    html+='<p class="muted">No direct recorded relationship between these two people.</p>';
+  }
+
+  let blood=[];
+  try{ blood=bloodlineResults(firstId).filter(x=>String(getId(x.person))===String(secondId)); }catch(error){ console.error(error); }
+
+  if(blood.length){
+    html+='<p style="margin-top:12px"><strong>Calculated bloodline relationship:</strong></p>';
+    blood.forEach(x=>{
+      html+=`<div class="kinship-result"><strong>${escapeHtml(x.label)}</strong>`;
+      if(x.paths?.length) html+=x.paths.slice(0,1).map(path=>`<div class="kinship-path">${escapeHtml(pathText(firstId,path))}</div>`).join('');
+      html+='</div>';
+    });
+  }else{
+    html+='<p class="muted" style="margin-top:12px">No calculated bloodline relationship found.</p>';
+  }
+
+  html+='</div>';
+  $('relationshipResults').innerHTML=html;
+
+}
 
 function populatePersonSelect(selectId){
 
@@ -2702,9 +2807,9 @@ async function start(){
 
     renderPeople('');
 
-    populatePersonSelect(
-      'relationshipPerson'
-    );
+    populateRelationshipPeopleList();
+    $('relationshipPerson').value='';
+    $('relationshipToWhom').value='';
 
     populatePersonSelect(
       'chartPerson'
@@ -2855,12 +2960,14 @@ $('peopleSearch')
 
 $('relationshipPerson')
   .addEventListener(
-    'change',
-    e=>{
-      renderRelationships(
-        e.target.value
-      );
-    }
+    'input',
+    renderRelationshipFromTypedInputs
+  );
+
+$('relationshipToWhom')
+  .addEventListener(
+    'input',
+    renderRelationshipFromTypedInputs
   );
 
 
