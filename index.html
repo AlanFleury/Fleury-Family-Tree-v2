@@ -1116,6 +1116,13 @@ function showView(view){
   if(target)
     target.classList.remove('hidden');
 
+  // Clear any previously opened Explore person-detail panel when leaving Explore.
+  // This keeps other tabs, especially Relationships, from showing stale person details.
+  if(view!=='explore'){
+    const detail=$('personDetail');
+    if(detail) detail.classList.add('hidden');
+    selectedPersonId=null;
+  }
 
   document
     .querySelectorAll(
@@ -1251,13 +1258,11 @@ function renderPeople(filter=''){
         if(!q) return true;
         return [
           displayName(p),
-          getField(p,'Gender','gender'),
           getField(p,'Birth','birth','BirthDate','birthDate'),
           getField(p,'Death','death','DeathDate','deathDate'),
           getField(p,'BirthPlace','birthPlace','PlaceOfBirth'),
           getField(p,'DeathPlace','deathPlace','PlaceOfDeath'),
-          getField(p,'Places','places'),
-          getField(p,'Sources','sources','Source')
+          getField(p,'Places','places')
         ].some(v=>String(v||'').toLowerCase().includes(q));
       });
 
@@ -1266,48 +1271,10 @@ function renderPeople(filter=''){
   const startIndex=peoplePage*PEOPLE_PAGE_SIZE;
   const pageRows=rows.slice(startIndex,startIndex+PEOPLE_PAGE_SIZE);
 
-  const relationshipSummary=id=>{
-    const spouses=[];
-    const other=[];
-
-    relatedPeople(id).forEach(({person:p,relationship:r})=>{
-      const type=relationshipType(r).toLowerCase();
-      if(
-        type.includes('spouse') ||
-        type.includes('partner') ||
-        type.includes('husband') ||
-        type.includes('wife')
-      ){
-        spouses.push(p);
-      }else if(
-        !(type.includes('parent') ||
-          type.includes('mother') ||
-          type.includes('father') ||
-          type.includes('child') ||
-          type.includes('son') ||
-          type.includes('daughter'))
-      ){
-        other.push(p);
-      }
-    });
-
-    const unique=list=>[...new Map(list.map(p=>[String(getId(p)),p])).values()];
-    return {
-      spouses:unique(spouses),
-      other:unique(other)
-    };
-  };
-
-  const listPeople=list=>
-    list.length
-      ? list.map(p=>`<div>${personLink(getId(p))}</div>`).join('')
-      : '<span class="muted">None recorded</span>';
-
   let html=`
 
     <div class="small muted" style="margin-bottom:10px">Showing ${totalRows?startIndex+1:0}–${Math.min(startIndex+PEOPLE_PAGE_SIZE,totalRows)} of ${totalRows.toLocaleString()} matching people.</div>
 
-    <div class="table-wrap">
     <table>
 
       <thead>
@@ -1317,12 +1284,6 @@ function renderPeople(filter=''){
           <th>Gender</th>
           <th>Birth</th>
           <th>Death</th>
-          <th>Birth Place</th>
-          <th>Death Place</th>
-          <th>Spouse(s)</th>
-          <th>Other recorded relationships</th>
-          <th>Places</th>
-          <th>Sources</th>
         </tr>
 
       </thead>
@@ -1333,7 +1294,6 @@ function renderPeople(filter=''){
 
 
   for(const p of pageRows){
-    const rel=relationshipSummary(getId(p));
 
     html+=`
 
@@ -1344,39 +1304,37 @@ function renderPeople(filter=''){
         </td>
 
         <td>
-          ${escapeHtml(getField(p,'Gender','gender')||'')}
+          ${escapeHtml(
+            getField(
+              p,
+              'Gender',
+              'gender'
+            )
+          )}
         </td>
 
         <td>
-          ${escapeHtml(getField(p,'Birth','birth','BirthDate','birthDate')||'')}
+          ${escapeHtml(
+            getField(
+              p,
+              'Birth',
+              'birth',
+              'BirthDate',
+              'birthDate'
+            )
+          )}
         </td>
 
         <td>
-          ${escapeHtml(getField(p,'Death','death','DeathDate','deathDate')||'')}
-        </td>
-
-        <td>
-          ${escapeHtml(getField(p,'BirthPlace','birthPlace','PlaceOfBirth')||'')}
-        </td>
-
-        <td>
-          ${escapeHtml(getField(p,'DeathPlace','deathPlace','PlaceOfDeath')||'')}
-        </td>
-
-        <td>
-          ${listPeople(rel.spouses)}
-        </td>
-
-        <td>
-          ${listPeople(rel.other)}
-        </td>
-
-        <td>
-          ${escapeHtml(getField(p,'Places','places')||'')}
-        </td>
-
-        <td>
-          ${escapeHtml(getField(p,'Sources','sources','Source')||'')}
+          ${escapeHtml(
+            getField(
+              p,
+              'Death',
+              'death',
+              'DeathDate',
+              'deathDate'
+            )
+          )}
         </td>
 
       </tr>
@@ -1386,7 +1344,7 @@ function renderPeople(filter=''){
   }
 
 
-  html+='</tbody></table></div>';
+  html+='</tbody></table>';
 
   const pageCount=Math.max(1,Math.ceil(totalRows/PEOPLE_PAGE_SIZE));
   html+=`<div class="form-actions"><button id="peoplePrevBtn" ${peoplePage<=0?'disabled':''}>Previous</button><span class="small muted">Page ${Math.min(peoplePage+1,pageCount)} of ${pageCount}</span><button id="peopleNextBtn" ${peoplePage>=pageCount-1?'disabled':''}>Next</button></div>`;
@@ -1397,6 +1355,7 @@ function renderPeople(filter=''){
   $('peopleNextBtn')?.addEventListener('click',()=>{ peoplePage=Math.min(pageCount-1,peoplePage+1); renderPeople($('peopleSearch').value); });
 
 }
+
 
 /* =========================================================
    SEARCH
