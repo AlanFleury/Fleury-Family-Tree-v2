@@ -309,10 +309,6 @@ footer{
 .kinship-path{margin-top:4px;color:var(--muted);font-size:12px}
 .kinship-group{margin-top:12px}
 .kinship-group h4{margin:0 0 7px;font-size:14px}
-.autocomplete-suggestions{position:relative;z-index:20}
-.autocomplete-suggestion{padding:7px 9px;border:1px solid var(--line);border-top:0;background:#fff;cursor:pointer}
-.autocomplete-suggestion:hover{background:#f3f5f7}
-
 .relationship-note{color:var(--muted);font-size:12px}
 
 </style>
@@ -443,17 +439,13 @@ footer{
     <div class="form-grid">
 
       <div>
-        <label for="relationshipPersonInput">Person</label>
-        <input id="relationshipPersonInput" type="text" autocomplete="off" placeholder="Type a person's name…">
-        <input id="relationshipPerson" type="hidden">
-        <div id="relationshipPersonSuggestions" class="autocomplete-suggestions"></div>
-      </div>
 
-      <div>
-        <label for="relationshipTargetInput">Relationship to whom</label>
-        <input id="relationshipTargetInput" type="text" autocomplete="off" placeholder="Type the other person's name…">
-        <input id="relationshipTarget" type="hidden">
-        <div id="relationshipTargetSuggestions" class="autocomplete-suggestions"></div>
+        <label for="relationshipPerson">
+          Person
+        </label>
+
+        <select id="relationshipPerson"></select>
+
       </div>
 
     </div>
@@ -1768,98 +1760,10 @@ function pathText(start,ids){
   return names.join(' → ');
 }
 
-function findPersonMatches(query,limit=8){
-  const q=String(query||'').trim().toLowerCase();
-  if(!q) return [];
-  return visiblePeople()
-    .filter(p=>displayName(p).toLowerCase().includes(q))
-    .sort((a,b)=>{
-      const an=displayName(a).toLowerCase();
-      const bn=displayName(b).toLowerCase();
-      const ae=an===q?0:an.startsWith(q)?1:2;
-      const be=bn===q?0:bn.startsWith(q)?1:2;
-      return ae-be || an.localeCompare(bn);
-    })
-    .slice(0,limit);
-}
-
-function renderRelationshipSuggestions(inputId,suggestionsId,query,onPick){
-  const box=$(suggestionsId);
-  if(!box) return;
-  const matches=findPersonMatches(query);
-  if(!matches.length){ box.innerHTML=''; return; }
-  box.innerHTML=matches.map(p=>`<div class="autocomplete-suggestion" data-person-id="${escapeHtml(String(getId(p)))}">${escapeHtml(displayName(p))}</div>`).join('');
-  box.querySelectorAll('.autocomplete-suggestion').forEach(el=>{
-    el.addEventListener('mousedown',e=>{
-      e.preventDefault();
-      const p=personById(el.dataset.personId);
-      if(p) onPick(p);
-    });
-  });
-}
-
-function setRelationshipPerson(person){
-  if(!person) return;
-  $('relationshipPerson').value=String(getId(person));
-  $('relationshipPersonInput').value=displayName(person);
-  $('relationshipPersonSuggestions').innerHTML='';
-  renderRelationships(String(getId(person)), $('relationshipTarget').value);
-}
-
-function setRelationshipTarget(person){
-  if(!person) return;
-  $('relationshipTarget').value=String(getId(person));
-  $('relationshipTargetInput').value=displayName(person);
-  $('relationshipTargetSuggestions').innerHTML='';
-  renderRelationships($('relationshipPerson').value, String(getId(person)));
-}
-
-function relationshipBetween(personId,targetId){
-  const pid=String(personId||''), tid=String(targetId||'');
-  if(!pid || !tid || pid===tid) return null;
-  const rows=relatedPeople(pid).filter(x=>String(getId(x.person))===tid);
-  const recorded=[...new Set(rows.map(x=>relationshipType(x.relationship)||'Relationship'))];
-  let calculated=[];
-  try{
-    calculated=bloodlineResults(pid).filter(x=>String(getId(x.person))===tid);
-  }catch(error){ console.error(error); }
-  return {recorded,calculated};
-}
-
-function renderRelationships(id,targetId=''){
-  if(!id){
-    $('relationshipResults').innerHTML='<p class="muted">Type a person's name above and choose a match.</p>';
-    return;
-  }
+function renderRelationships(id){
+  if(!id){ $('relationshipResults').innerHTML='<p class="muted">Select a person.</p>'; return; }
   const person=personById(id);
   if(!person){ $('relationshipResults').innerHTML='<p class="error">Person not found.</p>'; return; }
-
-  if(targetId){
-    const target=personById(targetId);
-    if(!target){ $('relationshipResults').innerHTML='<p class="error">The second person was not found.</p>'; return; }
-    if(String(id)===String(targetId)){
-      $('relationshipResults').innerHTML='<p class="muted">Choose two different people.</p>';
-      return;
-    }
-    const rel=relationshipBetween(id,targetId);
-    let html=`<div class="detail-section"><h3>Relationship between ${escapeHtml(displayName(person))} and ${escapeHtml(displayName(target))}</h3>`;
-    if(rel.recorded.length){
-      html+=`<p><strong>Recorded relationship:</strong> ${rel.recorded.map(escapeHtml).join(', ')}</p>`;
-    }else{
-      html+='<p><strong>Recorded relationship:</strong> <span class="muted">None directly recorded</span></p>';
-    }
-    if(rel.calculated.length){
-      html+=`<p><strong>Calculated bloodline relationship:</strong> ${escapeHtml(rel.calculated[0].label)}</p>`;
-      if(rel.calculated[0].paths?.length){
-        html+=`<div class="kinship-path">${escapeHtml(pathText(id,rel.calculated[0].paths[0]))}</div>`;
-      }
-    }else{
-      html+='<p><strong>Calculated bloodline relationship:</strong> <span class="muted">No bloodline relationship could be calculated from the recorded parent/child links.</span></p>';
-    }
-    html+='</div>';
-    $('relationshipResults').innerHTML=html;
-    return;
-  }
 
   const rows=relatedPeople(id);
   let html='';
@@ -1882,7 +1786,10 @@ function renderRelationships(id,targetId=''){
   html+='<div class="detail-section" style="margin-top:12px"><h3>Calculated bloodline relationships</h3>';
   if(!blood.length) html+='<p class="muted">No bloodline relationship could be calculated from the recorded parent/child links.</p>';
   else{
+    let lastRank=null;
     blood.forEach(x=>{
+      if(lastRank!==null && x.rank!==lastRank) html+='';
+      lastRank=x.rank;
       html+=`<div class="kinship-result"><strong>${escapeHtml(x.label)}:</strong> ${personLink(getId(x.person))}`;
       if(x.paths?.length) html+=x.paths.slice(0,1).map(path=>`<div class="kinship-path">${escapeHtml(pathText(id,path))}</div>`).join('');
       html+='</div>';
@@ -2795,10 +2702,9 @@ async function start(){
 
     renderPeople('');
 
-    $('relationshipPerson').value='';
-    $('relationshipTarget').value='';
-    $('relationshipPersonInput').value='';
-    $('relationshipTargetInput').value='';
+    populatePersonSelect(
+      'relationshipPerson'
+    );
 
     populatePersonSelect(
       'chartPerson'
@@ -2947,29 +2853,15 @@ $('peopleSearch')
    RELATIONSHIPS
    ========================================================= */
 
-$('relationshipPersonInput')
-  .addEventListener('input',e=>{
-    $('relationshipPerson').value='';
-    renderRelationshipSuggestions('relationshipPersonInput','relationshipPersonSuggestions',e.target.value,setRelationshipPerson);
-    if(!e.target.value.trim()) renderRelationships('');
-  });
-
-$('relationshipPersonInput')
-  .addEventListener('blur',()=>setTimeout(()=>{
-    $('relationshipPersonSuggestions').innerHTML='';
-  },150));
-
-$('relationshipTargetInput')
-  .addEventListener('input',e=>{
-    $('relationshipTarget').value='';
-    renderRelationshipSuggestions('relationshipTargetInput','relationshipTargetSuggestions',e.target.value,setRelationshipTarget);
-    if(!e.target.value.trim()) renderRelationships($('relationshipPerson').value,'');
-  });
-
-$('relationshipTargetInput')
-  .addEventListener('blur',()=>setTimeout(()=>{
-    $('relationshipTargetSuggestions').innerHTML='';
-  },150));
+$('relationshipPerson')
+  .addEventListener(
+    'change',
+    e=>{
+      renderRelationships(
+        e.target.value
+      );
+    }
+  );
 
 
 /* =========================================================
