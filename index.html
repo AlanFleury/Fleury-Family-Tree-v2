@@ -610,7 +610,8 @@ footer{
           Person
         </label>
 
-        <select id="editPerson"></select>
+        <input id="editPerson" type="search" placeholder="Type a person's name…" autocomplete="off">
+        <div id="editPersonMatches" class="card hidden" style="margin-top:6px"></div>
 
       </div>
 
@@ -736,6 +737,14 @@ footer{
         class="primary"
       >
         Save person
+      </button>
+
+      <button
+        id="deletePersonBtn"
+        class="danger"
+        type="button"
+      >
+        Delete person
       </button>
 
     </div>
@@ -2437,11 +2446,44 @@ function generateChart(){
    ========================================================= */
 
 function populateEditor(){
+  // Person is a writable type-ahead field, not a dropdown.
+  const input=$('editPerson');
+  if(input){
+    input.value='';
+    input.dataset.selectedId='';
+  }
+}
 
-  populatePersonSelect(
-    'editPerson'
-  );
-
+function editPersonMatches(){
+  const input=$('editPerson'), box=$('editPersonMatches');
+  if(!input || !box) return;
+  const q=input.value.trim().toLowerCase();
+  if(!q){ box.classList.add('hidden'); return; }
+  const matches=visiblePeople().filter(p=>displayName(p).toLowerCase().includes(q)).slice(0,25);
+  if(!matches.length){
+    box.innerHTML='<div class="muted">No matching people found.</div>';
+    box.classList.remove('hidden');
+    return;
+  }
+  box.innerHTML=matches.map(p=>{
+    const details=[
+      getField(p,'Birth','birth','BirthDate','birthDate'),
+      getField(p,'Death','death','DeathDate','deathDate'),
+      String(getId(p))
+    ].filter(Boolean).map(escapeHtml).join(' · ');
+    return `<div style="margin:4px 0"><a href="#" data-edit-person-id="${escapeHtml(String(getId(p)))}">${escapeHtml(displayName(p))}</a>${details?`<div class="small muted">${details}</div>`:''}</div>`;
+  }).join('');
+  box.classList.remove('hidden');
+  box.querySelectorAll('[data-edit-person-id]').forEach(a=>a.addEventListener('click',event=>{
+    event.preventDefault();
+    const id=String(a.dataset.editPersonId);
+    const person=personById(id);
+    if(!person) return;
+    input.value=displayName(person);
+    input.dataset.selectedId=id;
+    box.classList.add('hidden');
+    loadEditorPerson();
+  }));
 }
 
 
@@ -2497,10 +2539,11 @@ function renderFamilyEditor(personId){
     const value=p ? displayName(p) : '';
     const type=item.relationship ? relationshipType(item.relationship) : '';
     return `
-      <div class="form-grid" data-family-kind="${kind}" data-family-existing-id="${escapeHtml(item.id||'')}" data-family-existing-type="${escapeHtml(type)}" style="margin-top:8px">
+      <div class="form-grid" data-family-kind="${kind}" data-family-existing-id="${escapeHtml(item.id||'')}" data-family-selected-id="${escapeHtml(item.id||'')}" data-family-existing-type="${escapeHtml(type)}" style="margin-top:8px">
         <div>
           <label>${kind==='parent' ? 'Parent' : 'Child'} ${index+1}</label>
           <input class="family-person-input" type="text" value="${escapeHtml(value)}" placeholder="Type full name…" autocomplete="off">
+          <div class="card family-person-matches hidden" style="margin-top:6px"></div>
         </div>
         <div style="display:flex;align-items:end">
           <button type="button" class="remove-family-row">Remove</button>
@@ -2531,12 +2574,14 @@ function addFamilyEditorRow(kind){
   row.className='form-grid';
   row.dataset.familyKind=kind;
   row.dataset.familyExistingId='';
+  row.dataset.familySelectedId='';
   row.dataset.familyExistingType='';
   row.style.marginTop='8px';
   row.innerHTML=`
     <div>
       <label>${label} ${index+1}</label>
       <input class="family-person-input" type="text" placeholder="Type full name…" autocomplete="off">
+      <div class="card family-person-matches hidden" style="margin-top:6px"></div>
     </div>
     <div style="display:flex;align-items:end">
       <button type="button" class="remove-family-row">Remove</button>
@@ -2547,10 +2592,8 @@ function addFamilyEditorRow(kind){
 
 function loadEditorPerson(){
 
-  const p=
-    personById(
-      $('editPerson').value
-    );
+  const id=String($('editPerson').dataset.selectedId||'');
+  const p=personById(id);
 
 
   if(!p)
@@ -2634,7 +2677,7 @@ function resolveFamilyPerson(name){
 
   const exact=visiblePeople().filter(p=>displayName(p).toLowerCase()===target);
   if(exact.length===1) return exact[0];
-  if(exact.length>1) return {error:`More than one person is named "${name.trim()}". Use a more specific name.`};
+  if(exact.length>1) return {error:`More than one person is named "${name.trim()}". Select the correct person from the matching list.`};
 
   const partial=visiblePeople().filter(p=>displayName(p).toLowerCase().includes(target));
   if(partial.length===1) return partial[0];
@@ -2657,8 +2700,13 @@ function saveFamilyLinks(personId){
     const name=String(input?.value||'').trim();
     if(!name) continue;
 
-    const resolved=resolveFamilyPerson(name);
-    if(!resolved || resolved.error) throw new Error(resolved?.error || `Person not found: "${name}".`);
+    let resolved=null;
+    const selectedId=String(row.dataset.familySelectedId||'');
+    if(selectedId) resolved=personById(selectedId);
+    if(!resolved){
+      resolved=resolveFamilyPerson(name);
+      if(!resolved || resolved.error) throw new Error(resolved?.error || `Person not found: "${name}".`);
+    }
 
     const otherId=String(getId(resolved));
     if(otherId===String(personId)) throw new Error('A person cannot be their own parent or child.');
@@ -2705,14 +2753,64 @@ function saveFamilyLinks(personId){
 }
 
 
+async function deletePerson(){
+  const id=String($('editPerson').dataset.selectedId||'');
+  const person=personById(id);
+  if(!person){
+    $('saveMessage').innerHTML='<p class="error">Select a person first.</p>';
+    return;
+  }
+
+  const name=displayName(person);
+  const confirmed=window.confirm(`Delete ${name} altogether? This will also remove all recorded relationships involving this person. This cannot be undone unless you have a backup.`);
+  if(!confirmed) return;
+
+  const oldPeople=people;
+  const oldRelationships=relationships;
+  const oldDatabasePeople=database.people;
+  const oldDatabaseRelationships=database.relationships;
+
+  try{
+    people=people.filter(p=>String(getId(p))!==id);
+    relationships=relationships.filter(r=>String(fromId(r))!==id && String(toId(r))!==id);
+    database.people=people;
+    database.relationships=relationships;
+    rebuildIndexes();
+
+    $('savePersonBtn').disabled=true;
+    $('deletePersonBtn').disabled=true;
+    await archiveApi.saveDatabase(database);
+
+    $('editPerson').value='';
+    $('editPerson').dataset.selectedId='';
+    $('editPersonMatches').classList.add('hidden');
+    $('editFamilyLinks').innerHTML='';
+    ['editName','editGender','editBirth','editDeath','editBirthPlace','editDeathPlace','editNotes','editSources'].forEach(id=>{ if($(id)) $(id).value=''; });
+    $('saveMessage').innerHTML=`<p class="success">${escapeHtml(name)} was deleted.</p>`;
+    renderPeople($('peopleSearch').value);
+    renderSearchResults($('globalSearch').value);
+    populateChartSelect();
+  }catch(error){
+    people=oldPeople;
+    relationships=oldRelationships;
+    database.people=oldDatabasePeople;
+    database.relationships=oldDatabaseRelationships;
+    rebuildIndexes();
+    $('saveMessage').innerHTML=`<p class="error">Delete failed: ${escapeHtml(error.message)}</p>`;
+  }finally{
+    $('savePersonBtn').disabled=false;
+    $('deletePersonBtn').disabled=false;
+  }
+}
+
+
 /* =========================================================
    SAVE PERSON
    ========================================================= */
 
 async function savePerson(){
 
-  const id=
-    $('editPerson').value;
+  const id=String($('editPerson').dataset.selectedId||'');
 
 
   const person=
@@ -3195,11 +3293,20 @@ $('closeDetailBtn')
    EDITOR
    ========================================================= */
 
-$('editPerson')
-  .addEventListener(
-    'change',
-    loadEditorPerson
-  );
+$('editPerson').addEventListener('input',e=>{
+  e.target.dataset.selectedId='';
+  editPersonMatches();
+});
+
+$('editPerson').addEventListener('keydown',e=>{
+  if(e.key==='Enter'){
+    e.preventDefault();
+    const first=$('editPersonMatches')?.querySelector('[data-edit-person-id]');
+    if(first) first.click();
+  }
+});
+
+$('deletePersonBtn').addEventListener('click',deletePerson);
 
 $('addParentBtn')
   .addEventListener(
@@ -3223,6 +3330,42 @@ $('editFamilyLinks')
       if(row) row.remove();
     }
   );
+
+$('editFamilyLinks').addEventListener('input',event=>{
+  const input=event.target.closest('.family-person-input');
+  if(!input) return;
+  const row=input.closest('[data-family-kind]');
+  const box=row?.querySelector('.family-person-matches');
+  if(!row || !box) return;
+  row.dataset.familySelectedId='';
+  const q=input.value.trim().toLowerCase();
+  if(!q){ box.classList.add('hidden'); return; }
+  const matches=visiblePeople().filter(p=>displayName(p).toLowerCase().includes(q)).slice(0,20);
+  if(!matches.length){ box.innerHTML='<div class="muted">No matching people found.</div>'; box.classList.remove('hidden'); return; }
+  box.innerHTML=matches.map(p=>{
+    const details=[
+      getField(p,'Birth','birth','BirthDate','birthDate'),
+      getField(p,'Death','death','DeathDate','deathDate'),
+      String(getId(p))
+    ].filter(Boolean).map(escapeHtml).join(' · ');
+    return `<div style="margin:4px 0"><a href="#" data-family-person-id="${escapeHtml(String(getId(p)))}">${escapeHtml(displayName(p))}</a>${details?`<div class="small muted">${details}</div>`:''}</div>`;
+  }).join('');
+  box.classList.remove('hidden');
+});
+
+$('editFamilyLinks').addEventListener('click',event=>{
+  const link=event.target.closest('[data-family-person-id]');
+  if(!link) return;
+  event.preventDefault();
+  const row=link.closest('[data-family-kind]');
+  const input=row?.querySelector('.family-person-input');
+  const box=row?.querySelector('.family-person-matches');
+  const person=personById(link.dataset.familyPersonId);
+  if(!row || !input || !person) return;
+  input.value=displayName(person);
+  row.dataset.familySelectedId=String(getId(person));
+  if(box) box.classList.add('hidden');
+});
 
 
 $('savePersonBtn')
