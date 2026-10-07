@@ -138,6 +138,37 @@ async function saveDatabase(database){
   });
 }
 
+/* Safe individual-person save. Does not replace the whole archive. */
+async function savePerson(person,relationships){
+  if(!person || !person.id){
+    throw new Error('A valid person is required.');
+  }
+
+  if(!Array.isArray(relationships)){
+    throw new Error('Invalid person relationships.');
+  }
+
+  return api('/api/person',{
+    method:'PUT',
+    body:JSON.stringify({
+      person,
+      relationships
+    })
+  });
+}
+
+/* Safe individual-person delete. Does not replace the whole archive. */
+async function deletePerson(personId){
+  if(!personId){
+    throw new Error('A person ID is required.');
+  }
+
+  return api('/api/person',{
+    method:'DELETE',
+    body:JSON.stringify({personId})
+  });
+}
+
 async function savePersonMapping(email,personId){
   return api('/api/mapping',{
     method:'PUT',
@@ -152,6 +183,8 @@ window.archiveApi={
   getMyRole,
   loadDatabase,
   saveDatabase,
+  savePerson,
+  deletePerson,
   savePersonMapping
 };
 
@@ -162,5 +195,7 @@ export {
   getMyRole,
   loadDatabase,
   saveDatabase,
+  savePerson,
+  deletePerson,
   savePersonMapping
 };
