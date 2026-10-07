@@ -8,7 +8,7 @@ function cors(env) {
     "Access-Control-Allow-Origin": origin,
     "Vary": "Origin",
     "Access-Control-Allow-Headers": "Authorization, Content-Type",
-    "Access-Control-Allow-Methods": "GET,PUT,OPTIONS"
+    "Access-Control-Allow-Methods": "GET,PUT,DELETE,OPTIONS"
   };
 }
 
@@ -245,7 +245,192 @@ export default {
           env
         );
       }
+      if (
+        url.pathname === "/api/person" &&
+        request.method === "PUT"
+      ) {
+        if (!["admin", "editor"].includes(u.role)) {
+          return json(
+            {
+              error: "Editor or admin access required"
+            },
+            403,
+            env
+          );
+        }
 
+        const x = await request.json();
+        const p = x?.person;
+        const family = Array.isArray(x?.relationships)
+          ? x.relationships
+          : [];
+
+        const id = String(p?.["Person ID"] || "");
+
+        if (!id) {
+          return json(
+            {
+              error: "Person ID is required"
+            },
+            400,
+            env
+          );
+        }
+
+        const familyTypes = new Set([
+          "parent",
+          "mother",
+          "father",
+          "child",
+          "son",
+          "daughter"
+        ]);
+
+        const cleanFamily = family.filter(r =>
+          r &&
+          familyTypes.has(String(r.type || "").toLowerCase()) &&
+          r.person1 &&
+          r.person2 &&
+          String(r.person1) !== String(r.person2)
+        );
+
+        try {
+          const writes = [
+            env.DB.prepare(
+              `UPDATE people SET
+                name=?,
+                gender=?,
+                birth=?,
+                death=?,
+                relationship_to_alan=?,
+                evidence_status=?,
+                source_ids=?,
+                notes=?,
+                places=?,
+                json_extra=?
+               WHERE person_id=?`
+            ).bind(
+              p.Name || "",
+              p.Gender || "",
+              p.Birth || "",
+              p.Death || "",
+              p["Relationship to Alan"] || "",
+              p["Evidence Status"] || "",
+              p["Source IDs"] || "",
+              p.Notes || "",
+              p.Places || "",
+              JSON.stringify(p),
+              id
+            ),
+
+            env.DB.prepare(
+              `DELETE FROM relationships
+               WHERE (person1=? OR person2=?)
+               AND lower(type) IN
+               ('parent','mother','father','child','son','daughter')`
+            ).bind(id, id)
+          ];
+
+          for (const r of cleanFamily) {
+            writes.push(
+              env.DB.prepare(
+                `INSERT OR IGNORE INTO relationships
+                 (type, person1, person2)
+                 VALUES (?, ?, ?)`
+              ).bind(
+                String(r.type),
+                String(r.person1),
+                String(r.person2)
+              )
+            );
+          }
+
+          await env.DB.batch(writes);
+
+          return json(
+            {
+              ok: true,
+              personId: id,
+              relationships: cleanFamily.length
+            },
+            200,
+            env
+          );
+
+        } catch (e) {
+          console.error("Person save failed:", e);
+
+          return json(
+            {
+              error: "Person save failed",
+              detail: String(e?.message || e)
+            },
+            500,
+            env
+          );
+        }
+      }
+
+      if (
+        url.pathname === "/api/person" &&
+        request.method === "DELETE"
+      ) {
+        if (u.role !== "admin") {
+          return json(
+            {
+              error: "Admin access required"
+            },
+            403,
+            env
+          );
+        }
+
+        const x = await request.json();
+        const id = String(x?.personId || "");
+
+        if (!id) {
+          return json(
+            {
+              error: "Person ID is required"
+            },
+            400,
+            env
+          );
+        }
+
+        try {
+          await env.DB.batch([
+            env.DB.prepare(
+              "DELETE FROM relationships WHERE person1=? OR person2=?"
+            ).bind(id, id),
+
+            env.DB.prepare(
+              "DELETE FROM people WHERE person_id=?"
+            ).bind(id)
+          ]);
+
+          return json(
+            {
+              ok: true,
+              personId: id
+            },
+            200,
+            env
+          );
+
+        } catch (e) {
+          console.error("Person delete failed:", e);
+
+          return json(
+            {
+              error: "Person delete failed",
+              detail: String(e?.message || e)
+            },
+            500,
+            env
+          );
+        }
+      }
       if (
         url.pathname === "/api/archive" &&
         request.method === "GET"
