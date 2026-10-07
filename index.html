@@ -845,25 +845,45 @@ function getId(person){
    GENERIC FIELD READER
    ========================================================= */
 
+function normalizeFieldKey(value){
+  return String(value??'').toLowerCase().replace(/[^a-z0-9]/g,'');
+}
+
 function getField(person,...keys){
-
+  if(!person) return '';
   for(const key of keys){
-
-    if(
-      person &&
-      person[key]!==undefined &&
-      person[key]!==null
-    ){
-
-      return person[key];
-
-    }
-
+    if(person[key]!==undefined && person[key]!==null && person[key]!=='') return person[key];
   }
-
+  const wanted=new Set(keys.map(normalizeFieldKey));
+  for(const actual of Object.keys(person)){
+    if(wanted.has(normalizeFieldKey(actual))){
+      const value=person[actual];
+      if(value!==undefined && value!==null && value!=='') return value;
+    }
+  }
   return '';
 }
 
+function recordedValue(value){
+  if(value===undefined || value===null || value==='') return '';
+  if(Array.isArray(value)) return value.filter(v=>v!==undefined && v!==null && v!=='').map(v=>String(v)).join('; ');
+  if(typeof value==='object'){
+    try{return JSON.stringify(value);}catch{return String(value);}
+  }
+  return String(value);
+}
+
+function recordedFields(person,keys){
+  const values=[];
+  const seen=new Set();
+  for(const key of keys){
+    const value=recordedValue(getField(person,key));
+    if(!value || seen.has(value.trim())) continue;
+    seen.add(value.trim());
+    values.push(value.trim());
+  }
+  return values;
+}
 
 /* =========================================================
    VISIBLE PEOPLE
@@ -1814,24 +1834,33 @@ function renderPersonDetail(id){
     return x.length?x.map(p=>`<div>${personLink(getId(p))}</div>`).join(''):'<span class="muted">None recorded</span>';
   };
 
+  const gender=recordedValue(getField(person,'Gender','gender','Sex')) || 'Not recorded';
+  const birth=recordedValue(getField(person,'Birth','birth','BirthDate','birthDate','Date of Birth')) || 'Not recorded';
+  const death=recordedValue(getField(person,'Death','death','DeathDate','deathDate','Date of Death')) || 'Not recorded';
+  const birthPlace=recordedValue(getField(person,'BirthPlace','birthPlace','PlaceOfBirth','Birth Place','Place of Birth')) || 'Not recorded';
+  const deathPlace=recordedValue(getField(person,'DeathPlace','deathPlace','PlaceOfDeath','Death Place','Place of Death')) || 'Not recorded';
+  const places=recordedFields(person,['Places','places','Place','Residence','Residences','BirthPlace','birthPlace','PlaceOfBirth','Birth Place','Place of Birth','DeathPlace','deathPlace','PlaceOfDeath','Death Place','Place of Death']);
+  const sources=recordedFields(person,['Sources','sources','Source','source','Source IDs','SourceIds','SourceID','SourceId','Evidence','EvidenceStatus','Evidence Status']);
+  const otherRecorded=recordedFields(person,['Relationship to Alan','RelationshipToAlan','relationship_to_alan','Other Relationships','OtherRelationships','Other Relationship','Relationship','Relationships']);
+
   $('detailContent').innerHTML=`
     <div class="detail-grid">
       <div class="detail-section">
         <h3>Basic information</h3>
-        <p><strong>Gender:</strong> ${escapeHtml(getField(person,'Gender','gender')||'Not recorded')}</p>
-        <p><strong>Birth:</strong> ${escapeHtml(getField(person,'Birth','birth','BirthDate','birthDate')||'Not recorded')}</p>
-        <p><strong>Death:</strong> ${escapeHtml(getField(person,'Death','death','DeathDate','deathDate')||'Not recorded')}</p>
-        <p><strong>Birth place:</strong> ${escapeHtml(getField(person,'BirthPlace','birthPlace','PlaceOfBirth')||'Not recorded')}</p>
-        <p><strong>Death place:</strong> ${escapeHtml(getField(person,'DeathPlace','deathPlace','PlaceOfDeath')||'Not recorded')}</p>
+        <p><strong>Gender:</strong> ${escapeHtml(gender)}</p>
+        <p><strong>Birth:</strong> ${escapeHtml(birth)}</p>
+        <p><strong>Death:</strong> ${escapeHtml(death)}</p>
+        <p><strong>Birth place:</strong> ${escapeHtml(birthPlace)}</p>
+        <p><strong>Death place:</strong> ${escapeHtml(deathPlace)}</p>
       </div>
       <div class="detail-section"><h3>Parents</h3>${listPeople(parents)}</div>
       <div class="detail-section"><h3>Spouse(s)</h3>${listPeople(spouses)}</div>
       <div class="detail-section"><h3>Children</h3>${listPeople(children)}</div>
-      <div class="detail-section"><h3>Other recorded relationships</h3>${listPeople(other)}</div>
+      <div class="detail-section"><h3>Other recorded relationships</h3>${listPeople(other)}${otherRecorded.map(v=>`<div class="relationship-note">${escapeHtml(v)}</div>`).join('')}</div>
       <div class="detail-section" id="detailBloodline"><h3>Bloodline relationships</h3><span class="muted">Calculating…</span></div>
-      <div class="detail-section"><h3>Places</h3><p>${escapeHtml(getField(person,'Places','places')||'Not recorded')}</p></div>
-      <div class="detail-section"><h3>Sources</h3><p>${escapeHtml(getField(person,'Sources','sources','Source')||'Not recorded')}</p></div>
-      <div class="detail-section"><h3>Notes</h3><p>${escapeHtml(getField(person,'Notes','notes','Note')||'Not recorded')}</p></div>
+      <div class="detail-section"><h3>Places</h3><p>${places.length?places.map(v=>escapeHtml(v)).join('<br>'):'Not recorded'}</p></div>
+      <div class="detail-section"><h3>Sources</h3><p>${sources.length?sources.map(v=>escapeHtml(v)).join('<br>'):'Not recorded'}</p></div>
+      <div class="detail-section"><h3>Notes</h3><p>${escapeHtml(recordedValue(getField(person,'Notes','notes','Note'))||'Not recorded')}</p></div>
     </div>`;
 
   $('personDetail').classList.remove('hidden');
@@ -1884,6 +1913,8 @@ function generateReport(){
             <th>Gender</th>
             <th>Birth</th>
             <th>Death</th>
+            <th>Birth place</th>
+            <th>Death place</th>
           </tr>
 
         </thead>
@@ -1945,6 +1976,14 @@ function generateReport(){
                   'deathDate'
                 )
               )}
+            </td>
+
+            <td>
+              ${escapeHtml(recordedValue(getField(p,'BirthPlace','birthPlace','PlaceOfBirth','Birth Place','Place of Birth')))}
+            </td>
+
+            <td>
+              ${escapeHtml(recordedValue(getField(p,'DeathPlace','deathPlace','PlaceOfDeath','Death Place','Place of Death')))}
             </td>
 
           </tr>
