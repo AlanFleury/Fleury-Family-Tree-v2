@@ -444,7 +444,15 @@ footer{
           Person
         </label>
 
-        <select id="relationshipPerson"></select>
+        <input id="relationshipPerson" type="search" placeholder="Type a person's name…" autocomplete="off">
+        <div id="relationshipPersonMatches" class="card hidden" style="margin-top:6px"></div>
+
+        <label for="relationshipToPerson" style="display:block;margin-top:12px">
+          Relationship to whom
+        </label>
+
+        <input id="relationshipToPerson" type="search" placeholder="Type the other person's name…" autocomplete="off">
+        <div id="relationshipToPersonMatches" class="card hidden" style="margin-top:6px"></div>
 
       </div>
 
@@ -2703,10 +2711,6 @@ async function start(){
     renderPeople('');
 
     populatePersonSelect(
-      'relationshipPerson'
-    );
-
-    populatePersonSelect(
       'chartPerson'
     );
 
@@ -2853,15 +2857,43 @@ $('peopleSearch')
    RELATIONSHIPS
    ========================================================= */
 
-$('relationshipPerson')
-  .addEventListener(
-    'change',
-    e=>{
-      renderRelationships(
-        e.target.value
-      );
+let relationshipPersonId='';
+let relationshipToPersonId='';
+
+function relationshipMatches(inputId, matchesId, which){
+  const input=$(inputId), box=$(matchesId);
+  if(!input || !box) return;
+  const q=input.value.trim().toLowerCase();
+  if(!q){ box.classList.add('hidden'); return; }
+  const matches=visiblePeople().filter(p=>displayName(p).toLowerCase().includes(q)).slice(0,20);
+  if(!matches.length){ box.innerHTML='<div class="muted">No matching people found.</div>'; box.classList.remove('hidden'); return; }
+  box.innerHTML=matches.map(p=>`<div><a href="#" data-rel-person="${escapeHtml(String(getId(p)))}">${escapeHtml(displayName(p))}</a></div>`).join('');
+  box.classList.remove('hidden');
+  box.querySelectorAll('[data-rel-person]').forEach(a=>a.addEventListener('click',event=>{
+    event.preventDefault();
+    const id=a.dataset.relPerson;
+    const person=personById(id);
+    input.value=person?displayName(person):'';
+    if(which===1) relationshipPersonId=String(id); else relationshipToPersonId=String(id);
+    box.classList.add('hidden');
+    if(relationshipPersonId){
+      if(relationshipToPersonId){
+        const recorded=relatedPeople(relationshipPersonId).filter(x=>String(getId(x.person))===relationshipToPersonId);
+        let html='<div class="detail-section"><h3>Relationship</h3>';
+        if(recorded.length) html+=recorded.map(x=>`<p><strong>Recorded:</strong> ${escapeHtml(relationshipType(x.relationship)||'Relationship')}</p>`).join('');
+        else html+='<p class="muted">No direct recorded relationship between these two people.</p>';
+        let blood=[]; try{ blood=bloodlineResults(relationshipPersonId).filter(x=>String(getId(x.person))===relationshipToPersonId); }catch(error){}
+        if(blood.length) html+=blood.map(x=>`<p><strong>Calculated:</strong> ${escapeHtml(x.label)}</p>`).join('');
+        else if(!recorded.length) html+='<p class="muted">No calculated bloodline relationship found.</p>';
+        html+='</div>';
+        $('relationshipResults').innerHTML=html;
+      }else renderRelationships(relationshipPersonId);
     }
-  );
+  }));
+}
+
+$('relationshipPerson').addEventListener('input',e=>{ relationshipPersonId=''; relationshipToPersonId=''; $('relationshipToPerson').value=''; relationshipMatches('relationshipPerson','relationshipPersonMatches',1); $('relationshipResults').innerHTML='<p class="muted">Type and select a person.</p>'; });
+$('relationshipToPerson').addEventListener('input',e=>{ relationshipToPersonId=''; relationshipMatches('relationshipToPerson','relationshipToPersonMatches',2); });
 
 
 /* =========================================================
