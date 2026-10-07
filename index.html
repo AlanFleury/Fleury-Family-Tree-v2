@@ -1641,15 +1641,17 @@ function shortestDescendantPath(start,target,childrenOf){
 function ancestorLabel(person,g){
   if(g===1) return gendered(person,'Father','Mother','Parent');
   if(g===2) return gendered(person,'Grandfather','Grandmother','Grandparent');
-  const great='Great-'.repeat(g-2);
-  return gendered(person,`${great}Grandfather`,`${great}Grandmother`,`${great}Grandparent`);
+  const number=g-2;
+  const ordinalWord=ordinal(number);
+  return gendered(person,`${ordinalWord} Great-Grandfather`,`${ordinalWord} Great-Grandmother`,`${ordinalWord} Great-Grandparent`);
 }
 
 function descendantLabel(person,g){
   if(g===1) return gendered(person,'Son','Daughter','Child');
   if(g===2) return gendered(person,'Grandson','Granddaughter','Grandchild');
-  const great='Great-'.repeat(g-2);
-  return gendered(person,`${great}Grandson`,`${great}Granddaughter`,`${great}Grandchild`);
+  const number=g-2;
+  const ordinalWord=ordinal(number);
+  return gendered(person,`${ordinalWord} Great-Grandson`,`${ordinalWord} Great-Granddaughter`,`${ordinalWord} Great-Grandchild`);
 }
 
 function kinshipRank(label){
