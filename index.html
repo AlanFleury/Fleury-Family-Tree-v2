@@ -682,6 +682,23 @@ footer{
 
     </div>
 
+    <div class="detail-section" style="margin-top:12px">
+
+      <h3>Parents and children</h3>
+
+      <p class="muted small">
+        Type the full name of each parent or child. Existing relationships are loaded here and can be changed or removed.
+      </p>
+
+      <div id="editFamilyLinks"></div>
+
+      <div class="form-actions">
+        <button type="button" id="addParentBtn">Add parent</button>
+        <button type="button" id="addChildBtn">Add child</button>
+      </div>
+
+    </div>
+
 
     <div
       class="form-grid"
@@ -2428,6 +2445,106 @@ function populateEditor(){
 }
 
 
+function familyRelationshipRows(personId){
+
+  const parents=[];
+  const children=[];
+  const seenParents=new Set();
+  const seenChildren=new Set();
+
+  for(const r of relationshipRowsFor(personId)){
+    const a=String(fromId(r));
+    const b=String(toId(r));
+    const type=relationshipType(r);
+    const pair=inferParentChild(a,b,type);
+    if(!pair) continue;
+
+    if(String(pair.child)===String(personId)){
+      if(!seenParents.has(String(pair.parent))){
+        seenParents.add(String(pair.parent));
+        parents.push({id:String(pair.parent),relationship:r});
+      }
+    }
+
+    if(String(pair.parent)===String(personId)){
+      if(!seenChildren.has(String(pair.child))){
+        seenChildren.add(String(pair.child));
+        children.push({id:String(pair.child),relationship:r});
+      }
+    }
+  }
+
+  return {parents,children};
+}
+
+function renderFamilyEditor(personId){
+
+  const box=$('editFamilyLinks');
+  if(!box) return;
+
+  const links=familyRelationshipRows(personId);
+
+  const parentRows=links.parents.length
+    ? links.parents
+    : [{id:'',relationship:null}];
+
+  const childRows=links.children.length
+    ? links.children
+    : [{id:'',relationship:null}];
+
+  const row=(kind,item,index)=>{
+    const p=item.id ? personById(item.id) : null;
+    const value=p ? displayName(p) : '';
+    const type=item.relationship ? relationshipType(item.relationship) : '';
+    return `
+      <div class="form-grid" data-family-kind="${kind}" data-family-existing-id="${escapeHtml(item.id||'')}" data-family-existing-type="${escapeHtml(type)}" style="margin-top:8px">
+        <div>
+          <label>${kind==='parent' ? 'Parent' : 'Child'} ${index+1}</label>
+          <input class="family-person-input" type="text" value="${escapeHtml(value)}" placeholder="Type full name…" autocomplete="off">
+        </div>
+        <div style="display:flex;align-items:end">
+          <button type="button" class="remove-family-row">Remove</button>
+        </div>
+      </div>
+    `;
+  };
+
+  box.innerHTML=`
+    <div data-family-group="parents">
+      <strong>Parents</strong>
+      ${parentRows.map((item,i)=>row('parent',item,i)).join('')}
+    </div>
+    <div data-family-group="children" style="margin-top:16px">
+      <strong>Children</strong>
+      ${childRows.map((item,i)=>row('child',item,i)).join('')}
+    </div>
+  `;
+}
+
+function addFamilyEditorRow(kind){
+  const group=$(`[data-family-group="${kind}s"]`);
+  if(!group) return;
+  const rows=group.querySelectorAll('[data-family-kind]');
+  const index=rows.length;
+  const label=kind==='parent'?'Parent':'Child';
+  const row=document.createElement('div');
+  row.className='form-grid';
+  row.dataset.familyKind=kind;
+  row.dataset.familyExistingId='';
+  row.dataset.familyExistingType='';
+  row.style.marginTop='8px';
+  row.innerHTML=`
+    <div>
+      <label>${label} ${index+1}</label>
+      <input class="family-person-input" type="text" placeholder="Type full name…" autocomplete="off">
+    </div>
+    <div style="display:flex;align-items:end">
+      <button type="button" class="remove-family-row">Remove</button>
+    </div>
+  `;
+  group.appendChild(row);
+}
+
 function loadEditorPerson(){
 
   const p=
@@ -2507,6 +2624,84 @@ function loadEditorPerson(){
       'Source'
     );
 
+  renderFamilyEditor(getId(p));
+
+}
+
+function resolveFamilyPerson(name){
+  const target=String(name||'').trim().toLowerCase();
+  if(!target) return null;
+
+  const exact=visiblePeople().filter(p=>displayName(p).toLowerCase()===target);
+  if(exact.length===1) return exact[0];
+  if(exact.length>1) return {error:`More than one person is named "${name.trim()}". Use a more specific name.`};
+
+  const partial=visiblePeople().filter(p=>displayName(p).toLowerCase().includes(target));
+  if(partial.length===1) return partial[0];
+  if(partial.length>1) return {error:`Could not uniquely identify "${name.trim()}". Please enter the full name.`};
+
+  return {error:`Person not found: "${name.trim()}".`};
+}
+
+function saveFamilyLinks(personId){
+  const person=personById(personId);
+  if(!person) throw new Error('Select a person first.');
+
+  const rows=[...document.querySelectorAll('#editFamilyLinks [data-family-kind]')];
+  const desiredParents=[];
+  const desiredChildren=[];
+
+  for(const row of rows){
+    const kind=row.dataset.familyKind;
+    const input=row.querySelector('.family-person-input');
+    const name=String(input?.value||'').trim();
+    if(!name) continue;
+
+    const resolved=resolveFamilyPerson(name);
+    if(!resolved || resolved.error) throw new Error(resolved?.error || `Person not found: "${name}".`);
+
+    const otherId=String(getId(resolved));
+    if(otherId===String(personId)) throw new Error('A person cannot be their own parent or child.');
+
+    const list=kind==='parent' ? desiredParents : desiredChildren;
+    if(!list.some(x=>x.id===otherId)){
+      list.push({
+        id:otherId,
+        existingId:String(row.dataset.familyExistingId||''),
+        existingType:String(row.dataset.familyExistingType||'')
+      });
+    }
+  }
+
+  const familyTypes=new Set(['parent','mother','father','child','son','daughter']);
+  const keep=[];
+
+  for(const r of relationships){
+    const a=String(fromId(r));
+    const b=String(toId(r));
+    const type=relationshipType(r);
+    const pair=inferParentChild(a,b,type);
+    if(!pair || (String(pair.parent)!==String(personId) && String(pair.child)!==String(personId))){
+      keep.push(r);
+    }
+  }
+
+  const makeRelationship=(otherId,kind,existingType)=>{
+    let type=existingType;
+    if(!familyTypes.has(type)) type='parent';
+    if(kind==='parent') return {type,from:otherId,to:String(personId)};
+    return {type:'parent',from:String(personId),to:otherId};
+  };
+
+  for(const item of desiredParents){
+    keep.push(makeRelationship(item.id,'parent',item.existingType));
+  }
+  for(const item of desiredChildren){
+    keep.push(makeRelationship(item.id,'child',item.existingType));
+  }
+
+  relationships=keep;
+  database.relationships=relationships;
 }
 
 
@@ -2567,6 +2762,8 @@ async function savePerson(){
 
 
   try{
+
+    saveFamilyLinks(id);
 
     $('savePersonBtn').disabled=true;
 
@@ -3002,6 +3199,29 @@ $('editPerson')
   .addEventListener(
     'change',
     loadEditorPerson
+  );
+
+$('addParentBtn')
+  .addEventListener(
+    'click',
+    ()=>addFamilyEditorRow('parent')
+  );
+
+$('addChildBtn')
+  .addEventListener(
+    'click',
+    ()=>addFamilyEditorRow('child')
+  );
+
+$('editFamilyLinks')
+  .addEventListener(
+    'click',
+    event=>{
+      const button=event.target.closest('.remove-family-row');
+      if(!button) return;
+      const row=button.closest('[data-family-kind]');
+      if(row) row.remove();
+    }
   );
 
 
