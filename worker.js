@@ -286,14 +286,30 @@ export default {
           "daughter"
         ]);
 
-        const cleanFamily = family.filter(r =>
-          r &&
-          familyTypes.has(String(r.type || "").toLowerCase()) &&
-          r.person1 &&
-          r.person2 &&
-          String(r.person1) !== String(r.person2)
-        );
-
+        const cleanFamily = family
+  .map(r => ({
+    type: String(r?.type || ""),
+    person1: String(
+      r?.person1 ??
+      r?.fromId ??
+      r?.from ??
+      r?.Person1 ??
+      ""
+    ),
+    person2: String(
+      r?.person2 ??
+      r?.toId ??
+      r?.to ??
+      r?.Person2 ??
+      ""
+    )
+  }))
+  .filter(r =>
+    familyTypes.has(r.type.toLowerCase()) &&
+    r.person1 &&
+    r.person2 &&
+    r.person1 !== r.person2
+  );
         try {
           const writes = [
             env.DB.prepare(
