@@ -321,7 +321,7 @@ export default {
           response_type:"code",access_type:"offline",prompt:"consent",
           scope:"https://www.googleapis.com/auth/gmail.send",state
         });
-        return Response.redirect("https://accounts.google.com/o/oauth2/v2/auth?"+params.toString(),302);
+        return json({url:"https://accounts.google.com/o/oauth2/v2/auth?"+params.toString()},200,env,origin);
       }
 
       if(url.pathname==="/api/gmail/callback" && request.method==="GET"){
