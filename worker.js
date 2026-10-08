@@ -1,5 +1,6 @@
 const AUTH0_DOMAIN = "dev-rd7gx3zdpkuccxmn.uk.auth0.com";
 const AUTH0_AUDIENCE = "https://fleury-family-api";
+// Deployment configuration verified 2026-10-08.
 
 function cors(env,origin="") {
   const allowed = new Set([
