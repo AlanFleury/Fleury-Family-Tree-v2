@@ -21,4 +21,4 @@ jobs:
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          command: deploy worker.js
+          command: deploy worker.js --name fleury-family-api --config wrangler.jsonc
