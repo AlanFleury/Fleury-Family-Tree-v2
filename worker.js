@@ -81,7 +81,7 @@ async function auth(request,env){
   const h=request.headers.get("Authorization")||"";
   if(!h.startsWith("Bearer ")) throw new Error("Missing access token");
 
-  const payload=await verifyJwt(h.slice(7),env);
+  const token=h.slice(7);\n  const payload=await verifyJwt(token,env);
   const sub=String(payload.sub||"");
   if(!sub) throw new Error("Invalid subject");
 
