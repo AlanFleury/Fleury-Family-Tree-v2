@@ -5,6 +5,34 @@
 @media(max-width:900px){.two,.three{grid-template-columns:1fr}main{padding:9px}}
 @media print{header,nav,.no-print{display:none!important}body{background:#fff}.panel{box-shadow:none;border:0}.view{display:none!important}.view.printing{display:block!important}.view.printing>.panel:first-child{display:none!important}.view.printing>.panel{box-shadow:none;border:0;padding:0;margin:0}.view.printing .tree-scroll{border:0;overflow:visible!important;padding:0}.view.printing .tree-svg{max-width:none!important;width:auto!important;height:auto!important}.print-only{display:block}}
 .person-node{cursor:pointer}.person-node:hover rect,.person-node:hover path,.person-node:hover circle{filter:brightness(.96)}
+@media(max-width:600px){
+  body{font-size:15px}
+  header{position:sticky}
+  .head{padding:10px}
+  h1{font-size:19px}
+  nav{overflow-x:auto;flex-wrap:nowrap;padding:0 8px 9px;-webkit-overflow-scrolling:touch}
+  nav button{flex:0 0 auto;min-height:44px;padding:9px 12px}
+  .toolbar{width:100%}
+  .toolbar button{min-height:44px}
+  main{padding:7px}
+  .panel{padding:11px;margin-bottom:10px;border-radius:8px}
+  .form{grid-template-columns:1fr}
+  .form-actions{display:grid;grid-template-columns:1fr}
+  .form-actions button{width:100%;min-height:44px}
+  input,select,textarea{font-size:16px;min-height:44px}
+  textarea{min-height:130px}
+  .grid{grid-template-columns:1fr}
+  .table-wrap{max-height:none}
+  table{font-size:13px;min-width:720px}
+  th,td{padding:9px 7px}
+  .tree-scroll{padding:4px}
+  .tree-svg{max-width:none!important}
+  .pager{position:sticky;bottom:0;background:#fff;border-top:1px solid var(--line);z-index:4}
+}
+@media(min-width:601px) and (max-width:900px){
+  .form{grid-template-columns:repeat(2,minmax(0,1fr))}
+  nav{overflow-x:auto;flex-wrap:nowrap}
+}
 </style></head><body>
 <header><div class="head"><div><h1>Fleury Family Tree — Ultimate Edition</h1><div class="sub">Private online family archive • 17,972 people • 30,079 recorded relationships • no subscription required</div></div><div class="toolbar"><span id="authStatus" class="small"></span><button id="signInBtn">Sign in</button><button id="signOutBtn" class="hidden">Sign out</button><button id="backupBtn">Backup</button><button id="importBtn">Restore backup</button><input id="importFile" type="file" accept="application/json" class="hidden"><button id="resetBtn">Reset local edits</button></div></div><nav id="nav"></nav></header>
 <main>
