@@ -173,6 +173,43 @@ export default {
         return json(await archivePage(env,table,offset,limit),200,env);
       }
 
+      if(url.pathname==="/api/users" && request.method==="GET"){
+        if(u.role!=="admin") return json({error:"Admin access required"},403,env);
+        const result=await env.DB.prepare(
+          "SELECT email, role, person_id AS personId FROM users ORDER BY email COLLATE NOCASE"
+        ).all();
+        return json({users:result.results},200,env);
+      }
+
+      if(url.pathname==="/api/users" && request.method==="PUT"){
+        if(u.role!=="admin") return json({error:"Admin access required"},403,env);
+        const x=await request.json();
+        const email=String(x?.email||"").trim();
+        const role=String(x?.role||"").trim().toLowerCase();
+        const personId=x?.personId==null||x.personId===""?null:String(x.personId);
+        if(!email) return json({error:"Email is required"},400,env);
+        if(!["admin","editor","viewer"].includes(role))
+          return json({error:"Role must be admin, editor, or viewer"},400,env);
+        const result=await env.DB.prepare(
+          "UPDATE users SET role=?, person_id=? WHERE lower(email)=lower(?)"
+        ).bind(role,personId,email).run();
+        if(!result.meta?.changes) return json({error:"No approved user matched that email"},404,env);
+        return json({ok:true,email,role,personId},200,env);
+      }
+
+      if(url.pathname==="/api/mapping" && request.method==="PUT"){
+        if(u.role!=="admin") return json({error:"Admin access required"},403,env);
+        const x=await request.json();
+        const email=String(x?.email||"").trim();
+        const personId=x?.personId==null||x.personId===""?null:String(x.personId);
+        if(!email) return json({error:"Email is required"},400,env);
+        const result=await env.DB.prepare(
+          "UPDATE users SET person_id=? WHERE lower(email)=lower(?)"
+        ).bind(personId,email).run();
+        if(!result.meta?.changes) return json({error:"No approved user matched that email"},404,env);
+        return json({ok:true,email,personId},200,env);
+      }
+
       if(url.pathname==="/api/person" && request.method==="PUT"){
         if(!["admin","editor"].includes(u.role))
           return json({error:"Editor or admin access required"},403,env);
