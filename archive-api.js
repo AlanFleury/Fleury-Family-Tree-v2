@@ -162,6 +162,20 @@ async function deletePerson(personId){
   });
 }
 
+async function listUsers(){
+  return api('/api/users');
+}
+
+async function updateUser(email,role,personId=null){
+  if(!email) throw new Error('An email address is required.');
+  if(!['admin','editor','viewer'].includes(String(role).toLowerCase()))
+    throw new Error('Role must be admin, editor, or viewer.');
+  return api('/api/users',{
+    method:'PUT',
+    body:JSON.stringify({email,role:String(role).toLowerCase(),personId})
+  });
+}
+
 async function savePersonMapping(email,personId){
   return api('/api/mapping',{
     method:'PUT',
@@ -171,10 +185,5 @@ async function savePersonMapping(email,personId){
 
 window.archiveApi={
   initAuth,signInWithEmail,signOutUser,getMyRole,
-  loadDatabase,saveDatabase,savePerson,deletePerson,savePersonMapping
-};
-
-export {
-  initAuth,signInWithEmail,signOutUser,getMyRole,
-  loadDatabase,saveDatabase,savePerson,deletePerson,savePersonMapping
+  loadDatabase,saveDatabase,savePerson,deletePerson,listUsers,updateUser,savePersonMapping
 };

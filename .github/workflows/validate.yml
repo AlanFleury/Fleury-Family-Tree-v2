@@ -1,0 +1,41 @@
+name: Validate safe rebuild
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'archive-api.js'
+      - 'worker.js'
+      - 'config.js'
+      - '.github/workflows/validate.yml'
+  push:
+    branches: [safe-online-rebuild]
+
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check standalone JavaScript
+        run: |
+          node --check archive-api.js
+          node --check worker.js
+      - name: Extract and check application script
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const html = fs.readFileSync('index.html', 'utf8');
+          const scripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)]
+            .map(m => m[1])
+            .filter(s => s.trim());
+          if (!scripts.length) throw new Error('No inline application script found');
+          const app = scripts[scripts.length - 1];
+          fs.writeFileSync('/tmp/fleury-index-inline.js', app);
+          NODE
+          node --check /tmp/fleury-index-inline.js

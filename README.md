@@ -28,7 +28,7 @@ The application loads the private family archive only after authenticated access
 
 ## Important
 
-`archive-seed.json` is retained in the repository only as an existing archive artifact. The current application does not load it automatically.
+`archive-seed.json` is not part of the safe online branch. Do not reintroduce private family-data exports into this public repository.
 
 The old Firebase files are retained only for historical reference and are not used by `index.html`.
 
@@ -38,5 +38,5 @@ Run `run-windows.bat` from the repository directory and open the local HTTP serv
 
 ## Current status
 
-This is the clean rebuild foundation. Additional genealogy features should be added only after the secure archive connection has been verified.
+The safe online rebuild keeps `main` untouched while the private archive connection, editing safeguards, responsive layout, and deployment path are verified. The public repository contains application code only; private family data remains behind the authenticated API.
 
