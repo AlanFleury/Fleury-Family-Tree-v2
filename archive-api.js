@@ -62,28 +62,55 @@ async function signOutUser(){
 
 async function token(){
   if(!auth0Client) await init();
-  return auth0Client.getTokenSilently({
-    authorizationParams:{audience:cfg().AUTH0_AUDIENCE}
-  });
+  try{
+    return await auth0Client.getTokenSilently({
+      authorizationParams:{audience:cfg().AUTH0_AUDIENCE}
+    });
+  }catch(e){
+    const code=String(e?.error||'');
+    if(code==='login_required'||code==='consent_required'||code==='interaction_required'){
+      try{
+        return await auth0Client.getTokenWithPopup({
+          authorizationParams:{audience:cfg().AUTH0_AUDIENCE,scope:'openid profile email'}
+        });
+      }catch(popupError){
+        throw new Error('Auth0 could not issue an archive access token. Please sign in again. '+(popupError?.message||popupError));
+      }
+    }
+    throw new Error('Auth0 token request failed. '+(e?.message||e));
+  }
 }
 
 async function api(path,options={}){
-  const accessToken=await token();
+  let accessToken;
+  try{
+    accessToken=await token();
+  }catch(e){
+    throw new Error('Authentication failed before contacting the private archive. '+(e?.message||e));
+  }
+
   const headers=new Headers(options.headers||{});
   headers.set('Authorization','Bearer '+accessToken);
   headers.set('Content-Type','application/json');
 
-  const response=await fetch(
-    cfg().API_BASE_URL.replace(/\/$/,'')+path,
-    {...options,headers}
-  );
+  const url=cfg().API_BASE_URL.replace(/\/$/,'')+path;
+  let response;
+  try{
+    response=await fetch(url,{...options,headers,cache:'no-store'});
+  }catch(e){
+    throw new Error('The browser could not reach the private archive API at '+url+'. This is a network/CORS failure, not a family-data error. '+(e?.message||e));
+  }
 
   if(!response.ok){
     const body=await response.text();
-    throw new Error(body||('HTTP '+response.status));
+    throw new Error('Private archive API returned HTTP '+response.status+': '+(body||'No response body'));
   }
 
-  return response.status===204 ? null : response.json();
+  try{
+    return response.status===204 ? null : await response.json();
+  }catch(e){
+    throw new Error('The private archive API returned an invalid JSON response for '+path+'.');
+  }
 }
 
 async function getMyRole(){
