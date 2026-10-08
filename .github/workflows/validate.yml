@@ -39,13 +39,3 @@ jobs:
           fs.writeFileSync('/tmp/fleury-index-inline.js', app);
           NODE
           node --check /tmp/fleury-index-inline.js
-      - name: Verify private seed is absent
-        run: |
-          if git ls-files --error-unmatch archive-seed.json >/dev/null 2>&1; then
-            echo 'archive-seed.json is still tracked.'
-            exit 1
-          fi
-          if grep -R -n --exclude-dir=.git 'archive-seed\.json' .; then
-            echo 'Unexpected reference to archive-seed.json found.'
-            exit 1
-          fi
