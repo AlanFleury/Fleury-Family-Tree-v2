@@ -1,0 +1,30 @@
+INDEX.HTML — TWO REQUIRED SAFETY CHANGES
+
+1. In deletePerson(), replace:
+    await archiveApi.saveDatabase(database);
+
+with:
+    await archiveApi.deletePerson(id);
+
+Then reload the archive after the successful delete:
+    database=await archiveApi.loadDatabase();
+    people=database.people;
+    relationships=database.relationships;
+    rebuildIndexes();
+
+2. In savePerson(), do NOT call:
+    await archiveApi.saveDatabase(database);
+
+After saveFamilyLinks(id), build only the family relationships involving this person.
+The Worker expects objects containing type, person1, person2.
+
+Then call:
+    await archiveApi.savePerson(person, familyRelationships);
+
+After success, reload:
+    database=await archiveApi.loadDatabase();
+    people=database.people;
+    relationships=database.relationships;
+    rebuildIndexes();
+
+The rest of index.html should remain unchanged.

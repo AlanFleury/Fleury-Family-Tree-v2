@@ -1,0 +1,44 @@
+FLEURY FAMILY ARCHIVE — FINAL WEBSITE REBUILD
+
+Replace these two files in the GitHub repository:
+  archive-api.js
+  worker.js
+
+Do NOT run any SQL or touch the D1 database.
+
+IMPORTANT:
+The database is already repaired and verified:
+  17,993 people
+  30,079 relationships
+
+The new archive-api.js loads people and relationships in 5,000-record pages.
+The new worker.js supplies /api/archive/page for those pages.
+
+ONE INDEX.HTML CHANGE IS ALSO REQUIRED:
+In index.html, the Admin Delete Person function must call:
+  await archiveApi.deletePerson(id);
+instead of:
+  await archiveApi.saveDatabase(database);
+
+In index.html, the Admin Save Person function must call the safe
+archiveApi.savePerson() endpoint instead of archiveApi.saveDatabase(database).
+
+Do not use the website's full Archive Save button/function for person edits.
+
+For the Save Person function, after saveFamilyLinks(id), construct the family
+relationships to send from the current relationships involving that person,
+then call:
+  await archiveApi.savePerson(person, familyRelationships);
+
+The rebuilt archive-api.js accepts "Person ID", person_id, or id.
+
+After replacing archive-api.js and worker.js and making the two index.html changes:
+1. Commit the three files to main.
+2. Deploy worker.js to the existing Cloudflare Worker.
+3. Wait for GitHub Pages to publish.
+4. Sign out and sign back in to the website.
+5. Confirm Explore shows:
+   People recorded: 17,993
+   Relationships recorded: 30,079
+
+DO NOT press the old full Archive Save.
