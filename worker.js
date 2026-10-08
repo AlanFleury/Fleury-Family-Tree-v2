@@ -1,20 +1,27 @@
 const AUTH0_DOMAIN = "dev-rd7gx3zdpkuccxmn.uk.auth0.com";
 const AUTH0_AUDIENCE = "https://fleury-family-api";
 
-function cors(env) {
+function cors(env,origin="") {
+  const allowed = new Set([
+    "https://alanfleury.github.io",
+    "http://localhost:8000",
+    "http://localhost:8080",
+    "http://127.0.0.1:8000",
+    "http://127.0.0.1:8080"
+  ]);
   return {
-    "Access-Control-Allow-Origin": "https://alanfleury.github.io",
+    "Access-Control-Allow-Origin": allowed.has(origin) ? origin : "https://alanfleury.github.io",
     "Vary": "Origin",
     "Access-Control-Allow-Headers": "Authorization, Content-Type",
     "Access-Control-Allow-Methods": "GET,PUT,DELETE,OPTIONS"
   };
 }
 
-function json(data,status=200,env) {
+function json(data,status=200,env,origin="") {
   return new Response(JSON.stringify(data),{
     status,
     headers:{
-      ...cors(env),
+      ...cors(env,origin),
       "Content-Type":"application/json",
       "Cache-Control":"no-store"
     }
@@ -146,7 +153,7 @@ async function archive(env){
 
 export default {
   async fetch(request,env){
-    if(request.method==="OPTIONS") return new Response(null,{headers:cors(env)});
+    if(request.method==="OPTIONS") return new Response(null,{headers:cors(env,request.headers.get("Origin")||"")});
 
     try{
       const url=new URL(request.url);
@@ -189,14 +196,25 @@ export default {
 
         try{
           const writes=[
-            env.DB.prepare(`UPDATE people SET
-              name=?,gender=?,birth=?,death=?,relationship_to_alan=?,
-              evidence_status=?,source_ids=?,notes=?,places=?,json_extra=?
-              WHERE person_id=?`).bind(
-                p.Name||"",p.Gender||"",p.Birth||"",p.Death||"",
+            env.DB.prepare(`INSERT INTO people(
+              person_id,name,gender,birth,death,relationship_to_alan,
+              evidence_status,source_ids,notes,places,json_extra
+            ) VALUES(?,?,?,?,?,?,?,?,?,?,?)
+            ON CONFLICT(person_id) DO UPDATE SET
+              name=excluded.name,
+              gender=excluded.gender,
+              birth=excluded.birth,
+              death=excluded.death,
+              relationship_to_alan=excluded.relationship_to_alan,
+              evidence_status=excluded.evidence_status,
+              source_ids=excluded.source_ids,
+              notes=excluded.notes,
+              places=excluded.places,
+              json_extra=excluded.json_extra`).bind(
+                id,p.Name||"",p.Gender||"",p.Birth||"",p.Death||"",
                 p["Relationship to Alan"]||"",p["Evidence Status"]||"",
                 p["Source IDs"]||"",p.Notes||"",p.Places||"",
-                JSON.stringify(p),id
+                JSON.stringify(p)
               ),
             env.DB.prepare(`DELETE FROM relationships
               WHERE (person1=? OR person2=?)
