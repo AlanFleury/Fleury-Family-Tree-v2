@@ -140,6 +140,36 @@ function mapPerson(r){
 }
 
 
+async function gmailAccessToken(env){
+  if(!env.GMAIL_CLIENT_ID||!env.GMAIL_CLIENT_SECRET||!env.GMAIL_REFRESH_TOKEN)
+    throw new Error("Gmail notifications are not configured");
+  const body=new URLSearchParams({
+    client_id:env.GMAIL_CLIENT_ID,
+    client_secret:env.GMAIL_CLIENT_SECRET,
+    refresh_token:env.GMAIL_REFRESH_TOKEN,
+    grant_type:"refresh_token"
+  });
+  const response=await fetch("https://oauth2.googleapis.com/token",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body});
+  const data=await response.json();
+  if(!response.ok||!data.access_token) throw new Error("Unable to refresh Gmail access token");
+  return data.access_token;
+}
+function base64Url(value){
+  const bytes=typeof value==="string"?new TextEncoder().encode(value):value;
+  let binary="";
+  for(const byte of bytes) binary+=String.fromCharCode(byte);
+  return btoa(binary).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+}
+async function sendGmailNotification(env,{to,subject,text}){
+  const token=await gmailAccessToken(env);
+  const raw=["From: Alan Fleury <alanfleury1@gmail.com>","To: "+to,"Subject: "+subject,"Content-Type: text/plain; charset=UTF-8","MIME-Version: 1.0","",text].join("\r\n");
+  const response=await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send",{method:"POST",headers:{Authorization:"Bearer "+token,"Content-Type":"application/json"},body:JSON.stringify({raw:base64Url(raw)})});
+  if(!response.ok) throw new Error("Gmail send failed: "+(await response.text()).slice(0,500));
+}
+async function gmailOAuthState(env){
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS gmail_oauth_states(state TEXT PRIMARY KEY, created_at TEXT NOT NULL)`).run();
+}
+
 async function ensureAccessRequestsTable(env){
   await env.DB.prepare(`CREATE TABLE IF NOT EXISTS access_requests(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -256,30 +286,57 @@ export default {
         ).bind(identity.sub,name,email,reason,createdAt).run();
         const id=ins.meta?.last_row_id||null;
         let emailSent=false;
-        if(env.EMAIL && env.EMAIL_FROM){
+        const emailConfigured=Boolean(env.GMAIL_CLIENT_ID&&env.GMAIL_CLIENT_SECRET&&env.GMAIL_REFRESH_TOKEN);
+        if(emailConfigured){
           try{
             const subject="Fleury Family Tree — Access Approval Request";
             const text=[
-              "Hello Alan,",
-              "",
-              "A new person has requested access to the Fleury Family Tree private archive.",
-              "",
-              "Name: "+name,
-              "Email: "+email,
-              "Date/time: "+createdAt,
-              "",
+              "Hello Alan,","",
+              "A new person has requested access to the Fleury Family Tree private archive.","",
+              "Name: "+name,"Email: "+email,"Date/time: "+createdAt,"",
               "Reason for requesting access:",
-              reason||"(No reason supplied)",
-              "",
-              "Please review the request in the Admin section of the Fleury Family Tree and approve or reject the account as appropriate.",
-              "",
+              reason||"(No reason supplied)","",
+              "Please review the request in the Admin section of the Fleury Family Tree and approve or reject the account as appropriate.","",
               "Fleury Family Tree — Private Archive"
             ].join("\n");
-            await env.EMAIL.send({to:"alanfleury1@gmail.com",from:String(env.EMAIL_FROM),subject,text});
+            await sendGmailNotification(env,{to:"alanfleury1@gmail.com",subject,text});
             emailSent=true;
-          }catch(e){console.error("Access request email failed:",e?.message||e)}
+          }catch(e){console.error("Access request Gmail notification failed:",e?.message||e)}
         }
-        return json({ok:true,id,emailSent,emailConfigured:Boolean(env.EMAIL&&env.EMAIL_FROM)},200,env,origin);
+        return json({ok:true,id,emailSent,emailConfigured},200,env,origin);
+      }
+
+      if(url.pathname==="/api/gmail/start" && request.method==="GET"){
+        const u=await auth(request,env);
+        if(u.role!=="admin") return json({error:"Admin access required"},403,env,origin);
+        if(!env.GMAIL_CLIENT_ID||!env.GMAIL_CLIENT_SECRET)
+          return json({error:"Gmail OAuth client is not configured on the Worker"},500,env,origin);
+        await gmailOAuthState(env);
+        const bytes=new Uint8Array(24); crypto.getRandomValues(bytes);
+        const state=base64Url(bytes);
+        await env.DB.prepare("INSERT INTO gmail_oauth_states(state,created_at) VALUES(?,?)").bind(state,new Date().toISOString()).run();
+        const params=new URLSearchParams({
+          client_id:env.GMAIL_CLIENT_ID,
+          redirect_uri:"https://fleury-family-api.alanfleury1.workers.dev/api/gmail/callback",
+          response_type:"code",access_type:"offline",prompt:"consent",
+          scope:"https://www.googleapis.com/auth/gmail.send",state
+        });
+        return json({url:"https://accounts.google.com/o/oauth2/v2/auth?"+params.toString()},200,env,origin);
+      }
+
+      if(url.pathname==="/api/gmail/callback" && request.method==="GET"){
+        const code=url.searchParams.get("code")||"",state=url.searchParams.get("state")||"",error=url.searchParams.get("error")||"";
+        if(error) return new Response("Google authorization was cancelled or denied.",{status:400,headers:{"Content-Type":"text/plain; charset=UTF-8"}});
+        if(!code||!state) return new Response("Missing Google OAuth code/state.",{status:400});
+        await gmailOAuthState(env);
+        const row=await env.DB.prepare("SELECT state,created_at FROM gmail_oauth_states WHERE state=?").bind(state).first();
+        if(!row) return new Response("Invalid or already used OAuth state.",{status:400});
+        if(Date.now()-Date.parse(row.created_at)>10*60*1000){await env.DB.prepare("DELETE FROM gmail_oauth_states WHERE state=?").bind(state).run();return new Response("OAuth state expired. Start again.",{status:400});}
+        await env.DB.prepare("DELETE FROM gmail_oauth_states WHERE state=?").bind(state).run();
+        const tokenResponse=await fetch("https://oauth2.googleapis.com/token",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:new URLSearchParams({client_id:env.GMAIL_CLIENT_ID,client_secret:env.GMAIL_CLIENT_SECRET,code,grant_type:"authorization_code",redirect_uri:"https://fleury-family-api.alanfleury1.workers.dev/api/gmail/callback"})});
+        const tokenData=await tokenResponse.json();
+        if(!tokenResponse.ok||!tokenData.refresh_token) return new Response("Google authorization succeeded but no refresh token was returned. Start again with consent.",{status:500});
+        return new Response("Gmail authorization complete. Copy the refresh token below into the Worker secret GMAIL_REFRESH_TOKEN, then close this page. Do not send the token to anyone.\n\n"+tokenData.refresh_token,{status:200,headers:{"Content-Type":"text/plain; charset=UTF-8","Cache-Control":"no-store"}});
       }
 
       const u=await auth(request,env);
