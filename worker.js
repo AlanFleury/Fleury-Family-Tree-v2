@@ -13,7 +13,8 @@ function cors(env,origin="") {
     "Access-Control-Allow-Origin": allowed.has(origin) ? origin : "https://alanfleury.github.io",
     "Vary": "Origin",
     "Access-Control-Allow-Headers": "Authorization, Content-Type",
-    "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS"
+    "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
+    "Access-Control-Max-Age": "86400"
   };
 }
 
@@ -188,13 +189,20 @@ async function archive(env){
 
 export default {
   async fetch(request,env){
-    if(request.method==="OPTIONS") return new Response(null,{headers:cors(env,request.headers.get("Origin")||"")});
+    const origin=request.headers.get("Origin")||"";
+    const withCors=(response)=>{
+      const headers=new Headers(response.headers);
+      for(const [key,value] of Object.entries(cors(env,origin))) headers.set(key,value);
+      return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
+    };
+
+    if(request.method==="OPTIONS") return new Response(null,{status:204,headers:cors(env,origin)});
 
     try{
       const url=new URL(request.url);
 
       if(url.pathname==="/health")
-        return json({ok:true},200,env);
+        return withCors(json({ok:true,version:"cors-deploy-2026-10-08"},200,env,origin));
 
       const u=await auth(request,env);
 
@@ -466,9 +474,9 @@ export default {
         }
       }
 
-      return json({error:"Not found"},404,env);
+      return withCors(json({error:"Not found"},404,env,origin));
     }catch(e){
-      return json({error:e.message||"Unauthorized"},401,env);
+      return withCors(json({error:e.message||"Unauthorized"},401,env,origin));
     }
   }
 };
