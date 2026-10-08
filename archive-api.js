@@ -189,6 +189,16 @@ async function deletePerson(personId){
   });
 }
 
+async function requestAccess(name,email,reason=''){
+  const n=String(name||'').trim(),e=String(email||'').trim();
+  if(!n||!e) throw new Error('Name and email are required.');
+  return api('/api/access-request',{method:'POST',body:JSON.stringify({name:n,email:e,reason:String(reason||'').trim()})});
+}
+async function listAccessRequests(){return api('/api/access-requests');}
+async function reviewAccessRequest(id,decision){
+  return api('/api/access-requests',{method:'PUT',body:JSON.stringify({id:String(id),decision:String(decision)})});
+}
+
 async function listUsers(){
   return api('/api/users');
 }
@@ -224,5 +234,6 @@ async function restoreArchiveFromWorkbook(data,onProgress){
 
 window.archiveApi={
   initAuth,signInWithEmail,signOutUser,getMyRole,restoreArchiveFromWorkbook,
-  loadDatabase,saveDatabase,savePerson,deletePerson,listUsers,updateUser,savePersonMapping
+  loadDatabase,saveDatabase,savePerson,deletePerson,requestAccess,listAccessRequests,reviewAccessRequest,
+  listUsers,updateUser,savePersonMapping
 };
