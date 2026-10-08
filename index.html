@@ -87,7 +87,7 @@ function showPerson(i,fromChart=false){const p=person(i);if(!p)return;selected.d
 function renderStats(){const ps=allPeople();const births=ps.filter(p=>p.birth).length,deaths=ps.filter(p=>p.death).length,f=ps.filter(p=>p.gender==='F').length,m=ps.filter(p=>p.gender==='M').length;const parentLinks=parentMap.size,spouseLinks=spouseMap.size;stats.innerHTML=[['People',ps.length],['Recorded relationships',db.relationships.length],['People with birth data',births],['People with death data',deaths],['Female',f],['Male',m],['People with parents',parentLinks],['People with spouse/partner links',spouseLinks]].map(x=>`<div class="card"><div class="muted">${x[0]}</div><div class="stat">${Number(x[1]).toLocaleString()}</div></div>`).join('');dbStatus.textContent=`${ps.length.toLocaleString()} people • ${db.relationships.length.toLocaleString()} relationships`}
 function matches(input,box,onPick){const q=input.value.trim();if(q.length<2){box.classList.add('hidden');return}const ms=search(q,25);box.innerHTML=ms.map(p=>`<div class="match"><span class="link" data-person="${esc(p.id)}"><b>${esc(nm(p))}</b></span><button type="button" class="small" data-pick="${esc(p.id)}">Use</button><br><span class="small muted">${esc(p.birth||'')} ${p.death?'– '+esc(p.death):''} • ${esc(p.id)}</span></div>`).join('')||'<div class="match muted">No matches</div>';box.classList.remove('hidden');box.querySelectorAll('[data-pick]').forEach(x=>x.onclick=()=>{onPick(x.dataset.pick);box.classList.add('hidden')})}
 function wirePicker(inp,box,fn){inp.addEventListener('input',()=>matches(inp,box,fn))}
-function renderPeople(){const q=lower(peopleSearch.value),g=peopleGender.value,d=peopleDecade.value,sort=peopleSort.value,ev=(document.getElementById('peopleEvidence')?.value||''),lk=(document.getElementById('peopleLinks')?.value||'');let arr=allPeople().filter(p=>(!q||lower([p.name,p.id,p.birth,p.death,p.places,p.sources,p.notes].join(' ')).includes(q))&&(!g||p.gender===g)&&(!d||String(p.birth).includes(d))&&(!ev||p.evidence===ev)&&(!lk||(lk==='parents'?(parentMap.get(p.id)||new Set()).size>0:lk==='children'?(childMap.get(p.id)||new Set()).size>0:(relByPerson.get(p.id)||[]).length===0)));arr.sort((a,b)=>sort==='name'?nm(a).localeCompare(nm(b)):sort==='id'?a.id.localeCompare(b.id):(String(a[sort]||'').localeCompare(String(b[sort]||''))));const pages=Math.max(1,Math.ceil(arr.length/pageSize));page=Math.min(page,pages-1);const slice=arr.slice(page*pageSize,(page+1)*pageSize);peopleTable.innerHTML=`<table><thead><tr><th>Name</th><th>ID</th><th>Gender</th><th>Birth</th><th>Death</th><th>Places</th><th>Sources</th></tr></thead><tbody>${slice.map(p=>`<tr><td>${link(p.id)}</td><td>${esc(p.id)}</td><td>${esc(p.gender)}</td><td>${esc(p.birth)}</td><td>${esc(p.death)}</td><td>${esc(p.places)}</td><td>${esc(p.sources)}</td></tr>`).join('')}</tbody></table>`;peoplePager.innerHTML=`<button ${page?'':'disabled'} onclick="page--;renderPeople()">Previous</button><span>Page ${page+1} of ${pages} • ${arr.length.toLocaleString()} matches</span><button ${page<pages-1?'':'disabled'} onclick="page++;renderPeople()">Next</button>`}
+function renderPeople(){const q=lower(peopleSearch.value),g=peopleGender.value,d=peopleDecade.value,sort=peopleSort.value;let arr=allPeople().filter(p=>(!q||lower([p.name,p.id,p.birth,p.death,p.places,p.sources].join(' ')).includes(q))&&(!g||p.gender===g)&&(!d||String(p.birth).includes(d)));arr.sort((a,b)=>sort==='name'?nm(a).localeCompare(nm(b)):sort==='id'?a.id.localeCompare(b.id):(String(a[sort]||'').localeCompare(String(b[sort]||''))));const pages=Math.max(1,Math.ceil(arr.length/pageSize));page=Math.min(page,pages-1);const slice=arr.slice(page*pageSize,(page+1)*pageSize);peopleTable.innerHTML=`<table><thead><tr><th>Name</th><th>ID</th><th>Gender</th><th>Birth</th><th>Death</th><th>Places</th><th>Sources</th></tr></thead><tbody>${slice.map(p=>`<tr><td>${link(p.id)}</td><td>${esc(p.id)}</td><td>${esc(p.gender)}</td><td>${esc(p.birth)}</td><td>${esc(p.death)}</td><td>${esc(p.places)}</td><td>${esc(p.sources)}</td></tr>`).join('')}</tbody></table>`;peoplePager.innerHTML=`<button ${page?'':'disabled'} onclick="page--;renderPeople()">Previous</button><span>Page ${page+1} of ${pages} • ${arr.length.toLocaleString()} matches</span><button ${page<pages-1?'':'disabled'} onclick="page++;renderPeople()">Next</button>`}
 function parentsChildren(){return {pa:parentMap,ch:childMap}}
 function ancestors(start,max=6){const out=[];let cur=new Set([start]),seen=new Set([start]);for(let d=1;d<=max;d++){const next=new Set();for(const x of cur)for(const p of parentMap.get(x)||[])if(!seen.has(p)){seen.add(p);next.add(p);out.push({id:p,d})}cur=next;if(!cur.size)break}return out}
 function descendants(start,max=6){const out=[];let cur=new Set([start]),seen=new Set([start]);for(let d=1;d<=max;d++){const next=new Set();for(const x of cur)for(const c of childMap.get(x)||[])if(!seen.has(c)){seen.add(c);next.add(c);out.push({id:c,d})}cur=next;if(!cur.size)break}return out}
@@ -98,7 +98,7 @@ function relFinder(){const a=selected.a,b=selected.b;if(!a||!b){relOutput.innerH
 function parentLabel(p,d){if(!p)return'';if(d===1)return p.gender==='F'?'Mother':'Father';return `${ord(d-1)} great-${d-1>1?'grand-':''}parent`}
 function childLabel(p,d){if(!p)return'';return d===1?(p.gender==='F'?'Daughter':'Son'):`${ord(d-1)} generation descendant`}
 function svgText(x,y,text,size=13,weight='400'){return `<text x="${x}" y="${y}" font-family="Arial, sans-serif" font-size="${size}" font-weight="${weight}" text-anchor="middle">${esc(text)}</text>`}
-function nodeSvg(x,y,p,w=190,h=68,rel='',extra=''){if(!p)return'';const title=nm(p).slice(0,34),dates=[p.birth,p.death].filter(Boolean).join(' – '),g=String(p.gender||'').toUpperCase(),genderClass=g==='M'?'gender-male':g==='F'?'gender-female':'gender-unknown',blood=extra.includes('data-blood="1"'),cls='person-node '+genderClass+(blood?' bloodline':'');const fill=g==='M'?'#dcecff':g==='F'?'#ffe0ea':'#fff',stroke=blood?'#c1121f':g==='M'?'#2f5fa8':g==='F'?'#c85b7a':'#667085',sw=blood?4:2;return `<g class="${cls}" data-person-id="${esc(p.id)}" style="cursor:pointer"><title>${esc(nm(p))}</title><rect x="${x-w/2}" y="${y-h/2}" width="${w}" height="${h}" rx="10" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/><text x="${x}" y="${y-15}" font-family="Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">${esc(title)}</text><text x="${x}" y="${y+3}" font-family="Arial, sans-serif" font-size="10" text-anchor="middle">${esc(dates||p.id)}</text><text x="${x}" y="${y+21}" font-family="Arial, sans-serif" font-size="10" text-anchor="middle">${esc(rel)}</text>${extra}</g>`}
+function nodeSvg(x,y,p,w=190,h=68,rel='',extra=''){if(!p)return'';const title=nm(p).slice(0,34),dates=[p.birth,p.death].filter(Boolean).join(' – '),g=String(p.gender||'').toUpperCase(),genderClass=g==='M'?'gender-male':g==='F'?'gender-female':'gender-unknown',blood=extra.includes('data-blood="1"'),fill=g==='M'?'#dcecff':g==='F'?'#ffe0ea':'#fff',stroke=blood?'#c1121f':g==='M'?'#2f5fa8':g==='F'?'#c85b7a':'#667085',sw=blood?4:2;return `<g class="person-node ${genderClass}${blood?' bloodline':''}" data-person-id="${esc(p.id)}" style="cursor:pointer"><title>${esc(nm(p))}</title><rect x="${x-w/2}" y="${y-h/2}" width="${w}" height="${h}" rx="10" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/><text x="${x}" y="${y-15}" font-family="Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">${esc(title)}</text><text x="${x}" y="${y+3}" font-family="Arial, sans-serif" font-size="10" text-anchor="middle">${esc(dates||p.id)}</text><text x="${x}" y="${y+21}" font-family="Arial, sans-serif" font-size="10" text-anchor="middle">${esc(rel)}</text>${extra}</g>`}
 function uniqueIds(ids){return [...new Set(ids.filter(i=>person(i)))]}
 function buildTreeLevels(start,type,depth){
   const levels=[];
@@ -131,56 +131,16 @@ function buildTreeLevels(start,type,depth){
   return levels;
 }
 function buildTreeSvg(start,type,depth,wall=false){
-  const p=person(start); if(!p)return'';
-  const levels=buildTreeLevels(start,type,depth); if(!levels.length)return'';
-  const boxW=wall?250:205, boxH=wall?78:70, gapX=wall?38:26, gapY=wall?92:72;
-  const step=boxW+gapX, maxN=Math.max(...levels.map(x=>x.ids.length),1);
-  const W=Math.max(wall?1500:1150,maxN*step+180), bandH=boxH+gapY, H=Math.max(wall?620:480,levels.length*bandH+145);
-  let s=`<svg xmlns="http://www.w3.org/2000/svg" class="tree-svg family-card-chart" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><rect width="100%" height="100%" fill="white"/>`;
-  s+=svgText(W/2,30,nm(p),22,'700');
-  s+=svgText(W/2,52,'Structured family chart • click any person • 💍 = marriage / partner',11);
-  const pos=new Map();
-  const bandLabels=levels.map((lv,li)=>li===0?'SELECTED PERSON':lv.label.toUpperCase());
-  levels.forEach((lv,li)=>{
-    const y=88+li*bandH, bandY=y-25, bandHeight=bandH-4;
-    s+=`<rect x="18" y="${bandY}" width="${W-36}" height="${bandHeight}" rx="12" fill="${li%2?'#f7f9fc':'#eef4ff'}" stroke="#d7dde7"/>`;
-    s+=svgText(38,bandY+19,bandLabels[li],12,'700');
-    if(li<levels.length-1)s+=svgText(W/2,bandY+bandHeight-5,'▼  NEXT GENERATION',9,'700');
-    const total=lv.ids.length*step, x0=(W-total)/2+step/2;
-    lv.ids.forEach((pid,i)=>{pos.set(pid,{x:x0+i*step,y,li,label:lv.label});});
-  });
+  const p=person(start);if(!p)return'';const levels=buildTreeLevels(start,type,depth);if(!levels.length)return'';
+  const boxW=wall?250:205,boxH=wall?78:70,gapX=wall?38:26,gapY=wall?92:72,step=boxW+gapX,maxN=Math.max(...levels.map(x=>x.ids.length),1),W=Math.max(wall?1500:1150,maxN*step+180),bandH=boxH+gapY,H=Math.max(wall?620:480,levels.length*bandH+145);
+  let s=`<svg xmlns="http://www.w3.org/2000/svg" class="tree-svg family-card-chart" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><rect width="100%" height="100%" fill="white"/>`;s+=svgText(W/2,30,nm(p),22,'700');s+=svgText(W/2,52,'Structured family chart • click any person • 💍 = marriage / partner',11);
+  const pos=new Map(),labels=levels.map((lv,i)=>i===0?'SELECTED PERSON':lv.label.toUpperCase());
+  levels.forEach((lv,li)=>{const y=88+li*bandH,by=y-25,bh=bandH-4;s+=`<rect x="18" y="${by}" width="${W-36}" height="${bh}" rx="12" fill="${li%2?'#f7f9fc':'#eef4ff'}" stroke="#d7dde7"/>`;s+=svgText(38,by+19,labels[li],12,'700');if(li<levels.length-1)s+=svgText(W/2,by+bh-5,'▼  NEXT GENERATION',9,'700');const total=lv.ids.length*step,x0=(W-total)/2+step/2;lv.ids.forEach((pid,i)=>pos.set(pid,{x:x0+i*step,y,li,label:lv.label}))});
   const bloodIds=new Set([start,...ancestors(start,depth).map(x=>x.id),...descendants(start,depth).map(x=>x.id)]);
-  // Straight parent/child connectors keep generations visually aligned.
-  s+='<g class="chart-connectors" fill="none" stroke="'+(type==='bloodline'?'#c1121f':'#7b8798')+'" stroke-width="'+(type==='bloodline'?'4':'2')+'" opacity=".9">';
-  for(const [pid,z] of pos){
-    const children=[...(childMap.get(pid)||[])].filter(x=>pos.has(x));
-    for(const cid of children){
-      const q=pos.get(cid),midY=(z.y+q.y)/2;
-      s+=`<path d="M${z.x} ${z.y+boxH/2} V${midY} H${q.x} V${q.y-boxH/2}" stroke-linecap="round"/>`;
-    }
-  }
-  s+='</g>';
-  // Marriage connectors and a clear 💍 marker between spouses.
-  s+='<g class="marriage-connectors" fill="none" stroke="#7b4ea3" stroke-width="2">';
-  for(const [pid,z] of pos){
-    for(const sp of spouseMap.get(pid)||[]){
-      if(!pos.has(sp)||pid>sp)continue;
-      const q=pos.get(sp),mx=(z.x+q.x)/2;
-      s+=`<line x1="${z.x+boxW/2}" y1="${z.y}" x2="${q.x-boxW/2}" y2="${q.y}" stroke-linecap="round"/><text x="${mx}" y="${z.y+4}" fill="#7b4ea3" stroke="white" stroke-width="4" paint-order="stroke" font-size="18" text-anchor="middle">💍</text>`;
-    }
-  }
-  s+='</g>';
-  levels.forEach((lv,li)=>{
-    const y=88+li*bandH;
-    lv.ids.forEach(pid=>{
-      const z=pos.get(pid),pp=person(pid);
-      let rel=li===0?'Selected person':lv.label;
-      if(pid!==start && spouseMap.get(start)?.has(pid)) rel='Spouse / partner';
-      const blood=bloodIds.has(pid)&&type==='bloodline';
-      s+=nodeSvg(z.x,z.y,pp,boxW,boxH,rel,blood?' data-blood="1"':'');
-    });
-  });
-  s+='</svg>'; return s;
+  s+=`<g class="chart-connectors" fill="none" stroke="${type==='bloodline'?'#c1121f':'#7b8798'}" stroke-width="${type==='bloodline'?4:2}" opacity=".9">`;
+  for(const [pid,z] of pos)for(const cid of childMap.get(pid)||[]){if(!pos.has(cid))continue;const q=pos.get(cid),mid=(z.y+q.y)/2;s+=`<path d="M${z.x} ${z.y+boxH/2} V${mid} H${q.x} V${q.y-boxH/2}" stroke-linecap="round"/>`}s+='</g><g class="marriage-connectors" fill="none" stroke="#7b4ea3" stroke-width="2">';
+  for(const [pid,z] of pos)for(const sp of spouseMap.get(pid)||[]){if(!pos.has(sp)||pid>sp)continue;const q=pos.get(sp),mx=(z.x+q.x)/2;s+=`<line x1="${z.x+boxW/2}" y1="${z.y}" x2="${q.x-boxW/2}" y2="${q.y}" stroke-linecap="round"/><text x="${mx}" y="${z.y+5}" fill="#7b4ea3" stroke="white" stroke-width="4" paint-order="stroke" font-size="18" text-anchor="middle">💍</text>`}s+='</g>';
+  levels.forEach((lv,li)=>lv.ids.forEach(pid=>{const z=pos.get(pid),pp=person(pid),rel=li===0?'Selected person':lv.label,blood=bloodIds.has(pid)&&type==='bloodline';s+=nodeSvg(z.x,z.y,pp,boxW,boxH,rel,blood?' data-blood="1"':'')}));return s+'</svg>';
 }
 function wireSvgClicks(container){container.querySelectorAll('.person-node,[data-person-id]').forEach(g=>g.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const id=g.getAttribute('data-person-id');if(id){showPerson(id,true)}}));}
 function openChartPerson(id){if(id){showPerson(id,true)}}
@@ -238,27 +198,8 @@ function familyGroupSvg(start){
   });
   return s+'</svg>';
 }
-async function exportChartRaster(format='jpeg',wallMode=false){
-  if(!lastSvg){alert('Generate the chart first.');return}
-  const raw=lastSvg.replace(/<script[\s\S]*?<\/script>/gi,'');
-  const blob=new Blob([raw],{type:'image/svg+xml;charset=utf-8'});
-  const url=URL.createObjectURL(blob),img=new Image();
-  img.onload=()=>{
-    try{
-      const svgDoc=new DOMParser().parseFromString(raw,'image/svg+xml').documentElement;
-      const w=Math.max(1,Number(svgDoc.getAttribute('width'))||Number(svgDoc.viewBox.baseVal.width)||1200);
-      const h=Math.max(1,Number(svgDoc.getAttribute('height'))||Number(svgDoc.viewBox.baseVal.height)||800);
-      const scale=2,canvas=document.createElement('canvas');canvas.width=Math.min(16000,w*scale);canvas.height=Math.min(16000,h*scale);
-      const ctx=canvas.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(img,0,0,canvas.width,canvas.height);
-      const mime=format==='png'?'image/png':'image/jpeg',ext=format==='png'?'png':'jpg';
-      canvas.toBlob(out=>{if(out)download('fleury-'+(wallMode?'wall-chart':'family-chart')+'.'+ext,out,mime);else alert('The browser could not create the image.')},mime,0.96);
-    }catch(e){alert('Image export failed: '+e.message)}
-    URL.revokeObjectURL(url);
-  };
-  img.onerror=()=>{URL.revokeObjectURL(url);alert('The chart could not be rendered as an image.')};
-  img.src=url;
-}
-function exportChartPdf(wallMode=false){const paper=wallMode?wallPaper.value:'A4';setPrintPaper(paper);printView(wallMode?'wallcharts':'charts')}
+async function exportChartRaster(format='jpeg',wallMode=false){if(!lastSvg){alert('Generate the chart first.');return}const raw=lastSvg,url=URL.createObjectURL(new Blob([raw],{type:'image/svg+xml;charset=utf-8'})),img=new Image();img.onload=()=>{try{const d=new DOMParser().parseFromString(raw,'image/svg+xml').documentElement,w=Math.max(1,Number(d.getAttribute('width'))||1200),h=Math.max(1,Number(d.getAttribute('height'))||800),scale=2,canvas=document.createElement('canvas');canvas.width=Math.min(16000,w*scale);canvas.height=Math.min(16000,h*scale);const ctx=canvas.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(img,0,0,canvas.width,canvas.height);const mime=format==='png'?'image/png':'image/jpeg',ext=format==='png'?'png':'jpg';canvas.toBlob(o=>o?download('fleury-'+(wallMode?'wall-chart':'family-chart')+'.'+ext,o,mime):alert('The browser could not create the image.'),mime,.96)}catch(e){alert('Image export failed: '+e.message)}URL.revokeObjectURL(url)};img.onerror=()=>{URL.revokeObjectURL(url);alert('The chart could not be rendered as an image.')};img.src=url}
+function exportChartPdf(wallMode=false){setPrintPaper(wallMode?wallPaper.value:'A4');printView(wallMode?'wallcharts':'charts')}
 function setPrintPaper(paper='A4'){let st=document.getElementById('dynamicPrintStyle');if(!st){st=document.createElement('style');st.id='dynamicPrintStyle';document.head.appendChild(st)}st.textContent=`@page{size:${paper} landscape;margin:6mm}`;}
 function renderChartOutput(container,svg,notice=''){lastSvg=svg||'';container.innerHTML=svg?`<div class="tree-scroll">${svg}</div>${notice?`<div class="notice no-print">${notice}</div>`:''}`:'<div class="notice">There is not enough linked family information to draw this chart.</div>';if(svg)wireSvgClicks(container)}
 function chart(){const s=selected.chart;if(!s){chartOutput.innerHTML='<p class="muted">Select a starting person first.</p>';return}const type=chartType.value,depth=Math.max(1,Math.min(30,Number(chartDepth.value)||1));const mapType=type==='ancestors'?'ancestors':type==='descendants'?'descendants':type==='hourglass'?'hourglass':type==='bloodline'?'bloodline':type==='siblings'?'siblings':'family';renderChartOutput(chartOutput,buildTreeSvg(s,mapType,depth), 'Click any person box to open that person. Use Print chart for a clean printable version.')}
@@ -324,44 +265,17 @@ function exportBranchJSON(){const id=selected.toolTimeline||selected.matrix||sel
 function exportBranchCSV(){const id=selected.toolTimeline||selected.matrix||selected.compareA||selected.detail;if(!id){alert('Select a person in Research & Tools first.');return}const ids=branchIds(id,30),rows=[['ID','Name','Gender','Birth','Death','Places','Sources']];for(const i of ids){const p=person(i);if(p)rows.push([p.id,p.name,p.gender,p.birth,p.death,p.places,p.sources])}const csv=rows.map(r=>r.map(v=>'"'+String(v||'').replaceAll('"','""')+'"').join(',')).join('\n');download('fleury-selected-branch.csv',csv,'text/csv')}
 function printPersonProfile(id){const p=person(id);if(!p)return;const pars=[...(parentMap.get(id)||[])],kids=[...(childMap.get(id)||[])],sps=[...(spouseMap.get(id)||[])];const w=window.open('','_blank');if(!w){alert('Please allow pop-ups for the person profile printout.');return}w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(nm(p))}</title><style>body{font:15px Arial;margin:35px;color:#182230}h1{border-bottom:2px solid #2f5fa8;padding-bottom:8px}section{margin:18px 0}li{margin:5px 0}.muted{color:#667085}</style></head><body><h1>${esc(nm(p))}</h1><p class="muted">Person ID: ${esc(p.id)}</p><section><b>Birth:</b> ${esc(p.birth||'Not recorded')}<br><b>Death:</b> ${esc(p.death||'Not recorded')}<br><b>Places:</b> ${esc(p.places||'Not recorded')}<br><b>Sources:</b> ${esc(p.sources||'Not recorded')}</section><section><h2>Parents</h2><ul>${pars.map(x=>`<li>${esc(nm(person(x)))}</li>`).join('')||'<li>None recorded</li>'}</ul><h2>Spouses / partners</h2><ul>${sps.map(x=>`<li>${esc(nm(person(x)))}</li>`).join('')||'<li>None recorded</li>'}</ul><h2>Children</h2><ul>${kids.map(x=>`<li>${esc(nm(person(x)))}</li>`).join('')||'<li>None recorded</li>'}</ul></section><section><h2>Notes</h2><p>${esc(p.notes||'None recorded')}</p></section><script>window.onload=()=>setTimeout(()=>window.print(),250)<\/script></body></html>`);w.document.close()}
 function renderToolHealth(){const ps=allPeople();const broken=db.relationships.filter(r=>!person(r.a)||!person(r.b)).length;const dupIds=ps.length-new Set(ps.map(p=>p.id)).size;const noRel=ps.filter(p=>(relByPerson.get(p.id)||[]).length===0).length;toolHealth.innerHTML=`<div class="kpi"><b>People</b><h2>${ps.length.toLocaleString()}</h2></div><div class="kpi"><b>Relationships</b><h2>${db.relationships.length.toLocaleString()}</h2></div><div class="kpi"><b>Broken links</b><h2 class="${broken?'bad':'ok'}">${broken.toLocaleString()}</h2></div><div class="kpi"><b>Duplicate IDs</b><h2 class="${dupIds?'bad':'ok'}">${dupIds.toLocaleString()}</h2></div><div class="kpi"><b>Unconnected people</b><h2>${noRel.toLocaleString()}</h2></div>`}
-async function renderAccessRequests(){
-  if(currentRole!=='admin')return;
-  try{
-    const data=await window.archiveApi.listAccessRequests();
-    const items=data.requests||[];
-    pendingAccessBadge.textContent=items.filter(x=>x.status==='pending').length+' pending';
-    accessRequestsOutput.innerHTML=items.length?items.map(x=>`<div class="card"><div class="section-title"><b>${esc(x.name||'Unnamed')} — ${esc(x.email)}</b><span class="badge">${esc(x.status)}</span></div><p>${esc(x.reason||'No reason supplied')}</p><div class="small muted">Requested ${esc(String(x.created_at||'').replace('T',' ').slice(0,19))}</div>${x.status==='pending'?'<div class="form-actions"><button class="primary" data-approve-request="'+esc(x.id)+'">Approve</button><button class="danger" data-reject-request="'+esc(x.id)+'">Reject</button></div>':''}</div>`).join(''):'<p class="muted">No access requests.</p>';
-    accessRequestsOutput.querySelectorAll('[data-approve-request]').forEach(b=>b.onclick=()=>reviewAccess(b.dataset.approveRequest,'approve'));
-    accessRequestsOutput.querySelectorAll('[data-reject-request]').forEach(b=>b.onclick=()=>reviewAccess(b.dataset.rejectRequest,'reject'));
-  }catch(e){accessRequestsOutput.innerHTML='<p class="bad">'+esc(e.message||e)+'</p>'}
-}
-async function reviewAccess(id,decision){
-  try{await window.archiveApi.reviewAccessRequest(id,decision);await renderAccessRequests();await renderAdminUsers()}catch(e){alert('Access review failed: '+(e.message||e))}
-}
-async function renderAdminUsers(){
-  if(currentRole!=='admin')return;
-  try{
-    const data=await window.archiveApi.listUsers();
-    adminUsersOutput.innerHTML=table(['Email','Role','Person ID'],(data.users||[]).map(u=>[esc(u.email),esc(u.role),esc(u.personId||'')]));
-  }catch(e){adminUsersOutput.innerHTML='<p class="bad">'+esc(e.message||e)+'</p>'}
-}
-async function submitAccessRequest(){
-  const name=accessName.value.trim(),email=accessEmail.value.trim(),reason=accessReason.value.trim();
-  if(!name||!email){accessRequestStatus.innerHTML='<p class="bad">Please enter your name and email.</p>';return}
-  const b=document.getElementById('accessRequestBtn');b.disabled=true;
-  try{
-    const r=await window.archiveApi.requestAccess(name,email,reason);
-    accessRequestStatus.innerHTML='<p class="ok"><b>Request submitted.</b> Your request is now waiting for administrator approval.</p>';
-    accessReason.value='';
-  }catch(e){accessRequestStatus.innerHTML='<p class="bad">Request failed: '+esc(e.message||e)+'</p>'}finally{b.disabled=false}
-}
-function goTab(id){document.querySelectorAll('.view').forEach(x=>x.classList.toggle('active',x.id===id));document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('active',x.dataset.tab===id));if(id==='statistics')statsAnalysis();if(id==='places')placesExplore();if(id==='sources')sourcesExplore();if(id==='quality')quality();if(id==='tools'){renderResearch();renderToolHealth()}if(id==='admin'){renderAccessRequests();renderAdminUsers()}
+async function renderAccessRequests(){if(currentRole!=='admin')return;try{const data=await window.archiveApi.listAccessRequests(),items=data.requests||[];pendingAccessBadge.textContent=items.filter(x=>x.status==='pending').length+' pending';accessRequestsOutput.innerHTML=items.length?items.map(x=>'<div class="card"><div class="section-title"><b>'+esc(x.name||'Unnamed')+' — '+esc(x.email)+'</b><span class="badge">'+esc(x.status)+'</span></div><p>'+esc(x.reason||'No reason supplied')+'</p><div class="small muted">Requested '+esc(String(x.created_at||'').replace('T',' ').slice(0,19))+'</div>'+(x.status==='pending'?'<div class="form-actions"><button class="primary" data-approve-request="'+esc(x.id)+'">Approve</button><button class="danger" data-reject-request="'+esc(x.id)+'">Reject</button></div>':'')+'</div>').join(''):'<p class="muted">No access requests.</p>';accessRequestsOutput.querySelectorAll('[data-approve-request]').forEach(b=>b.onclick=()=>reviewAccess(b.dataset.approveRequest,'approve'));accessRequestsOutput.querySelectorAll('[data-reject-request]').forEach(b=>b.onclick=()=>reviewAccess(b.dataset.rejectRequest,'reject'))}catch(e){accessRequestsOutput.innerHTML='<p class="bad">'+esc(e.message||e)+'</p>'}}
+async function reviewAccess(id,decision){try{await window.archiveApi.reviewAccessRequest(id,decision);await renderAccessRequests();await renderAdminUsers()}catch(e){alert('Access review failed: '+(e.message||e))}}
+async function renderAdminUsers(){if(currentRole!=='admin')return;try{const data=await window.archiveApi.listUsers();adminUsersOutput.innerHTML=table(['Email','Role','Person ID'],(data.users||[]).map(u=>[esc(u.email),esc(u.role),esc(u.personId||'')]))}catch(e){adminUsersOutput.innerHTML='<p class="bad">'+esc(e.message||e)+'</p>'}}
+async function submitAccessRequest(){const name=accessName.value.trim(),email=accessEmail.value.trim(),reason=accessReason.value.trim();if(!name||!email){accessRequestStatus.innerHTML='<p class="bad">Please enter your name and email.</p>';return}const b=document.getElementById('accessRequestBtn');b.disabled=true;try{await window.archiveApi.requestAccess(name,email,reason);accessRequestStatus.innerHTML='<p class="ok"><b>Request submitted.</b> Your request is now waiting for administrator approval.</p>';accessReason.value=''}catch(e){accessRequestStatus.innerHTML='<p class="bad">Request failed: '+esc(e.message||e)+'</p>'}finally{b.disabled=false}}
+function goTab(id){document.querySelectorAll('.view').forEach(x=>x.classList.toggle('active',x.id===id));document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('active',x.dataset.tab===id));if(id==='statistics')statsAnalysis();if(id==='places')placesExplore();if(id==='sources')sourcesExplore();if(id==='quality')quality();if(id==='tools'){renderResearch();renderToolHealth()}if(id==='admin'){renderAccessRequests();renderAdminUsers()}}
 window.goTab=goTab;window.renderPeople=renderPeople;window.chart=chart;window.wall=wall;window.page=page;window.selected=selected;
 const tabs=[['access','Request Access'],['explore','Explore'],['people','People'],['relationships','Relationships'],['charts','Charts'],['wallcharts','Wall Charts'],['reports','Reports'],['statistics','Statistics'],['places','Places'],['sources','Sources'],['tools','Research & Tools'],['quality','Data Quality'],['admin','Admin'],['help','Help']];nav.innerHTML=tabs.map(x=>`<button data-tab="${x[0]}">${x[1]}</button>`).join('');nav.querySelectorAll('button').forEach(b=>b.onclick=()=>goTab(b.dataset.tab));
-peopleEvidence.value='';peopleLinks.value='';peopleDecade.innerHTML+=[...new Set(allPeople().map(p=>year(p.birth)).filter(Boolean).map(y=>Math.floor(y/10)*10))].sort((a,b)=>a-b).map(y=>`<option value="${y}">${y}s</option>`).join('');
+peopleDecade.innerHTML+=[...new Set(allPeople().map(p=>year(p.birth)).filter(Boolean).map(y=>Math.floor(y/10)*10))].sort((a,b)=>a-b).map(y=>`<option value="${y}">${y}s</option>`).join('');
 wirePicker(relA,relAMatches,i=>{selected.a=i;relA.value=nm(person(i))});wirePicker(relB,relBMatches,i=>{selected.b=i;relB.value=nm(person(i))});wirePicker(chartPerson,chartMatches,i=>{selected.chart=i;chartPerson.value=nm(person(i))});wirePicker(wallPerson,wallMatches,i=>{selected.wall=i;wallPerson.value=nm(person(i))});wirePicker(reportPerson,reportPersonMatches,i=>{selected.reportPerson=i;reportPerson.value=nm(person(i))});wirePicker(editPerson,editMatches,i=>{selected.edit=i;editPerson.value=nm(person(i));loadEdit(i)});wirePicker(compareA,compareAMatches,i=>{selected.compareA=i;compareA.value=nm(person(i))});wirePicker(compareB,compareBMatches,i=>{selected.compareB=i;compareB.value=nm(person(i))});wirePicker(toolTimelinePerson,toolTimelineMatches,i=>{selected.toolTimeline=i;toolTimelinePerson.value=nm(person(i))});wirePicker(matrixPerson,matrixMatches,i=>{selected.matrix=i;matrixPerson.value=nm(person(i))});
 globalSearch.oninput=()=>{const q=globalSearch.value.trim();if(!q){exploreResults.innerHTML='';return}const ms=search(q,100);exploreResults.innerHTML=ms.map(p=>`<div class="card"><h3>${link(p.id)}</h3><div>${esc(p.birth||'')} ${p.death?'– '+esc(p.death):''}</div><div class="small muted">${esc(p.places||'')} • ${esc(p.id)}</div></div>`).join('')||'<div class="card">No matches.</div>'};
-peopleSearch.oninput=()=>{page=0;renderPeople()};peopleGender.onchange=()=>{page=0;renderPeople()};peopleDecade.onchange=()=>{page=0;renderPeople()};peopleSort.onchange=()=>{page=0;renderPeople()};peopleEvidence.onchange=()=>{page=0;renderPeople()};peopleLinks.onchange=()=>{page=0;renderPeople()};findRel.onclick=relFinder;reportBtn.onclick=report;csvReport.onclick=csvExport;htmlReport.onclick=htmlExport;printReport.onclick=()=>printView('reports');chartBtn.onclick=chart;printChart.onclick=()=>{setPrintPaper('A4');printView('charts')};downloadJpeg.onclick=()=>exportChartRaster('jpeg',false);downloadPng.onclick=()=>exportChartRaster('png',false);downloadSvg.onclick=()=>download('fleury-family-chart.svg',lastSvg,'image/svg+xml');downloadPdf.onclick=()=>exportChartPdf(false);wallBtn.onclick=wall;printWall.onclick=()=>{setPrintPaper(wallPaper.value);printView('wallcharts')};wallPaper.onchange=()=>{if(selected.wall)wall()};downloadWallJpeg.onclick=()=>exportChartRaster('jpeg',true);downloadWallPng.onclick=()=>exportChartRaster('png',true);downloadWallSvg.onclick=()=>download('fleury-wall-chart.svg',lastSvg,'image/svg+xml');downloadWallPdf.onclick=()=>exportChartPdf(true);placeSearch.oninput=placesExplore;placeMode.onchange=placesExplore;compareBtn.onclick=comparePeople;compareSwap.onclick=()=>{const a=selected.compareA,b=selected.compareB;selected.compareA=b;selected.compareB=a;compareA.value=b?nm(person(b)):'';compareB.value=a?nm(person(a)):''};timelineBtn.onclick=timelineTool;matrixBtn.onclick=matrixTool;addResearchBtn.onclick=()=>{const id=selected.toolTimeline||selected.matrix||selected.compareA||selected.detail;if(!id){alert('Select a person first.');return}const o=researchLoad();o.items=o.items||[];const old=o.items.find(x=>x.id===id);const note=researchNote.value.trim();if(old)old.note=note||old.note||'';else o.items.push({id,note,added:new Date().toISOString()});researchNote.value='';researchSave(o)};clearResearchBtn.onclick=()=>{if(confirm('Clear the private research list?')){localStorage.removeItem('fleuryResearchV1');renderResearch()}};gedcomBtn.onclick=()=>exportGedcom(false);branchGedcomBtn.onclick=()=>exportGedcom(true);branchJsonBtn.onclick=exportBranchJSON;branchCsvBtn.onclick=exportBranchCSV;refreshHealth.onclick=renderToolHealth;openQuality.onclick=()=>goTab('quality');accessRequestBtn.onclick=submitAccessRequest;
+peopleSearch.oninput=()=>{page=0;renderPeople()};peopleGender.onchange=()=>{page=0;renderPeople()};peopleDecade.onchange=()=>{page=0;renderPeople()};peopleSort.onchange=()=>{page=0;renderPeople()};findRel.onclick=relFinder;reportBtn.onclick=report;csvReport.onclick=csvExport;htmlReport.onclick=htmlExport;printReport.onclick=()=>printView('reports');chartBtn.onclick=chart;printChart.onclick=()=>{setPrintPaper('A4');printView('charts')};downloadJpeg.onclick=()=>exportChartRaster('jpeg',false);downloadPng.onclick=()=>exportChartRaster('png',false);downloadSvg.onclick=()=>download('fleury-family-chart.svg',lastSvg,'image/svg+xml');downloadPdf.onclick=()=>exportChartPdf(false);wallBtn.onclick=wall;printWall.onclick=()=>{setPrintPaper(wallPaper.value);printView('wallcharts')};wallPaper.onchange=()=>{if(selected.wall)wall()};downloadWallJpeg.onclick=()=>exportChartRaster('jpeg',true);downloadWallPng.onclick=()=>exportChartRaster('png',true);downloadWallSvg.onclick=()=>download('fleury-wall-chart.svg',lastSvg,'image/svg+xml');downloadWallPdf.onclick=()=>exportChartPdf(true);placeSearch.oninput=placesExplore;placeMode.onchange=placesExplore;compareBtn.onclick=comparePeople;compareSwap.onclick=()=>{const a=selected.compareA,b=selected.compareB;selected.compareA=b;selected.compareB=a;compareA.value=b?nm(person(b)):'';compareB.value=a?nm(person(a)):''};timelineBtn.onclick=timelineTool;matrixBtn.onclick=matrixTool;addResearchBtn.onclick=()=>{const id=selected.toolTimeline||selected.matrix||selected.compareA||selected.detail;if(!id){alert('Select a person first.');return}const o=researchLoad();o.items=o.items||[];const old=o.items.find(x=>x.id===id);const note=researchNote.value.trim();if(old)old.note=note||old.note||'';else o.items.push({id,note,added:new Date().toISOString()});researchNote.value='';researchSave(o)};clearResearchBtn.onclick=()=>{if(confirm('Clear the private research list?')){localStorage.removeItem('fleuryResearchV1');renderResearch()}};gedcomBtn.onclick=()=>exportGedcom(false);branchGedcomBtn.onclick=()=>exportGedcom(true);branchJsonBtn.onclick=exportBranchJSON;branchCsvBtn.onclick=exportBranchCSV;refreshHealth.onclick=renderToolHealth;openQuality.onclick=()=>goTab('quality');accessRequestBtn.onclick=submitAccessRequest;
 function printView(id){document.querySelectorAll('.view').forEach(x=>x.classList.remove('printing'));document.getElementById(id).classList.add('printing');window.print();setTimeout(()=>document.getElementById(id).classList.remove('printing'),500)}
 function downloadBackup(){download('fleury-family-tree-backup.json',JSON.stringify({version:2,exported:new Date().toISOString(),...db},null,2),'application/json')}
 backupBtn.onclick=downloadBackup;resetBtn.onclick=async()=>{if(confirm('Reset this browser to the original workbook data? Local edits will be lost in this browser.')){try{const d=await openDB();await new Promise((res,rej)=>{const t=d.transaction(STORE,'readwrite');t.objectStore(STORE).delete('current');t.oncomplete=res;t.onerror=()=>rej(t.error)})}catch(e){}location.reload()}};importBtn.onclick=()=>importFile.click();importFile.onchange=async()=>{const f=importFile.files[0];if(!f)return;try{const o=JSON.parse(await f.text());if(!Array.isArray(o.people)||!Array.isArray(o.relationships))throw Error('Not a Fleury backup');db={people:o.people,relationships:o.relationships,meta:o.meta||{}};reindex();await persist();location.reload()}catch(e){alert('Restore failed: '+e.message)}};
@@ -409,12 +323,7 @@ async function loadOnlineArchive(){
   authStatus.textContent='Signed in as '+(currentUser.name||currentUser.email||'signed-in user');
   accessName.value=currentUser.name||currentUser.nickname||'';
   accessEmail.value=currentUser.email||'';
-  try{currentRole=await window.archiveApi.getMyRole();}catch(e){
-    currentRole=null;
-    goTab('access');
-    accessRequestStatus.innerHTML='<p class="notice">You are signed in but are not yet approved. Submit an access request below. No family data has been loaded.</p>';
-    return false;
-  }
+  try{currentRole=await window.archiveApi.getMyRole()}catch(e){currentRole=null;goTab('access');accessRequestStatus.innerHTML='<p class="notice">You are signed in but are not yet approved. No family data has been loaded. Submit an access request below.</p>';return false}
   const remote=await window.archiveApi.loadDatabase();
   db={
     people:(remote.people||[]).map(p=>({
