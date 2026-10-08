@@ -187,8 +187,3 @@ window.archiveApi={
   initAuth,signInWithEmail,signOutUser,getMyRole,
   loadDatabase,saveDatabase,savePerson,deletePerson,listUsers,updateUser,savePersonMapping
 };
-
-export {
-  initAuth,signInWithEmail,signOutUser,getMyRole,
-  loadDatabase,saveDatabase,savePerson,deletePerson,savePersonMapping
-};
