@@ -210,7 +210,19 @@ async function savePersonMapping(email,personId){
   });
 }
 
+
+async function restoreArchiveFromWorkbook(data,onProgress){
+  if(!data||!Array.isArray(data.people)||!Array.isArray(data.relationships)) throw new Error('Invalid master workbook data.');
+  if(data.people.length!==17972||data.relationships.length!==30079) throw new Error('Master workbook must contain exactly 17,972 people and 30,079 relationships.');
+  await api('/api/archive/import/start',{method:'POST',body:JSON.stringify({})});
+  const send=async(kind,rows)=>{for(let i=0;i<rows.length;i+=200){await api('/api/archive/import/batch',{method:'POST',body:JSON.stringify({kind,rows:rows.slice(i,i+200)})});if(onProgress)onProgress(kind,Math.min(i+200,rows.length),rows.length);}};
+  await send('people',data.people); await send('relationships',data.relationships); await send('meta',data.meta||[]);
+  const result=await api('/api/archive/import/finish',{method:'POST',body:JSON.stringify({})});
+  if(!result?.ok) throw new Error('Verification failed: '+result.people+' people, '+result.relationships+' relationships.');
+  return result;
+}
+
 window.archiveApi={
-  initAuth,signInWithEmail,signOutUser,getMyRole,
+  initAuth,signInWithEmail,signOutUser,getMyRole,restoreArchiveFromWorkbook,
   loadDatabase,saveDatabase,savePerson,deletePerson,listUsers,updateUser,savePersonMapping
 };
