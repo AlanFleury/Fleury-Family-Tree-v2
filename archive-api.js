@@ -189,7 +189,9 @@ async function deletePerson(personId){
   });
 }
 
-async function startGmailOAuth(){const data=await api('/api/gmail/start');if(!data?.url)throw new Error('Gmail OAuth setup URL was not returned.');location.href=data.url;}\n\nasync function requestAccess(name,email,reason=''){
+async function startGmailOAuth(){const data=await api('/api/gmail/start');if(!data?.url)throw new Error('Gmail OAuth setup URL was not returned.');location.href=data.url;}
+
+async function requestAccess(name,email,reason=''){
   const n=String(name||'').trim(),e=String(email||'').trim();
   if(!n||!e) throw new Error('Name and email are required.');
   return api('/api/access-request',{method:'POST',body:JSON.stringify({name:n,email:e,reason:String(reason||'').trim()})});
