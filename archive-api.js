@@ -120,14 +120,14 @@ async function getMyRole(){
 
 /*
   The old /api/archive response was returning only 13,000 people and
-  no relationships in the browser. The rebuilt loader deliberately
-  reads the archive in small pages so no single D1/Worker response
-  has to contain the whole archive.
+  no relationships in the browser. The rebuilt loader reads the archive
+  in smaller pages so no single D1/Worker response has to contain too
+  much data.
 */
 async function loadDatabase(){
   const people=[];
   const relationships=[];
-  const PAGE_SIZE=5000;
+  const PAGE_SIZE=2000;
 
   for(let offset=0;;offset+=PAGE_SIZE){
     const page=await api(
