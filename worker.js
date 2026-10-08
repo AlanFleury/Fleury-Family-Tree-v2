@@ -139,6 +139,30 @@ function mapPerson(r){
   return x;
 }
 
+
+async function ensureAccessRequestsTable(env){
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS access_requests(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    auth_sub TEXT,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    reason TEXT,
+    status TEXT NOT NULL DEFAULT 'pending',
+    created_at TEXT NOT NULL,
+    reviewed_at TEXT,
+    reviewed_by TEXT
+  )`).run();
+}
+
+async function verifiedProfile(token){
+  const response=await fetch(`https://${AUTH0_DOMAIN}/userinfo`,{headers:{Authorization:`Bearer ${token}`}});
+  if(!response.ok) throw new Error("Unable to verify the signed-in account");
+  const profile=await response.json();
+  const email=String(profile?.email||"").trim().toLowerCase();
+  if(!email||profile?.email_verified!==true) throw new Error("A verified email address is required");
+  return {profile,email,sub:String(profile?.sub||"")};
+}
+
 async function archivePage(env,table,offset,limit){
   const safeOffset=Math.max(0,Number.isFinite(offset)?Math.floor(offset):0);
   const safeLimit=Math.min(5000,Math.max(1,Number.isFinite(limit)?Math.floor(limit):5000));
@@ -203,7 +227,60 @@ export default {
       const url=new URL(request.url);
 
       if(url.pathname==="/health")
-        return withCors(json({ok:true,version:"cors-deploy-2026-10-08"},200,env,origin));
+        return withCors(json({ok:true,version:"full-10x-2026-10-08"},200,env,origin));
+
+
+      // Access requests are deliberately handled before archive authorization.
+      // A signed-in but unapproved person may request access without receiving any family data.
+      if(url.pathname==="/api/access-request" && request.method==="POST"){
+        const h=request.headers.get("Authorization")||"";
+        if(!h.startsWith("Bearer ")) return json({error:"Sign in before requesting access"},401,env,origin);
+        const token=h.slice(7);
+        const payload=await verifyJwt(token,env);
+        const identity=await verifiedProfile(token);
+        if(payload.sub && identity.sub && payload.sub!==identity.sub)
+          return json({error:"Authenticated identity mismatch"},401,env,origin);
+        const x=await request.json();
+        const name=String(x?.name||"").trim().slice(0,160);
+        const email=identity.email;
+        const reason=String(x?.reason||"").trim().slice(0,4000);
+        if(!name) return json({error:"Name is required"},400,env,origin);
+        await ensureAccessRequestsTable(env);
+        const existing=await env.DB.prepare(
+          "SELECT id,status FROM access_requests WHERE lower(email)=lower(?) AND status='pending' ORDER BY id DESC LIMIT 1"
+        ).bind(email).first();
+        if(existing) return json({ok:true,alreadyPending:true,id:existing.id,emailSent:false},200,env,origin);
+        const createdAt=new Date().toISOString();
+        const ins=await env.DB.prepare(
+          "INSERT INTO access_requests(auth_sub,name,email,reason,status,created_at) VALUES(?,?,?,?, 'pending',?)"
+        ).bind(identity.sub,name,email,reason,createdAt).run();
+        const id=ins.meta?.last_row_id||null;
+        let emailSent=false;
+        if(env.EMAIL && env.EMAIL_FROM){
+          try{
+            const subject="Fleury Family Tree — Access Approval Request";
+            const text=[
+              "Hello Alan,",
+              "",
+              "A new person has requested access to the Fleury Family Tree private archive.",
+              "",
+              "Name: "+name,
+              "Email: "+email,
+              "Date/time: "+createdAt,
+              "",
+              "Reason for requesting access:",
+              reason||"(No reason supplied)",
+              "",
+              "Please review the request in the Admin section of the Fleury Family Tree and approve or reject the account as appropriate.",
+              "",
+              "Fleury Family Tree — Private Archive"
+            ].join("\n");
+            await env.EMAIL.send({to:"alanfleury1@gmail.com",from:String(env.EMAIL_FROM),subject,text});
+            emailSent=true;
+          }catch(e){console.error("Access request email failed:",e?.message||e)}
+        }
+        return json({ok:true,id,emailSent,emailConfigured:Boolean(env.EMAIL&&env.EMAIL_FROM)},200,env,origin);
+      }
 
       const u=await auth(request,env);
 
@@ -215,6 +292,51 @@ export default {
         const offset=Number(url.searchParams.get("offset")||"0");
         const limit=Number(url.searchParams.get("limit")||"5000");
         return json(await archivePage(env,table,offset,limit),200,env);
+      }
+
+
+      if(url.pathname==="/api/access-requests" && request.method==="GET"){
+        if(u.role!=="admin") return json({error:"Admin access required"},403,env,origin);
+        await ensureAccessRequestsTable(env);
+        const result=await env.DB.prepare(
+          "SELECT id,name,email,reason,status,created_at,reviewed_at,reviewed_by FROM access_requests ORDER BY CASE WHEN status='pending' THEN 0 ELSE 1 END, id DESC LIMIT 200"
+        ).all();
+        return json({requests:result.results},200,env,origin);
+      }
+
+      if(url.pathname==="/api/access-requests" && request.method==="PUT"){
+        if(u.role!=="admin") return json({error:"Admin access required"},403,env,origin);
+        await ensureAccessRequestsTable(env);
+        const x=await request.json();
+        const id=Number(x?.id);
+        const decision=String(x?.decision||"").toLowerCase();
+        if(!Number.isInteger(id)||!["approve","reject"].includes(decision))
+          return json({error:"Invalid access request decision"},400,env,origin);
+        const req=await env.DB.prepare(
+          "SELECT id,auth_sub,name,email,status FROM access_requests WHERE id=?"
+        ).bind(id).first();
+        if(!req) return json({error:"Access request not found"},404,env,origin);
+        if(req.status!=="pending") return json({ok:true,status:req.status},200,env,origin);
+        const now=new Date().toISOString();
+        if(decision==="approve"){
+          if(!req.auth_sub) return json({error:"This request has no verified sign-in identity; ask the applicant to sign in again and resubmit."},400,env,origin);
+          const existing=await env.DB.prepare(
+            "SELECT auth_sub FROM users WHERE lower(email)=lower(?)"
+          ).bind(req.email).first();
+          if(existing){
+            await env.DB.prepare(
+              "UPDATE users SET auth_sub=?, role=CASE WHEN role='admin' THEN role ELSE 'viewer' END WHERE lower(email)=lower(?)"
+            ).bind(req.auth_sub,req.email).run();
+          }else{
+            await env.DB.prepare(
+              "INSERT INTO users(auth_sub,email,role) VALUES(?,?,?)"
+            ).bind(req.auth_sub,req.email,"viewer").run();
+          }
+        }
+        await env.DB.prepare(
+          "UPDATE access_requests SET status=?,reviewed_at=?,reviewed_by=? WHERE id=?"
+        ).bind(decision==="approve"?"approved":"rejected",now,u.email||u.sub,id).run();
+        return json({ok:true,id,status:decision==="approve"?"approved":"rejected"},200,env,origin);
       }
 
       if(url.pathname==="/api/users" && request.method==="GET"){

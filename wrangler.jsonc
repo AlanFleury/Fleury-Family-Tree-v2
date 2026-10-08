@@ -8,6 +8,12 @@
       "database_name": "fleury-family",
       "database_id": "bfcb1511-4d2a-4869-81d7-7c8689b63886"
     }
+  ],
+  "send_email": [
+    {
+      "name": "EMAIL",
+      "destination_address": "alanfleury1@gmail.com"
+    }
   ]
 }
 
