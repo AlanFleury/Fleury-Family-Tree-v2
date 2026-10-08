@@ -85,9 +85,43 @@ async function auth(request,env){
   const sub=String(payload.sub||"");
   if(!sub) throw new Error("Invalid subject");
 
-  const row=await env.DB.prepare(
+  let row=await env.DB.prepare(
     "SELECT role, person_id AS personId, email FROM users WHERE auth_sub=?"
   ).bind(sub).first();
+
+  // One-time bootstrap for the archive owner. The email is accepted only
+  // when Auth0's /userinfo endpoint confirms the authenticated identity.
+  if(!row){
+    const userinfoResponse=await fetch(`https://${AUTH0_DOMAIN}/userinfo`,{
+      headers:{Authorization:`Bearer ${token}`}
+    });
+
+    if(userinfoResponse.ok){
+      const profile=await userinfoResponse.json();
+      const email=String(profile?.email||"").trim().toLowerCase();
+      const verified=profile?.email_verified===true;
+
+      if(verified && email==="alanfleury1@gmail.com"){
+        const existing=await env.DB.prepare(
+          "SELECT auth_sub FROM users WHERE lower(email)=lower(?)"
+        ).bind(email).first();
+
+        if(existing){
+          await env.DB.prepare(
+            "UPDATE users SET auth_sub=?, role='admin' WHERE lower(email)=lower(?)"
+          ).bind(sub,email).run();
+        }else{
+          await env.DB.prepare(
+            "INSERT INTO users(auth_sub,email,role) VALUES(?,?,?)"
+          ).bind(sub,email,"admin").run();
+        }
+
+        row=await env.DB.prepare(
+          "SELECT role, person_id AS personId, email FROM users WHERE auth_sub=?"
+        ).bind(sub).first();
+      }
+    }
+  }
 
   if(!row) throw new Error("Account is not approved for the family archive");
   return {...row,sub};
