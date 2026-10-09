@@ -190,6 +190,7 @@ async function deletePerson(personId){
 }
 
 async function startGmailOAuth(){const data=await api('/api/gmail/start');if(!data?.url)throw new Error('Gmail OAuth setup URL was not returned.');location.href=data.url;}
+async function testGmailNotification(){return api('/api/gmail/test',{method:'POST',body:JSON.stringify({})});}
 
 async function requestAccess(name,email,reason=''){
   const n=String(name||'').trim(),e=String(email||'').trim();
@@ -235,7 +236,7 @@ async function restoreArchiveFromWorkbook(data,onProgress){
 }
 
 window.archiveApi={
-  initAuth,signInWithEmail,signOutUser,getMyRole,startGmailOAuth,restoreArchiveFromWorkbook,
+  initAuth,signInWithEmail,signOutUser,getMyRole,startGmailOAuth,testGmailNotification,restoreArchiveFromWorkbook,
   loadDatabase,saveDatabase,savePerson,deletePerson,requestAccess,listAccessRequests,reviewAccessRequest,
   listUsers,updateUser,savePersonMapping
 };
