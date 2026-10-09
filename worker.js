@@ -521,7 +521,7 @@ export default {
                 id,p.Name||"",p.Gender||"",p.Birth||"",p.Death||"",
                 p["Relationship to Alan"]||"",p["Evidence Status"]||"",
                 p["Source IDs"]||"",p.Notes||"",p.Places||"",
-                String(p["JSON Extra"]??p.json_extra??"")
+                String(p["JSON Extra"]??p.json_extra??JSON.stringify(p))
               ),
             env.DB.prepare(`DELETE FROM relationships
               WHERE (person1=? OR person2=?)
