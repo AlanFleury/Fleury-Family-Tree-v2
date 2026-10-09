@@ -494,6 +494,7 @@ export default {
             String(merged["Source IDs"]??merged.source_ids??""),String(merged.Notes??merged.notes??""),String(merged.Places??merged.places??""),
             String(merged["JSON Extra"]??merged.json_extra??""),keeperId));
           writes.push(env.DB.prepare("DELETE FROM people WHERE person_id=?").bind(duplicateId));
+          writes.push(env.DB.prepare("UPDATE person_id_aliases SET canonical_person_id=? WHERE canonical_person_id=?").bind(keeperId,duplicateId));
           writes.push(env.DB.prepare("INSERT INTO person_id_aliases(old_person_id,canonical_person_id,merged_at,merged_by,details) VALUES(?,?,?,?,?)").bind(duplicateId,keeperId,new Date().toISOString(),String(u.email||u.sub||"admin"),details));
           await env.DB.batch(writes);
           return json({ok:true,keeperId,mergedId:duplicateId,relationshipsRedirected:mapped.size,aliasSaved:true},200,env);
