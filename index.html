@@ -58,6 +58,15 @@ h1,h2,h3{font-family:Georgia,'Times New Roman',serif}h2,h3{color:#643e25}
 .tree-scroll,.tree-svg{background-color:#f3e4c6}
 input,select,textarea{background:#fff9e9}
 @media print{body{background:#fff!important}.view.active,.view.printing{box-shadow:none!important}.view .panel{box-shadow:none!important}}
+
+/* Fleury heritage parchment-scroll finish: responsive and text-first */
+body{background:radial-gradient(ellipse at 50% 18%,#fbf1db 0%,#ead7b2 67%,#c8a477 100%);color:#342517}
+header{background:linear-gradient(180deg,#38271a,#21170f);border-bottom:3px solid #ad8247}
+.view.active{background:linear-gradient(90deg,rgba(111,67,25,.12),transparent 5%,transparent 95%,rgba(111,67,25,.12)),radial-gradient(ellipse at center,#fff7e3 8%,#f0ddba 77%,#d9ba8d 100%);border:1px solid #b18a55;border-top:6px solid var(--tab-accent);box-shadow:inset 0 0 35px rgba(104,64,29,.13),0 8px 22px rgba(70,41,17,.15);border-radius:15px 15px 19px 19px}
+.panel,.card{background:rgba(255,249,233,.9);border-color:#c7a574;box-shadow:0 2px 8px rgba(83,52,23,.08)}
+h1,h2,h3{font-family:Georgia,'Times New Roman',serif}
+nav button{border-color:rgba(218,181,117,.48)}
+@media(max-width:700px){.view.active{padding:8px;border-radius:9px;box-shadow:inset 0 0 16px rgba(104,64,29,.11)}}
 </style></head><body>
 <header><div class="head"><div><h1>Fleury Family Tree — Ultimate Edition</h1><div class="sub">Private online family archive • 17,972 people • 30,079 recorded relationships • no subscription required</div></div><div class="toolbar"><span id="authStatus" class="small"></span><button id="signInBtn">Sign in</button><button id="signOutBtn" class="hidden">Sign out</button><button id="backupBtn">Backup</button><button id="importBtn">Restore backup</button><input id="importFile" type="file" accept="application/json" class="hidden"><button id="resetBtn">Reset local edits</button></div></div><nav id="nav"></nav></header>
 <main>
