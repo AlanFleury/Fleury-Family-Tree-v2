@@ -159,11 +159,11 @@ async function savePerson(person,relationships,expected=null){
 }
 
 /* Person deletion optionally checks the staged baseline before deleting. */
-async function deletePerson(personId,expectedPerson=null){
+async function deletePerson(personId,expected=null){
   if(!personId) throw new Error('A person ID is required.');
   return api('/api/person',{
     method:'DELETE',
-    body:JSON.stringify({personId:String(personId),expectedPerson})
+    body:JSON.stringify({personId:String(personId),expected})
   });
 }
 
