@@ -199,7 +199,7 @@ async function archivePage(env,table,offset,limit){
 
   if(table==="people"){
     const result=await env.DB.prepare(
-      "SELECT * FROM people ORDER BY name COLLATE NOCASE, person_id LIMIT ? OFFSET ?"
+      "SELECT * FROM people LIMIT ? OFFSET ?"
     ).bind(safeLimit,safeOffset).all();
     return {people:result.results.map(mapPerson),offset:safeOffset,limit:safeLimit};
   }
