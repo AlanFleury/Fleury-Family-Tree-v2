@@ -528,12 +528,9 @@ export default {
 
       if(url.pathname==="/api/archive/import/start" && request.method==="POST"){
         if(u.role!=="admin") return json({error:"Admin access required"},403,env);
-        await env.DB.batch([
-          env.DB.prepare("DELETE FROM relationships"),
-          env.DB.prepare("DELETE FROM people"),
-          env.DB.prepare("DELETE FROM meta")
-        ]);
-        return json({ok:true,started:true},200,env);
+        // SAFE MERGE ONLY: never clear or overwrite records already in D1.
+        // Workbook rows are inserted only when their stable key is missing.
+        return json({ok:true,started:true,mode:"merge",preservesExisting:true},200,env);
       }
 
       if(url.pathname==="/api/archive/import/batch" && request.method==="POST"){
@@ -553,32 +550,28 @@ export default {
               batch.push(env.DB.prepare(`INSERT INTO people(
                 person_id,name,gender,birth,death,relationship_to_alan,
                 evidence_status,source_ids,notes,places,json_extra
-              ) VALUES(?,?,?,?,?,?,?,?,?,?,?)
-              ON CONFLICT(person_id) DO UPDATE SET
-                name=excluded.name,gender=excluded.gender,birth=excluded.birth,
-                death=excluded.death,relationship_to_alan=excluded.relationship_to_alan,
-                evidence_status=excluded.evidence_status,source_ids=excluded.source_ids,
-                notes=excluded.notes,places=excluded.places,json_extra=excluded.json_extra`
+              ) SELECT ?,?,?,?,?,?,?,?,?,?,?
+              WHERE NOT EXISTS (SELECT 1 FROM people WHERE person_id=?)`
               ).bind(
                 id,String(p.name||""),String(p.gender||""),String(p.birth||""),
                 String(p.death||""),String(p.relationship_to_alan||""),
                 String(p.evidence_status||""),String(p.source_ids||""),
-                String(p.notes||""),String(p.places||""),String(p.json_extra||"")
+                String(p.notes||""),String(p.places||""),String(p.json_extra||""),id
               ));
             }
           }else if(kind==="relationships"){
             for(const r of rows){
               if(!r?.type||!r?.person1||!r?.person2) continue;
               batch.push(env.DB.prepare(
-                "INSERT INTO relationships(type,person1,person2) VALUES(?,?,?)"
-              ).bind(String(r.type),String(r.person1),String(r.person2)));
+                "INSERT INTO relationships(type,person1,person2) SELECT ?,?,?, WHERE NOT EXISTS (SELECT 1 FROM relationships WHERE type=? AND person1=? AND person2=?)"
+              ).bind(String(r.type),String(r.person1),String(r.person2),String(r.type),String(r.person1),String(r.person2)));
             }
           }else{
             for(const m of rows){
               if(!m?.key) continue;
               batch.push(env.DB.prepare(
-                "INSERT INTO meta(key,value) VALUES(?,?)"
-              ).bind(String(m.key),String(m.value??"")));
+                "INSERT INTO meta(key,value) SELECT ?,? WHERE NOT EXISTS (SELECT 1 FROM meta WHERE key=?)"
+              ).bind(String(m.key),String(m.value??""),String(m.key)));
             }
           }
           if(batch.length) await env.DB.batch(batch);
@@ -595,7 +588,7 @@ export default {
         const relationships=await env.DB.prepare("SELECT COUNT(*) AS count FROM relationships").first();
         const meta=await env.DB.prepare("SELECT COUNT(*) AS count FROM meta").first();
         return json({
-          ok:Number(people?.count||0)===17972 && Number(relationships?.count||0)===30079,
+          ok:Number(people?.count||0)>=17972 && Number(relationships?.count||0)>=30079,
           people:Number(people?.count||0),
           relationships:Number(relationships?.count||0),
           meta:Number(meta?.count||0)
