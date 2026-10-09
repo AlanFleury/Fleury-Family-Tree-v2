@@ -158,6 +158,12 @@ async function savePerson(person,relationships,expected=null){
   });
 }
 
+/* Administrator-only ID merge. The Worker validates both original records and all affected relationships. */
+async function mergePerson(payload){
+  if(!payload?.keeperId||!payload?.duplicateId||payload.keeperId===payload.duplicateId) throw new Error('Two different person IDs are required.');
+  return api('/api/person/merge',{method:'POST',body:JSON.stringify(payload)});
+}
+
 /* Person deletion optionally checks the staged baseline before deleting. */
 async function deletePerson(personId,expected=null){
   if(!personId) throw new Error('A person ID is required.');
@@ -215,6 +221,6 @@ async function restoreArchiveFromWorkbook(data,onProgress){
 
 window.archiveApi={
   initAuth,signInWithEmail,signOutUser,getMyRole,startGmailOAuth,testGmailNotification,restoreArchiveFromWorkbook,
-  loadDatabase,saveDatabase,savePerson,deletePerson,requestAccess,listAccessRequests,reviewAccessRequest,
+  loadDatabase,saveDatabase,savePerson,deletePerson,mergePerson,requestAccess,listAccessRequests,reviewAccessRequest,
   listUsers,updateUser,savePersonMapping
 };
