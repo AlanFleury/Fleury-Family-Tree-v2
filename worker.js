@@ -563,7 +563,7 @@ export default {
             for(const r of rows){
               if(!r?.type||!r?.person1||!r?.person2) continue;
               batch.push(env.DB.prepare(
-                "INSERT INTO relationships(type,person1,person2) SELECT ?,?,?, WHERE NOT EXISTS (SELECT 1 FROM relationships WHERE type=? AND person1=? AND person2=?)"
+                "INSERT INTO relationships(type,person1,person2) SELECT ?,?,? WHERE NOT EXISTS (SELECT 1 FROM relationships WHERE type=? AND person1=? AND person2=?)"
               ).bind(String(r.type),String(r.person1),String(r.person2),String(r.type),String(r.person1),String(r.person2)));
             }
           }else{
