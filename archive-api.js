@@ -145,26 +145,25 @@ async function saveDatabase(database){
 }
 
 /* Safe individual-person save. */
-async function savePerson(person,relationships){
+async function savePerson(person,relationships,expected=null){
   if(!person) throw new Error('A valid person is required.');
   const id=String(person['Person ID']||person.person_id||person.id||'');
   if(!id) throw new Error('A valid person ID is required.');
   if(!Array.isArray(relationships)) throw new Error('Invalid person relationships.');
-
   const payload={...person};
   payload['Person ID']=id;
   return api('/api/person',{
     method:'PUT',
-    body:JSON.stringify({person:payload,relationships})
+    body:JSON.stringify({person:payload,relationships,expected})
   });
 }
 
-/* Safe individual-person delete. */
-async function deletePerson(personId){
+/* Person deletion optionally checks the staged baseline before deleting. */
+async function deletePerson(personId,expectedPerson=null){
   if(!personId) throw new Error('A person ID is required.');
   return api('/api/person',{
     method:'DELETE',
-    body:JSON.stringify({personId:String(personId)})
+    body:JSON.stringify({personId:String(personId),expectedPerson})
   });
 }
 
