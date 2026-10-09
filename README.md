@@ -40,3 +40,8 @@ Run `run-windows.bat` from the repository directory and open the local HTTP serv
 
 The safe online rebuild keeps `main` untouched while the private archive connection, editing safeguards, responsive layout, and deployment path are verified. The public repository contains application code only; private family data remains behind the authenticated API.
 
+
+
+## Recovery and safe merge
+
+The administrator workbook recovery action is a **merge**, not a replacement. It inserts missing people, relationships, and metadata keys while leaving existing D1 records untouched. It does not delete existing data or overwrite edits already made online. The resulting counts must be checked after the merge; a partial failure should be investigated before retrying.
