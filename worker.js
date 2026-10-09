@@ -462,6 +462,44 @@ export default {
         return json({ok:true,email,personId},200,env);
       }
 
+      if(url.pathname==="/api/person/merge" && request.method==="POST"){
+        if(u.role!=="admin") return json({error:"Administrator access required to merge person IDs"},403,env);
+        const x=await request.json();
+        const keeperId=String(x?.keeperId||"").trim(),duplicateId=String(x?.duplicateId||"").trim(),merged=x?.mergedPerson;
+        if(!keeperId||!duplicateId||keeperId===duplicateId||!merged) return json({error:"Two different person IDs and a merged record are required"},400,env);
+        if(String(merged["Person ID"]||merged.person_id||merged.id||"")!==keeperId) return json({error:"The merged record must retain the keeper's ID"},400,env);
+        try{
+          await env.DB.prepare("CREATE TABLE IF NOT EXISTS person_id_aliases (old_person_id TEXT PRIMARY KEY, canonical_person_id TEXT NOT NULL, merged_at TEXT NOT NULL, merged_by TEXT NOT NULL, details TEXT NOT NULL)").run();
+          const existingAlias=await env.DB.prepare("SELECT canonical_person_id FROM person_id_aliases WHERE old_person_id=?").bind(duplicateId).first();
+          if(existingAlias) return json({error:"This duplicate ID has already been merged into "+existingAlias.canonical_person_id,conflict:true,personId:duplicateId},409,env);
+          const keeper=await env.DB.prepare("SELECT * FROM people WHERE person_id=?").bind(keeperId).first(),duplicate=await env.DB.prepare("SELECT * FROM people WHERE person_id=?").bind(duplicateId).first();
+          if(!personMatchesExpected(keeper,x.expectedKeeper)||!personMatchesExpected(duplicate,x.expectedDuplicate)) return json({error:"Conflict: one of these people changed online after the merge was staged. Reload both records and review the merge again.",conflict:true},409,env);
+          const [kr,dr]=await Promise.all([
+            env.DB.prepare("SELECT type,person1,person2 FROM relationships WHERE person1=? OR person2=?").bind(keeperId,keeperId).all(),
+            env.DB.prepare("SELECT type,person1,person2 FROM relationships WHERE person1=? OR person2=?").bind(duplicateId,duplicateId).all()
+          ]);
+          const relKey=r=>[String(r.type||"").toLowerCase(),String(r.person1??r.a??""),String(r.person2??r.b??"")].join("\u001f");
+          const actualK=kr.results.map(relKey).sort(),actualD=dr.results.map(relKey).sort();
+          const expectedK=(Array.isArray(x.keeperRelationships)?x.keeperRelationships:[]).map(relKey).sort(),expectedD=(Array.isArray(x.duplicateRelationships)?x.duplicateRelationships:[]).map(relKey).sort();
+          if(JSON.stringify(actualK)!==JSON.stringify(expectedK)||JSON.stringify(actualD)!==JSON.stringify(expectedD)) return json({error:"Conflict: relationships for one of these people changed online after the merge was staged. Review the merge again before retrying.",conflict:true},409,env);
+          const all=[...kr.results,...dr.results],mapped=new Map();
+          for(const r of all){const a=r.person1===duplicateId?keeperId:r.person1,b=r.person2===duplicateId?keeperId:r.person2;if(!a||!b||a===b)continue;const key=String(r.type||"").toLowerCase()+"\u001f"+a+"\u001f"+b;if(!mapped.has(key))mapped.set(key,{type:String(r.type||""),a,b})}
+          const details=JSON.stringify({keeperBefore:mapPerson(keeper),duplicateBefore:mapPerson(duplicate),relationships:all});
+          const writes=[];
+          for(const r of mapped.values())writes.push(env.DB.prepare("INSERT INTO relationships(type,person1,person2) SELECT ?,?,? WHERE NOT EXISTS (SELECT 1 FROM relationships WHERE lower(type)=lower(?) AND person1=? AND person2=?)").bind(r.type,r.a,r.b,r.type,r.a,r.b));
+          writes.push(env.DB.prepare("DELETE FROM relationships WHERE person1=? OR person2=?").bind(duplicateId,duplicateId));
+          writes.push(env.DB.prepare("UPDATE people SET name=?,gender=?,birth=?,death=?,relationship_to_alan=?,evidence_status=?,source_ids=?,notes=?,places=?,json_extra=? WHERE person_id=?").bind(
+            String(merged.Name??merged.name??""),String(merged.Gender??merged.gender??""),String(merged.Birth??merged.birth??""),String(merged.Death??merged.death??""),
+            String(merged["Relationship to Alan"]??merged.relationship_to_alan??""),String(merged["Evidence Status"]??merged.evidence_status??""),
+            String(merged["Source IDs"]??merged.source_ids??""),String(merged.Notes??merged.notes??""),String(merged.Places??merged.places??""),
+            String(merged["JSON Extra"]??merged.json_extra??""),keeperId));
+          writes.push(env.DB.prepare("DELETE FROM people WHERE person_id=?").bind(duplicateId));
+          writes.push(env.DB.prepare("INSERT INTO person_id_aliases(old_person_id,canonical_person_id,merged_at,merged_by,details) VALUES(?,?,?,?,?)").bind(duplicateId,keeperId,new Date().toISOString(),String(u.email||u.sub||"admin"),details));
+          await env.DB.batch(writes);
+          return json({ok:true,keeperId,mergedId:duplicateId,relationshipsRedirected:mapped.size,aliasSaved:true},200,env);
+        }catch(e){console.error("Person ID merge failed:",e);return json({error:"Person ID merge failed",detail:String(e?.message||e)},500,env)}
+      }
+
       if(url.pathname==="/api/person" && request.method==="PUT"){
         if(!["admin","editor"].includes(u.role))
           return json({error:"Editor or admin access required"},403,env);
