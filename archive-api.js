@@ -125,37 +125,16 @@ async function getMyRole(){
   much data.
 */
 async function loadDatabase(){
-  const people=[];
-  const relationships=[];
-  const PAGE_SIZE=2000;
-
-  for(let offset=0;;offset+=PAGE_SIZE){
-    const page=await api(
-      `/api/archive/page?table=people&offset=${offset}&limit=${PAGE_SIZE}`
-    );
-    if(!page || !Array.isArray(page.people))
-      throw new Error('Private archive returned an invalid people page.');
-    people.push(...page.people);
-    if(page.people.length<PAGE_SIZE) break;
-  }
-
-  for(let offset=0;;offset+=PAGE_SIZE){
-    const page=await api(
-      `/api/archive/page?table=relationships&offset=${offset}&limit=${PAGE_SIZE}`
-    );
-    if(!page || !Array.isArray(page.relationships))
-      throw new Error('Private archive returned an invalid relationship page.');
-    relationships.push(...page.relationships);
-    if(page.relationships.length<PAGE_SIZE) break;
-  }
-
-  const metaPage=await api('/api/archive/page?table=meta&offset=0&limit=5000');
-  const meta=metaPage?.meta||{};
-
-  if(!people.length)
+  // Load the complete archive in one authenticated request. The old paginated
+  // loader used OFFSET queries, which caused SQLite/D1 to scan many more rows
+  // than were actually returned and could exhaust the free daily read allowance.
+  const remote=await api('/api/archive');
+  if(!remote || !Array.isArray(remote.people) || !Array.isArray(remote.relationships))
+    throw new Error('Private archive returned an invalid archive response.');
+  if(!remote.people.length)
     throw new Error('The private archive returned 0 people. No data was changed.');
+  return {people:remote.people,relationships:remote.relationships,meta:remote.meta||{}};
 
-  return {people,relationships,meta};
 }
 
 /* Kept for legacy/manual use. The website must not call this for person edits. */
