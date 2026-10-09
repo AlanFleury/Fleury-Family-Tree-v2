@@ -226,7 +226,7 @@ async function archivePage(env,table,offset,limit){
 
 async function archive(env){
   const people=await env.DB.prepare(
-    "SELECT * FROM people ORDER BY name COLLATE NOCASE, person_id"
+    "SELECT * FROM people"
   ).all();
   const relationships=await env.DB.prepare(
     "SELECT type, person1, person2 FROM relationships"
