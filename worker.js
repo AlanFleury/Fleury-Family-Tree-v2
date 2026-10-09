@@ -130,6 +130,24 @@ async function auth(request,env){
   return {...row,sub};
 }
 
+function personMatchesExpected(row,expected){
+  if(!row||!expected)return false;
+  const fields=[
+    ["person_id",expected["Person ID"]??expected.person_id??expected.id],
+    ["name",expected.Name??expected.name],
+    ["gender",expected.Gender??expected.gender],
+    ["birth",expected.Birth??expected.birth],
+    ["death",expected.Death??expected.death],
+    ["relationship_to_alan",expected["Relationship to Alan"]??expected.relationship_to_alan??expected.relationshipToAlan],
+    ["evidence_status",expected["Evidence Status"]??expected.evidence_status??expected.evidence],
+    ["source_ids",expected["Source IDs"]??expected.source_ids??expected.sources],
+    ["notes",expected.Notes??expected.notes],
+    ["places",expected.Places??expected.places],
+    ["json_extra",expected["JSON Extra"]??expected.json_extra??expected.jsonExtra]
+  ];
+  return fields.every(([key,value])=>String(row[key]??"")===String(value??""));
+}
+function relationshipKey(r){return [String(r.type||"").toLowerCase(),String(r.person1??r.a??""),String(r.person2??r.b??"")].join("\u001f")}
 function mapPerson(r){
   const x={...r};
   delete x.name;
@@ -455,6 +473,24 @@ export default {
 
         if(!id) return json({error:"Person ID is required"},400,env);
 
+        const expected=x?.expected;
+        if(expected && Object.prototype.hasOwnProperty.call(expected,"person")){
+          const current=await env.DB.prepare("SELECT * FROM people WHERE person_id=?").bind(id).first();
+          if(expected.person===null){
+            if(current) return json({error:"Conflict: this new person ID already exists. Reload and review the draft before retrying.",conflict:true,personId:id},409,env);
+          }else{
+            if(!personMatchesExpected(current,expected.person))
+              return json({error:"Conflict: this person changed online after the draft was created. Reload and reconcile this person before retrying.",conflict:true,personId:id},409,env);
+          }
+          if(Array.isArray(expected.relationships)){
+            const currentR=await env.DB.prepare("SELECT type,person1,person2 FROM relationships WHERE (person1=? OR person2=?) AND lower(type)='parent'").bind(id,id).all();
+            const currentKeys=currentR.results.map(relationshipKey).sort();
+            const expectedKeys=expected.relationships.filter(r=>String(r.type||"").toLowerCase()==="parent"&&(String(r.person1??r.a??"")===id||String(r.person2??r.b??"")===id)).map(relationshipKey).sort();
+            if(JSON.stringify(currentKeys)!==JSON.stringify(expectedKeys))
+              return json({error:"Conflict: this person's parent/child relationships changed online after the draft was created. Review before retrying.",conflict:true,personId:id},409,env);
+          }
+        }
+
         const familyTypes=new Set(["parent","mother","father","child","son","daughter"]);
         const cleanFamily=family.map(r=>({
           type:String(r?.type||""),
@@ -485,11 +521,11 @@ export default {
                 id,p.Name||"",p.Gender||"",p.Birth||"",p.Death||"",
                 p["Relationship to Alan"]||"",p["Evidence Status"]||"",
                 p["Source IDs"]||"",p.Notes||"",p.Places||"",
-                JSON.stringify(p)
+                String(p["JSON Extra"]??p.json_extra??"")
               ),
             env.DB.prepare(`DELETE FROM relationships
               WHERE (person1=? OR person2=?)
-              AND lower(type) IN ('parent','mother','father','child','son','daughter')`
+              AND lower(type)='parent'`
             ).bind(id,id)
           ];
 
@@ -513,6 +549,11 @@ export default {
         const x=await request.json();
         const id=String(x?.personId||"");
         if(!id) return json({error:"Person ID is required"},400,env);
+        if(Object.prototype.hasOwnProperty.call(x||{},"expectedPerson") && x.expectedPerson!==null){
+          const current=await env.DB.prepare("SELECT * FROM people WHERE person_id=?").bind(id).first();
+          if(!personMatchesExpected(current,x.expectedPerson))
+            return json({error:"Conflict: this person changed online after the draft was created. Reload and review before retrying the deletion.",conflict:true,personId:id},409,env);
+        }
 
         try{
           await env.DB.batch([
