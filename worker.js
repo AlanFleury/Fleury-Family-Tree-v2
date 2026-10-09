@@ -549,10 +549,17 @@ export default {
         const x=await request.json();
         const id=String(x?.personId||"");
         if(!id) return json({error:"Person ID is required"},400,env);
-        if(Object.prototype.hasOwnProperty.call(x||{},"expectedPerson") && x.expectedPerson!==null){
+        if(x?.expected && Object.prototype.hasOwnProperty.call(x.expected,"person")){
           const current=await env.DB.prepare("SELECT * FROM people WHERE person_id=?").bind(id).first();
-          if(!personMatchesExpected(current,x.expectedPerson))
+          if(!personMatchesExpected(current,x.expected.person))
             return json({error:"Conflict: this person changed online after the draft was created. Reload and review before retrying the deletion.",conflict:true,personId:id},409,env);
+          if(Array.isArray(x.expected.relationships)){
+            const currentR=await env.DB.prepare("SELECT type,person1,person2 FROM relationships WHERE (person1=? OR person2=?) AND lower(type)='parent'").bind(id,id).all();
+            const currentKeys=currentR.results.map(relationshipKey).sort();
+            const expectedKeys=x.expected.relationships.filter(r=>String(r.type||"").toLowerCase()==="parent"&&(String(r.person1??r.a??"")===id||String(r.person2??r.b??"")===id)).map(relationshipKey).sort();
+            if(JSON.stringify(currentKeys)!==JSON.stringify(expectedKeys))
+              return json({error:"Conflict: this person's parent/child relationships changed online after the draft was created. Review before retrying the deletion.",conflict:true,personId:id},409,env);
+          }
         }
 
         try{
