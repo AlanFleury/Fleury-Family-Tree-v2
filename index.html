@@ -246,7 +246,7 @@ function htmlExport(){const content=`<!doctype html><html><head><meta charset="u
 if('serviceWorker' in navigator && location.protocol==='https:'){
   window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(e=>console.warn('Offline shell registration failed',e)));
 }
-</script>
+<\/script>
 </body></html>`;download('fleury-report.html',content,'text/html')}
 function download(name,data,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
 function components(){const seen=new Set(),out=[];for(const p of allPeople()){if(seen.has(p.id))continue;const c=[],q=[p.id];seen.add(p.id);while(q.length){const x=q.shift();c.push(x);const ns=new Set([...parentMap.get(x)||[],...childMap.get(x)||[],...spouseMap.get(x)||[]]);for(const y of ns)if(!seen.has(y)){seen.add(y);q.push(y)}}out.push(c)}return out.sort((a,b)=>b.length-a.length)}
