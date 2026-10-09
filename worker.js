@@ -560,6 +560,13 @@ export default {
             if(JSON.stringify(currentKeys)!==JSON.stringify(expectedKeys))
               return json({error:"Conflict: this person's parent/child relationships changed online after the draft was created. Review before retrying the deletion.",conflict:true,personId:id},409,env);
           }
+          if(Array.isArray(x.expected.allRelationships)){
+            const currentAll=await env.DB.prepare("SELECT type,person1,person2 FROM relationships WHERE person1=? OR person2=?").bind(id,id).all();
+            const currentAllKeys=currentAll.results.map(relationshipKey).sort();
+            const expectedAllKeys=x.expected.allRelationships.filter(r=>String(r.person1??r.a??"")===id||String(r.person2??r.b??"")===id).map(relationshipKey).sort();
+            if(JSON.stringify(currentAllKeys)!==JSON.stringify(expectedAllKeys))
+              return json({error:"Conflict: this person's relationships changed online after the draft was created. Review before retrying the deletion.",conflict:true,personId:id},409,env);
+          }
         }
 
         try{
