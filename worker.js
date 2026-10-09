@@ -647,63 +647,10 @@ export default {
         return json(await archive(env),200,env);
 
       if(url.pathname==="/api/archive" && request.method==="PUT"){
-        if(!["admin","editor"].includes(u.role))
-          return json({error:"Editor or admin access required"},403,env);
-
-        const x=await request.json();
-        if(!Array.isArray(x.people)||!Array.isArray(x.relationships))
-          return json({error:"Invalid archive payload"},400,env);
-        if(x.people.length===0)
-          return json({error:"Refusing to save an empty archive"},400,env);
-
-        try{
-          await env.DB.batch([
-            env.DB.prepare("DELETE FROM people"),
-            env.DB.prepare("DELETE FROM relationships"),
-            env.DB.prepare("DELETE FROM meta")
-          ]);
-
-          for(let i=0;i<x.people.length;i+=100){
-            const batch=[];
-            for(const p of x.people.slice(i,i+100)){
-              const id=p["Person ID"];
-              if(!id) continue;
-              batch.push(env.DB.prepare(`INSERT INTO people(
-                person_id,name,gender,birth,death,relationship_to_alan,
-                evidence_status,source_ids,notes,places,json_extra
-              ) VALUES(?,?,?,?,?,?,?,?,?,?,?)`).bind(
-                id,p.Name||"",p.Gender||"",p.Birth||"",p.Death||"",
-                p["Relationship to Alan"]||"",p["Evidence Status"]||"",
-                p["Source IDs"]||"",p.Notes||"",p.Places||"",JSON.stringify(p)
-              ));
-            }
-            if(batch.length) await env.DB.batch(batch);
-          }
-
-          for(let i=0;i<x.relationships.length;i+=100){
-            const batch=[];
-            for(const r of x.relationships.slice(i,i+100)){
-              if(!r.type||!r.person1||!r.person2) continue;
-              batch.push(env.DB.prepare(
-                "INSERT INTO relationships(type,person1,person2) VALUES(?,?,?)"
-              ).bind(r.type,r.person1,r.person2));
-            }
-            if(batch.length) await env.DB.batch(batch);
-          }
-
-          const metaBatch=[];
-          for(const [k,v] of Object.entries(x.meta||{})){
-            metaBatch.push(env.DB.prepare(
-              "INSERT INTO meta(key,value) VALUES(?,?)"
-            ).bind(k,JSON.stringify(v)));
-          }
-          if(metaBatch.length) await env.DB.batch(metaBatch);
-
-          return json({ok:true,people:x.people.length,relationships:x.relationships.length},200,env);
-        }catch(e){
-          console.error("Archive save failed:",e);
-          return json({error:"Archive save failed",detail:String(e?.message||e)},500,env);
-        }
+        return json({
+          error:"Full-archive replacement is disabled for safety. Use the reviewed, conflict-checked person-change workflow or the non-destructive master merge.",
+          code:"FULL_ARCHIVE_REPLACEMENT_DISABLED"
+        },410,env,origin);
       }
 
       return withCors(json({error:"Not found"},404,env,origin));
