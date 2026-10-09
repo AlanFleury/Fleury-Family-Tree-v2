@@ -311,41 +311,70 @@ savePerson.onclick=async()=>{
 }};
 deletePerson.onclick=async()=>{if(!selected.edit)return;if(!confirm('Delete this person and all relationships involving them?'))return;try{if(currentRole!=='admin'){alert('Admin access is required to delete a person.');return}const i=selected.edit;await window.archiveApi.deletePerson(i);db.people=db.people.filter(p=>p.id!==i);db.relationships=db.relationships.filter(r=>r.a!==i&&r.b!==i);reindex();await persist();selected.edit=null;saveMsg.innerHTML='<p class="ok">Deleted from the private online archive.</p>';renderStats();renderPeople()}catch(e){saveMsg.innerHTML='<p class="bad">Delete failed: '+esc(e.message||e)+'</p>'}};
 newPerson.onclick=()=>{selected.edit=null;editPerson.value='';editName.value='';editGender.value='';editBirth.value='';editDeath.value='';editBirthPlace.value='';editDeathPlace.value='';editNotes.value='';editSources.value='';editParents.innerHTML='';editChildren.innerHTML='';saveMsg.innerHTML='<p class="muted">Enter the new person details and press Save person.</p>'};
-async function loadOnlineArchive(){
-  currentUser=await window.archiveApi.initAuth();
-  if(!currentUser){
-    authStatus.textContent='Not signed in';
-    signInBtn.classList.remove('hidden');
-    signOutBtn.classList.add('hidden');
-    renderStats(); renderPeople(); populateReports(); renderHelp(); quality();
-    return false;
-  }
+async function useOfflineArchive(cause){
+  const cached=await loadPersisted();
+  if(!cached||!Array.isArray(cached.people)||cached.people.length===0||!Array.isArray(cached.relationships))
+    throw cause instanceof Error?cause:new Error('The server is unavailable and no saved offline archive exists on this device yet.');
+  db={people:cached.people,relationships:cached.relationships,meta:cached.meta||{}};
+  currentRole='viewer';
   signInBtn.classList.add('hidden');
-  signOutBtn.classList.remove('hidden');
-  authStatus.textContent='Signed in as '+(currentUser.name||currentUser.email||'signed-in user');
-  accessName.value=currentUser.name||currentUser.nickname||'';
-  accessEmail.value=currentUser.email||'';
-  try{currentRole=await window.archiveApi.getMyRole()}catch(e){currentRole=null;goTab('access');accessRequestStatus.innerHTML='<p class="notice">You are signed in but are not yet approved. No family data has been loaded. Submit an access request below.</p>';return false}
-  const remote=await window.archiveApi.loadDatabase();
-  db={
-    people:(remote.people||[]).map(p=>({
-      id:String(p['Person ID']??p.id??''),
-      name:String(p.Name??p.name??''),
-      gender:String(p.Gender??p.gender??''),
-      birth:String(p.Birth??p.birth??''),
-      death:String(p.Death??p.death??''),
-      places:String(p.Places??p.places??''),
-      sources:String(p['Source IDs']??p.sources??''),
-      notes:String(p.Notes??p.notes??''),
-      relationshipToAlan:String(p['Relationship to Alan']??p.relationshipToAlan??''),
-      evidence:String(p['Evidence Status']??p.evidence_status??''),
-      jsonExtra:p.json_extra||''
-    })),
-    relationships:(remote.relationships||[]).map(r=>({type:String(r.type||''),a:String(r.person1??r.a??''),b:String(r.person2??r.b??'')})),
-    meta:remote.meta||{}
-  };
+  signOutBtn.classList.add('hidden');
+  authStatus.textContent='OFFLINE MODE — showing this device’s saved archive. Read-only until connection returns.';
   reindex(); renderStats(); renderPeople(); populateReports(); renderHelp(); quality();
   return true;
+}
+async function loadOnlineArchive(){
+  try{
+    currentUser=await window.archiveApi.initAuth();
+    if(!currentUser){
+      authStatus.textContent='Not signed in';
+      signInBtn.classList.remove('hidden');
+      signOutBtn.classList.add('hidden');
+      renderStats(); renderPeople(); populateReports(); renderHelp(); quality();
+      return false;
+    }
+    signInBtn.classList.add('hidden');
+    signOutBtn.classList.remove('hidden');
+    authStatus.textContent='Signed in as '+(currentUser.name||currentUser.email||'signed-in user');
+    accessName.value=currentUser.name||currentUser.nickname||'';
+    accessEmail.value=currentUser.email||'';
+  }catch(authError){
+    return useOfflineArchive(authError);
+  }
+  try{currentRole=await window.archiveApi.getMyRole()}
+  catch(roleError){
+    if(/not approved|not authorized|account is not approved/i.test(String(roleError?.message||roleError)))
+      {currentRole=null;goTab('access');accessRequestStatus.innerHTML='<p class="notice">You are signed in but are not yet approved. No family data has been loaded. Submit an access request below.</p>';return false}
+    return useOfflineArchive(roleError);
+  }
+  try{
+    const remote=await window.archiveApi.loadDatabase();
+    if(!Array.isArray(remote.people)||remote.people.length===0||!Array.isArray(remote.relationships))
+      throw new Error('The online archive returned no valid records. The saved copy has not been overwritten.');
+    db={
+      people:remote.people.map(p=>({
+        id:String(p['Person ID']??p.id??p.person_id??''),
+        name:String(p.Name??p.name??''),
+        gender:String(p.Gender??p.gender??''),
+        birth:String(p.Birth??p.birth??''),
+        death:String(p.Death??p.death??''),
+        places:String(p.Places??p.places??''),
+        sources:String(p['Source IDs']??p.sources??''),
+        notes:String(p.Notes??p.notes??''),
+        relationshipToAlan:String(p['Relationship to Alan']??p.relationshipToAlan??''),
+        evidence:String(p['Evidence Status']??p.evidence_status??''),
+        jsonExtra:p.json_extra||''
+      })),
+      relationships:remote.relationships.map(r=>({type:String(r.type||''),a:String(r.person1??r.a??''),b:String(r.person2??r.b??'')})),
+      meta:remote.meta||{}
+    };
+    reindex(); renderStats(); renderPeople(); populateReports(); renderHelp(); quality();
+    await persist();
+    authStatus.textContent='Online archive loaded and saved for offline browsing.';
+    return true;
+  }catch(loadError){
+    return useOfflineArchive(loadError);
+  }
 }
 signInBtn.onclick=()=>window.archiveApi.signInWithEmail();
 signOutBtn.onclick=()=>window.archiveApi.signOutUser();
