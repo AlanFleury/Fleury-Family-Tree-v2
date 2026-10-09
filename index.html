@@ -48,6 +48,16 @@
 .access-request textarea{min-height:140px}
 .badge-alert{background:#fff0f0;color:#b42318;border:1px solid #f0b8b8}
 @media(max-width:600px){.chart-toolbar{display:grid;grid-template-columns:1fr}.chart-toolbar button{width:100%}.chart-legend{font-size:11px}}
+
+/* Antique parchment scroll theme: subtle grain, rolled-paper edges, legible content. */
+body{background:radial-gradient(ellipse at 50% 12%,rgba(255,249,226,.85),transparent 70%),repeating-linear-gradient(3deg,rgba(112,73,34,.025) 0px,rgba(112,73,34,.025) 1px,transparent 1px,transparent 7px),linear-gradient(90deg,#b18b58 0%,#e1c99c 3%,#f3e4c5 10%,#f8efd9 50%,#e7d0a7 91%,#b38c59 100%);background-attachment:fixed}
+header{background:linear-gradient(180deg,#392519,#20150f);border-bottom:3px double #b9904d}
+.view.active{background:linear-gradient(90deg,rgba(113,71,29,.10),transparent 7%,transparent 93%,rgba(113,71,29,.10)),linear-gradient(180deg,#f5e6c7,#f9efd9 48%,#eddbb8);border:1px solid #b89867;border-top:6px double var(--tab-accent);box-shadow:inset 0 0 35px rgba(108,65,22,.11),0 8px 20px rgba(60,36,16,.12)}
+.view .panel,.card,.research-card{background:linear-gradient(145deg,rgba(255,250,232,.94),rgba(241,224,189,.90));border-color:#c8a977;box-shadow:0 2px 9px rgba(76,46,19,.10)}
+h1,h2,h3{font-family:Georgia,'Times New Roman',serif}h2,h3{color:#643e25}
+.tree-scroll,.tree-svg{background-color:#f3e4c6}
+input,select,textarea{background:#fff9e9}
+@media print{body{background:#fff!important}.view.active,.view.printing{box-shadow:none!important}.view .panel{box-shadow:none!important}}
 </style></head><body>
 <header><div class="head"><div><h1>Fleury Family Tree — Ultimate Edition</h1><div class="sub">Private online family archive • 17,972 people • 30,079 recorded relationships • no subscription required</div></div><div class="toolbar"><span id="authStatus" class="small"></span><button id="signInBtn">Sign in</button><button id="signOutBtn" class="hidden">Sign out</button><button id="backupBtn">Backup</button><button id="importBtn">Restore backup</button><input id="importFile" type="file" accept="application/json" class="hidden"><button id="resetBtn">Reset local edits</button></div></div><nav id="nav"></nav></header>
 <main>
