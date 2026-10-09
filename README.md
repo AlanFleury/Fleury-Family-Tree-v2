@@ -49,3 +49,14 @@ The administrator workbook recovery action is a **merge**, not a replacement. It
 ## Duplicate person ID merges
 
 The Admin tab includes a staged duplicate-ID merge tool. Choose Person 1 as the ID to retain and Person 2 as the duplicate. The browser previews the merge and stages it locally; nothing is sent to D1 until the administrator reviews and commits the pending change. Non-empty conflicting core values retain Person 1's value, blank values are filled from Person 2, and notes/source text is combined. Relationships involving either person are redirected to the keeper, duplicate edges and self-links are excluded, and an alias/history row preserves the original duplicate record and affected relationships. The Worker checks both person snapshots and their relationship snapshots before committing. Test with a separate D1 database and dummy records before merging this branch into production; live D1 has not been modified by this PR.
+## Quality checks and release readiness
+
+Run the static syntax/safety checks locally with Node.js 22 or newer:
+
+```sh
+node scripts/quality-check.mjs
+```
+
+GitHub Actions runs the same checks on pushes and pull requests. These checks catch JavaScript syntax problems and selected safety regressions; they do **not** replace browser, Cloudflare D1, Gmail delivery, permission, offline, or iPhone testing.
+
+Before release, follow [RELEASE-CHECKLIST.md](RELEASE-CHECKLIST.md). Do not merge or deploy until the archive, authentication/email, staged edit/merge, charts, and offline release blockers have been tested in a separate test environment. The exact supplied Fleury crest image still needs to be committed as a binary asset; do not substitute an approximate logo and describe it as the exact crest.
