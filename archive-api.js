@@ -145,26 +145,31 @@ async function saveDatabase(database){
 }
 
 /* Safe individual-person save. */
-async function savePerson(person,relationships){
+async function savePerson(person,relationships,expected=null){
   if(!person) throw new Error('A valid person is required.');
   const id=String(person['Person ID']||person.person_id||person.id||'');
   if(!id) throw new Error('A valid person ID is required.');
   if(!Array.isArray(relationships)) throw new Error('Invalid person relationships.');
-
   const payload={...person};
   payload['Person ID']=id;
   return api('/api/person',{
     method:'PUT',
-    body:JSON.stringify({person:payload,relationships})
+    body:JSON.stringify({person:payload,relationships,expected})
   });
 }
 
-/* Safe individual-person delete. */
-async function deletePerson(personId){
+/* Administrator-only ID merge. The Worker validates both original records and all affected relationships. */
+async function mergePerson(payload){
+  if(!payload?.keeperId||!payload?.duplicateId||payload.keeperId===payload.duplicateId) throw new Error('Two different person IDs are required.');
+  return api('/api/person/merge',{method:'POST',body:JSON.stringify(payload)});
+}
+
+/* Person deletion optionally checks the staged baseline before deleting. */
+async function deletePerson(personId,expected=null){
   if(!personId) throw new Error('A person ID is required.');
   return api('/api/person',{
     method:'DELETE',
-    body:JSON.stringify({personId:String(personId)})
+    body:JSON.stringify({personId:String(personId),expected})
   });
 }
 
@@ -216,6 +221,6 @@ async function restoreArchiveFromWorkbook(data,onProgress){
 
 window.archiveApi={
   initAuth,signInWithEmail,signOutUser,getMyRole,startGmailOAuth,testGmailNotification,restoreArchiveFromWorkbook,
-  loadDatabase,saveDatabase,savePerson,deletePerson,requestAccess,listAccessRequests,reviewAccessRequest,
+  loadDatabase,saveDatabase,savePerson,deletePerson,mergePerson,requestAccess,listAccessRequests,reviewAccessRequest,
   listUsers,updateUser,savePersonMapping
 };

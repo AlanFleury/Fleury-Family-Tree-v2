@@ -130,6 +130,24 @@ async function auth(request,env){
   return {...row,sub};
 }
 
+function personMatchesExpected(row,expected){
+  if(!row||!expected)return false;
+  const fields=[
+    ["person_id",expected["Person ID"]??expected.person_id??expected.id],
+    ["name",expected.Name??expected.name],
+    ["gender",expected.Gender??expected.gender],
+    ["birth",expected.Birth??expected.birth],
+    ["death",expected.Death??expected.death],
+    ["relationship_to_alan",expected["Relationship to Alan"]??expected.relationship_to_alan??expected.relationshipToAlan],
+    ["evidence_status",expected["Evidence Status"]??expected.evidence_status??expected.evidence],
+    ["source_ids",expected["Source IDs"]??expected.source_ids??expected.sources],
+    ["notes",expected.Notes??expected.notes],
+    ["places",expected.Places??expected.places],
+    ["json_extra",expected["JSON Extra"]??expected.json_extra??expected.jsonExtra]
+  ];
+  return fields.every(([key,value])=>String(row[key]??"")===String(value??""));
+}
+function relationshipKey(r){return [String(r.type||"").toLowerCase(),String(r.person1??r.a??""),String(r.person2??r.b??"")].join("\u001f")}
 function mapPerson(r){
   const x={...r};
   delete x.name;
@@ -444,6 +462,45 @@ export default {
         return json({ok:true,email,personId},200,env);
       }
 
+      if(url.pathname==="/api/person/merge" && request.method==="POST"){
+        if(u.role!=="admin") return json({error:"Administrator access required to merge person IDs"},403,env);
+        const x=await request.json();
+        const keeperId=String(x?.keeperId||"").trim(),duplicateId=String(x?.duplicateId||"").trim(),merged=x?.mergedPerson;
+        if(!keeperId||!duplicateId||keeperId===duplicateId||!merged) return json({error:"Two different person IDs and a merged record are required"},400,env);
+        if(String(merged["Person ID"]||merged.person_id||merged.id||"")!==keeperId) return json({error:"The merged record must retain the keeper's ID"},400,env);
+        try{
+          await env.DB.prepare("CREATE TABLE IF NOT EXISTS person_id_aliases (old_person_id TEXT PRIMARY KEY, canonical_person_id TEXT NOT NULL, merged_at TEXT NOT NULL, merged_by TEXT NOT NULL, details TEXT NOT NULL)").run();
+          const existingAlias=await env.DB.prepare("SELECT canonical_person_id FROM person_id_aliases WHERE old_person_id=?").bind(duplicateId).first();
+          if(existingAlias) return json({error:"This duplicate ID has already been merged into "+existingAlias.canonical_person_id,conflict:true,personId:duplicateId},409,env);
+          const keeper=await env.DB.prepare("SELECT * FROM people WHERE person_id=?").bind(keeperId).first(),duplicate=await env.DB.prepare("SELECT * FROM people WHERE person_id=?").bind(duplicateId).first();
+          if(!personMatchesExpected(keeper,x.expectedKeeper)||!personMatchesExpected(duplicate,x.expectedDuplicate)) return json({error:"Conflict: one of these people changed online after the merge was staged. Reload both records and review the merge again.",conflict:true},409,env);
+          const [kr,dr]=await Promise.all([
+            env.DB.prepare("SELECT type,person1,person2 FROM relationships WHERE person1=? OR person2=?").bind(keeperId,keeperId).all(),
+            env.DB.prepare("SELECT type,person1,person2 FROM relationships WHERE person1=? OR person2=?").bind(duplicateId,duplicateId).all()
+          ]);
+          const relKey=r=>[String(r.type||"").toLowerCase(),String(r.person1??r.a??""),String(r.person2??r.b??"")].join("\u001f");
+          const actualK=kr.results.map(relKey).sort(),actualD=dr.results.map(relKey).sort();
+          const expectedK=(Array.isArray(x.keeperRelationships)?x.keeperRelationships:[]).map(relKey).sort(),expectedD=(Array.isArray(x.duplicateRelationships)?x.duplicateRelationships:[]).map(relKey).sort();
+          if(JSON.stringify(actualK)!==JSON.stringify(expectedK)||JSON.stringify(actualD)!==JSON.stringify(expectedD)) return json({error:"Conflict: relationships for one of these people changed online after the merge was staged. Review the merge again before retrying.",conflict:true},409,env);
+          const all=[...kr.results,...dr.results],mapped=new Map();
+          for(const r of all){const a=r.person1===duplicateId?keeperId:r.person1,b=r.person2===duplicateId?keeperId:r.person2;if(!a||!b||a===b)continue;const key=String(r.type||"").toLowerCase()+"\u001f"+a+"\u001f"+b;if(!mapped.has(key))mapped.set(key,{type:String(r.type||""),a,b})}
+          const details=JSON.stringify({keeperBefore:mapPerson(keeper),duplicateBefore:mapPerson(duplicate),relationships:all});
+          const writes=[];
+          for(const r of mapped.values())writes.push(env.DB.prepare("INSERT INTO relationships(type,person1,person2) SELECT ?,?,? WHERE NOT EXISTS (SELECT 1 FROM relationships WHERE lower(type)=lower(?) AND person1=? AND person2=?)").bind(r.type,r.a,r.b,r.type,r.a,r.b));
+          writes.push(env.DB.prepare("DELETE FROM relationships WHERE person1=? OR person2=?").bind(duplicateId,duplicateId));
+          writes.push(env.DB.prepare("UPDATE people SET name=?,gender=?,birth=?,death=?,relationship_to_alan=?,evidence_status=?,source_ids=?,notes=?,places=?,json_extra=? WHERE person_id=?").bind(
+            String(merged.Name??merged.name??""),String(merged.Gender??merged.gender??""),String(merged.Birth??merged.birth??""),String(merged.Death??merged.death??""),
+            String(merged["Relationship to Alan"]??merged.relationship_to_alan??""),String(merged["Evidence Status"]??merged.evidence_status??""),
+            String(merged["Source IDs"]??merged.source_ids??""),String(merged.Notes??merged.notes??""),String(merged.Places??merged.places??""),
+            String(merged["JSON Extra"]??merged.json_extra??""),keeperId));
+          writes.push(env.DB.prepare("DELETE FROM people WHERE person_id=?").bind(duplicateId));
+          writes.push(env.DB.prepare("UPDATE person_id_aliases SET canonical_person_id=? WHERE canonical_person_id=?").bind(keeperId,duplicateId));
+          writes.push(env.DB.prepare("INSERT INTO person_id_aliases(old_person_id,canonical_person_id,merged_at,merged_by,details) VALUES(?,?,?,?,?)").bind(duplicateId,keeperId,new Date().toISOString(),String(u.email||u.sub||"admin"),details));
+          await env.DB.batch(writes);
+          return json({ok:true,keeperId,mergedId:duplicateId,relationshipsRedirected:mapped.size,aliasSaved:true},200,env);
+        }catch(e){console.error("Person ID merge failed:",e);return json({error:"Person ID merge failed",detail:String(e?.message||e)},500,env)}
+      }
+
       if(url.pathname==="/api/person" && request.method==="PUT"){
         if(!["admin","editor"].includes(u.role))
           return json({error:"Editor or admin access required"},403,env);
@@ -454,6 +511,24 @@ export default {
         const id=String(p?.["Person ID"]||p?.person_id||p?.id||"");
 
         if(!id) return json({error:"Person ID is required"},400,env);
+
+        const expected=x?.expected;
+        if(expected && Object.prototype.hasOwnProperty.call(expected,"person")){
+          const current=await env.DB.prepare("SELECT * FROM people WHERE person_id=?").bind(id).first();
+          if(expected.person===null){
+            if(current) return json({error:"Conflict: this new person ID already exists. Reload and review the draft before retrying.",conflict:true,personId:id},409,env);
+          }else{
+            if(!personMatchesExpected(current,expected.person))
+              return json({error:"Conflict: this person changed online after the draft was created. Reload and reconcile this person before retrying.",conflict:true,personId:id},409,env);
+          }
+          if(Array.isArray(expected.relationships)){
+            const currentR=await env.DB.prepare("SELECT type,person1,person2 FROM relationships WHERE (person1=? OR person2=?) AND lower(type)='parent'").bind(id,id).all();
+            const currentKeys=currentR.results.map(relationshipKey).sort();
+            const expectedKeys=expected.relationships.filter(r=>String(r.type||"").toLowerCase()==="parent"&&(String(r.person1??r.a??"")===id||String(r.person2??r.b??"")===id)).map(relationshipKey).sort();
+            if(JSON.stringify(currentKeys)!==JSON.stringify(expectedKeys))
+              return json({error:"Conflict: this person's parent/child relationships changed online after the draft was created. Review before retrying.",conflict:true,personId:id},409,env);
+          }
+        }
 
         const familyTypes=new Set(["parent","mother","father","child","son","daughter"]);
         const cleanFamily=family.map(r=>({
@@ -485,11 +560,11 @@ export default {
                 id,p.Name||"",p.Gender||"",p.Birth||"",p.Death||"",
                 p["Relationship to Alan"]||"",p["Evidence Status"]||"",
                 p["Source IDs"]||"",p.Notes||"",p.Places||"",
-                JSON.stringify(p)
+                String(p["JSON Extra"]??p.json_extra??JSON.stringify(p))
               ),
             env.DB.prepare(`DELETE FROM relationships
               WHERE (person1=? OR person2=?)
-              AND lower(type) IN ('parent','mother','father','child','son','daughter')`
+              AND lower(type)='parent'`
             ).bind(id,id)
           ];
 
@@ -513,6 +588,25 @@ export default {
         const x=await request.json();
         const id=String(x?.personId||"");
         if(!id) return json({error:"Person ID is required"},400,env);
+        if(x?.expected && Object.prototype.hasOwnProperty.call(x.expected,"person")){
+          const current=await env.DB.prepare("SELECT * FROM people WHERE person_id=?").bind(id).first();
+          if(!personMatchesExpected(current,x.expected.person))
+            return json({error:"Conflict: this person changed online after the draft was created. Reload and review before retrying the deletion.",conflict:true,personId:id},409,env);
+          if(Array.isArray(x.expected.relationships)){
+            const currentR=await env.DB.prepare("SELECT type,person1,person2 FROM relationships WHERE (person1=? OR person2=?) AND lower(type)='parent'").bind(id,id).all();
+            const currentKeys=currentR.results.map(relationshipKey).sort();
+            const expectedKeys=x.expected.relationships.filter(r=>String(r.type||"").toLowerCase()==="parent"&&(String(r.person1??r.a??"")===id||String(r.person2??r.b??"")===id)).map(relationshipKey).sort();
+            if(JSON.stringify(currentKeys)!==JSON.stringify(expectedKeys))
+              return json({error:"Conflict: this person's parent/child relationships changed online after the draft was created. Review before retrying the deletion.",conflict:true,personId:id},409,env);
+          }
+          if(Array.isArray(x.expected.allRelationships)){
+            const currentAll=await env.DB.prepare("SELECT type,person1,person2 FROM relationships WHERE person1=? OR person2=?").bind(id,id).all();
+            const currentAllKeys=currentAll.results.map(relationshipKey).sort();
+            const expectedAllKeys=x.expected.allRelationships.filter(r=>String(r.person1??r.a??"")===id||String(r.person2??r.b??"")===id).map(relationshipKey).sort();
+            if(JSON.stringify(currentAllKeys)!==JSON.stringify(expectedAllKeys))
+              return json({error:"Conflict: this person's relationships changed online after the draft was created. Review before retrying the deletion.",conflict:true,personId:id},409,env);
+          }
+        }
 
         try{
           await env.DB.batch([
@@ -528,12 +622,9 @@ export default {
 
       if(url.pathname==="/api/archive/import/start" && request.method==="POST"){
         if(u.role!=="admin") return json({error:"Admin access required"},403,env);
-        await env.DB.batch([
-          env.DB.prepare("DELETE FROM relationships"),
-          env.DB.prepare("DELETE FROM people"),
-          env.DB.prepare("DELETE FROM meta")
-        ]);
-        return json({ok:true,started:true},200,env);
+        // SAFE MERGE ONLY: never clear or overwrite records already in D1.
+        // Workbook rows are inserted only when their stable key is missing.
+        return json({ok:true,started:true,mode:"merge",preservesExisting:true},200,env);
       }
 
       if(url.pathname==="/api/archive/import/batch" && request.method==="POST"){
@@ -553,32 +644,28 @@ export default {
               batch.push(env.DB.prepare(`INSERT INTO people(
                 person_id,name,gender,birth,death,relationship_to_alan,
                 evidence_status,source_ids,notes,places,json_extra
-              ) VALUES(?,?,?,?,?,?,?,?,?,?,?)
-              ON CONFLICT(person_id) DO UPDATE SET
-                name=excluded.name,gender=excluded.gender,birth=excluded.birth,
-                death=excluded.death,relationship_to_alan=excluded.relationship_to_alan,
-                evidence_status=excluded.evidence_status,source_ids=excluded.source_ids,
-                notes=excluded.notes,places=excluded.places,json_extra=excluded.json_extra`
+              ) SELECT ?,?,?,?,?,?,?,?,?,?,?
+              WHERE NOT EXISTS (SELECT 1 FROM people WHERE person_id=?)`
               ).bind(
                 id,String(p.name||""),String(p.gender||""),String(p.birth||""),
                 String(p.death||""),String(p.relationship_to_alan||""),
                 String(p.evidence_status||""),String(p.source_ids||""),
-                String(p.notes||""),String(p.places||""),String(p.json_extra||"")
+                String(p.notes||""),String(p.places||""),String(p.json_extra||""),id
               ));
             }
           }else if(kind==="relationships"){
             for(const r of rows){
               if(!r?.type||!r?.person1||!r?.person2) continue;
               batch.push(env.DB.prepare(
-                "INSERT INTO relationships(type,person1,person2) VALUES(?,?,?)"
-              ).bind(String(r.type),String(r.person1),String(r.person2)));
+                "INSERT INTO relationships(type,person1,person2) SELECT ?,?,? WHERE NOT EXISTS (SELECT 1 FROM relationships WHERE type=? AND person1=? AND person2=?)"
+              ).bind(String(r.type),String(r.person1),String(r.person2),String(r.type),String(r.person1),String(r.person2)));
             }
           }else{
             for(const m of rows){
               if(!m?.key) continue;
               batch.push(env.DB.prepare(
-                "INSERT INTO meta(key,value) VALUES(?,?)"
-              ).bind(String(m.key),String(m.value??"")));
+                "INSERT INTO meta(key,value) SELECT ?,? WHERE NOT EXISTS (SELECT 1 FROM meta WHERE key=?)"
+              ).bind(String(m.key),String(m.value??""),String(m.key)));
             }
           }
           if(batch.length) await env.DB.batch(batch);
@@ -595,7 +682,7 @@ export default {
         const relationships=await env.DB.prepare("SELECT COUNT(*) AS count FROM relationships").first();
         const meta=await env.DB.prepare("SELECT COUNT(*) AS count FROM meta").first();
         return json({
-          ok:Number(people?.count||0)===17972 && Number(relationships?.count||0)===30079,
+          ok:Number(people?.count||0)>=17972 && Number(relationships?.count||0)>=30079,
           people:Number(people?.count||0),
           relationships:Number(relationships?.count||0),
           meta:Number(meta?.count||0)
@@ -606,63 +693,10 @@ export default {
         return json(await archive(env),200,env);
 
       if(url.pathname==="/api/archive" && request.method==="PUT"){
-        if(!["admin","editor"].includes(u.role))
-          return json({error:"Editor or admin access required"},403,env);
-
-        const x=await request.json();
-        if(!Array.isArray(x.people)||!Array.isArray(x.relationships))
-          return json({error:"Invalid archive payload"},400,env);
-        if(x.people.length===0)
-          return json({error:"Refusing to save an empty archive"},400,env);
-
-        try{
-          await env.DB.batch([
-            env.DB.prepare("DELETE FROM people"),
-            env.DB.prepare("DELETE FROM relationships"),
-            env.DB.prepare("DELETE FROM meta")
-          ]);
-
-          for(let i=0;i<x.people.length;i+=100){
-            const batch=[];
-            for(const p of x.people.slice(i,i+100)){
-              const id=p["Person ID"];
-              if(!id) continue;
-              batch.push(env.DB.prepare(`INSERT INTO people(
-                person_id,name,gender,birth,death,relationship_to_alan,
-                evidence_status,source_ids,notes,places,json_extra
-              ) VALUES(?,?,?,?,?,?,?,?,?,?,?)`).bind(
-                id,p.Name||"",p.Gender||"",p.Birth||"",p.Death||"",
-                p["Relationship to Alan"]||"",p["Evidence Status"]||"",
-                p["Source IDs"]||"",p.Notes||"",p.Places||"",JSON.stringify(p)
-              ));
-            }
-            if(batch.length) await env.DB.batch(batch);
-          }
-
-          for(let i=0;i<x.relationships.length;i+=100){
-            const batch=[];
-            for(const r of x.relationships.slice(i,i+100)){
-              if(!r.type||!r.person1||!r.person2) continue;
-              batch.push(env.DB.prepare(
-                "INSERT INTO relationships(type,person1,person2) VALUES(?,?,?)"
-              ).bind(r.type,r.person1,r.person2));
-            }
-            if(batch.length) await env.DB.batch(batch);
-          }
-
-          const metaBatch=[];
-          for(const [k,v] of Object.entries(x.meta||{})){
-            metaBatch.push(env.DB.prepare(
-              "INSERT INTO meta(key,value) VALUES(?,?)"
-            ).bind(k,JSON.stringify(v)));
-          }
-          if(metaBatch.length) await env.DB.batch(metaBatch);
-
-          return json({ok:true,people:x.people.length,relationships:x.relationships.length},200,env);
-        }catch(e){
-          console.error("Archive save failed:",e);
-          return json({error:"Archive save failed",detail:String(e?.message||e)},500,env);
-        }
+        return json({
+          error:"Full-archive replacement is disabled for safety. Use the reviewed, conflict-checked person-change workflow or the non-destructive master merge.",
+          code:"FULL_ARCHIVE_REPLACEMENT_DISABLED"
+        },410,env,origin);
       }
 
       return withCors(json({error:"Not found"},404,env,origin));
