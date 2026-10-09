@@ -45,3 +45,7 @@ The safe online rebuild keeps `main` untouched while the private archive connect
 ## Recovery and safe merge
 
 The administrator workbook recovery action is a **merge**, not a replacement. It inserts missing people, relationships, and metadata keys while leaving existing D1 records untouched. It does not delete existing data or overwrite edits already made online. The resulting counts must be checked after the merge; a partial failure should be investigated before retrying.
+
+## Duplicate person ID merges
+
+The Admin tab includes a staged duplicate-ID merge tool. Choose Person 1 as the ID to retain and Person 2 as the duplicate. The browser previews the merge and stages it locally; nothing is sent to D1 until the administrator reviews and commits the pending change. Non-empty conflicting core values retain Person 1's value, blank values are filled from Person 2, and notes/source text is combined. Relationships involving either person are redirected to the keeper, duplicate edges and self-links are excluded, and an alias/history row preserves the original duplicate record and affected relationships. The Worker checks both person snapshots and their relationship snapshots before committing. Test with a separate D1 database and dummy records before merging this branch into production; live D1 has not been modified by this PR.
