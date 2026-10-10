@@ -111,7 +111,9 @@ th{background:#ead9b7;color:#4b301b}
 
 /* Illustrated antique-paper treatment: family tree, open book and archival foliage */
 body{background-color:#e8dcc0;background-image:url('./fleury-parchment.svg');background-size:cover;background-attachment:fixed;background-position:center top}
-.view.active{background-color:rgba(246,235,211,.88)!important;background-image:linear-gradient(rgba(249,241,222,.79),rgba(249,241,222,.79)),url('./fleury-parchment.svg')!important;background-size:auto,cover!important;background-position:center!important;background-attachment:fixed!important;border-color:#bca477!important}
+.view.active{background-color:rgba(246,235,211,.88)!important;background-image:linear-gradient(rgba(249,241,222,.70),rgba(249,241,222,.70)),url('./fleury-crest.svg'),url('./fleury-parchment.svg')!important;background-size:auto, min(78vw,620px) auto,cover!important;background-repeat:repeat,no-repeat,repeat!important;background-position:center,center center,center!important;background-attachment:fixed!important;border-color:#bca477!important}
+.view.active{background-blend-mode:normal, multiply,normal}
+@media(max-width:700px){.view.active{background-size:auto, min(94vw,440px) auto,cover!important}}
 .view.active>.panel,.view.active .panel{background-color:rgba(255,250,236,.91)}
 header{background-image:linear-gradient(rgba(246,235,211,.94),rgba(235,218,182,.91)),url('./fleury-parchment.svg');background-size:auto,cover;background-position:center}
 .tree-svg{background:#fbf4e4}
