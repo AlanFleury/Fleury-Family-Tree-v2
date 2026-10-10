@@ -109,20 +109,18 @@ th{background:#ead9b7;color:#4b301b}
 @media(max-width:700px){#nav button{padding:8px 9px;font-size:13px}.family-crest{width:54px;height:58px}}
 
 
-/* Use the exact uploaded full-colour Fleury crest in the header and as a subtle watermark on every tab. */
+/* Use only the exact uploaded full-colour Fleury crest as a full-page watermark. */
 .view.active{
-  background-color:rgba(246,235,211,.88)!important;
-  background-image:linear-gradient(rgba(249,241,222,.82),rgba(249,241,222,.82)),url('./fleury-crest.png'),url('./fleury-parchment.svg')!important;
-  background-size:auto,min(78vw,620px) auto,cover!important;
-  background-repeat:repeat,no-repeat,repeat!important;
-  background-position:center,center center,center!important;
-  background-attachment:fixed!important;
-  background-blend-mode:normal,normal,normal!important;
+  background-color:transparent!important;
+  background-image:url('./fleury-crest.png')!important;
+  background-size:100% 100%!important;
+  background-repeat:no-repeat!important;
+  background-position:center top!important;
+  background-attachment:scroll!important;
   border-color:#bca477!important
 }
-@media(max-width:700px){.view.active{background-size:auto,min(94vw,440px) auto,cover!important}}
-.view.active>.panel,.view.active .panel{background-color:rgba(255,250,236,.84)}
-header{background-image:linear-gradient(rgba(246,235,211,.94),rgba(235,218,182,.91)),url('./fleury-parchment.svg');background-size:auto,cover;background-position:center}
+.view.active>.panel,.view.active .panel{background-color:rgba(255,250,236,.48)!important}
+header{background-image:none!important;background-color:#f1e4c8!important}
 .tree-svg{background:transparent!important}
 </style></head><body>
 <header><div class="head"><img class="family-crest" src="./fleury-crest.png" alt="Fleury family crest — crowned helmet, spread-wing eagle and FLEURY banner" title="Fleury family crest"><div class="brand-title"><h1>Fleury Family Tree — Ultimate Edition</h1><div class="sub">Private online family archive • 17,972 people • 30,079 recorded relationships • no subscription required</div></div><div class="toolbar"><span id="authStatus" class="small"></span><button id="signInBtn">Sign in</button><button id="signOutBtn" class="hidden">Sign out</button><button id="backupBtn">Backup</button><button id="importBtn">Restore backup</button><input id="importFile" type="file" accept="application/json" class="hidden"><button id="resetBtn">Reset local edits</button></div></div><nav id="nav"></nav></header>
@@ -220,8 +218,8 @@ function buildTreeSvg(start,type,depth,wall=false){
   const p=person(start);if(!p)return'';const levels=buildTreeLevels(start,type,depth);if(!levels.length)return'';
   const boxW=wall?250:205,boxH=wall?78:70,gapX=wall?38:26,gapY=wall?92:72,step=boxW+gapX,maxN=Math.max(...levels.map(x=>x.ids.length),1),W=Math.max(wall?1500:1150,maxN*step+180),bandH=boxH+gapY,H=Math.max(wall?620:480,levels.length*bandH+145);
   let s=`<svg xmlns="http://www.w3.org/2000/svg" class="tree-svg family-card-chart" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><rect width="100%" height="100%" fill="#fbf4e4"/>`;s+=svgText(W/2,30,nm(p),22,'700');s+=svgText(W/2,52,'Structured family chart • click any person • 💍 = marriage / partner',11);
-  const pos=new Map(),labels=levels.map((lv,i)=>i===0?'SELECTED PERSON':lv.label.toUpperCase());
-  levels.forEach((lv,li)=>{const y=88+li*bandH,by=y-25,bh=bandH-4;s+=`<rect x="18" y="${by}" width="${W-36}" height="${bh}" rx="12" fill="none" stroke="none"/>`;s+=svgText(38,by+19,labels[li],12,'700');const total=lv.ids.length*step,x0=(W-total)/2+step/2;lv.ids.forEach((pid,i)=>pos.set(pid,{x:x0+i*step,y,li,label:lv.label}))});
+  const pos=new Map();
+  levels.forEach((lv,li)=>{const y=88+li*bandH;const total=lv.ids.length*step,x0=(W-total)/2+step/2;lv.ids.forEach((pid,i)=>pos.set(pid,{x:x0+i*step,y,li,label:lv.label}))});
   const bloodIds=new Set([start,...ancestors(start,depth).map(x=>x.id),...descendants(start,depth).map(x=>x.id)]);
   s+=`<g class="chart-connectors" fill="none" stroke="#c1121f" stroke-width="3.5" opacity=".98">`;
   for(const [pid,z] of pos)for(const cid of childMap.get(pid)||[]){if(!pos.has(cid))continue;const q=pos.get(cid),mid=(z.y+q.y)/2;s+=`<path d="M${z.x} ${z.y+boxH/2} V${mid} H${q.x} V${q.y-boxH/2}" stroke-linecap="round"/>`}s+='</g><g class="marriage-connectors" fill="none" stroke="#7b4ea3" stroke-width="2">';
@@ -296,7 +294,7 @@ function renderChartOutput(container,svg,notice=''){
       .replace(/<rect x="18" y="[^"]+" width="[^"]+" height="[^"]+" rx="12" fill="[^"]+" stroke="#c5a979"\s*\/>/g,'');
     if(!svg.includes('class="crest-chart-watermark"')){
       const crestUrl=new URL('./fleury-crest.png',document.baseURI).href;
-      const mark='<image class="crest-chart-watermark" href="'+esc(crestUrl)+'" x="0" y="0" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" opacity="0.22" pointer-events="none"/>';
+      const mark='<image class="crest-chart-watermark" href="'+esc(crestUrl)+'" x="0" y="0" width="100%" height="100%" preserveAspectRatio="none" opacity="0.28" pointer-events="none"/>';
       svg=svg.replace(/(<svg\b[^>]*>)/, '$1'+mark);
     }
   }
