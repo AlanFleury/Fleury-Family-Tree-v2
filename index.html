@@ -110,7 +110,7 @@ th{background:#ead9b7;color:#4b301b}
 
 
 /* Full-page Fleury crest background; all chart canvases stay transparent. */
-html,body{min-height:100%;background-color:#ead9b7!important;background-image:url('./fleury-crest.png')!important;background-size:100% 100vh!important;background-repeat:no-repeat!important;background-position:center top!important;background-attachment:fixed!important}
+html,body{min-height:100%;background-color:transparent!important;background-image:url('./fleury-crest.png')!important;background-size:100% 100%!important;background-repeat:no-repeat!important;background-position:center center!important;background-attachment:fixed!important}
 .view.active{background:transparent!important;border-color:#bca477!important;box-shadow:none!important}
 .view.active>.panel,.view.active .panel{background-color:rgba(255,250,236,.42)!important}
 .view.active .section-links{background-color:rgba(255,250,236,.38)!important}
@@ -286,11 +286,11 @@ function renderChartOutput(container,svg,notice=''){
      Remove decorative paper/white canvas fills and alternating tan generation bands. */
   if(svg&&svg.includes('</svg>')){
     svg=svg
-      .replace(/<rect width="100%" height="100%" fill="[^"]*"\s*\/>/g,'')
+      .replace(/<rect\b(?=[^>]*\bwidth="100%")(?=[^>]*\bheight="100%")[^>]*\/>/g,'')
       .replace(/<rect x="18" y="[^"]+" width="[^"]+" height="[^"]+" rx="12" fill="[^"]+" stroke="#c5a979"\s*\/>/g,'');
     if(!svg.includes('class="crest-chart-watermark"')){
       const crestUrl=new URL('./fleury-crest.png',document.baseURI).href;
-      const mark='<image class="crest-chart-watermark" href="'+esc(crestUrl)+'" x="0" y="0" width="100%" height="100%" preserveAspectRatio="none" opacity="0.28" pointer-events="none"/>';
+      const mark='<image class="crest-chart-watermark" href="'+esc(crestUrl)+'" x="0" y="0" width="100%" height="100%" preserveAspectRatio="none" opacity="0.48" pointer-events="none"/>';
       svg=svg.replace(/(<svg\b[^>]*>)/, '$1'+mark);
     }
   }
