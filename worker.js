@@ -141,8 +141,14 @@ function mapPerson(r){
 
 
 async function gmailAccessToken(env){
-  if(!env.GMAIL_CLIENT_ID||!env.GMAIL_CLIENT_SECRET||!env.GMAIL_REFRESH_TOKEN)
-    throw new Error("Gmail notifications are not configured");
+  const missingGmailSettings = [
+    ["GMAIL_CLIENT_ID", env.GMAIL_CLIENT_ID],
+    ["GMAIL_CLIENT_SECRET", env.GMAIL_CLIENT_SECRET],
+    ["GMAIL_REFRESH_TOKEN", env.GMAIL_REFRESH_TOKEN]
+  ].filter(([, value]) => typeof value !== "string" || !value.trim())
+   .map(([name]) => name);
+  if(missingGmailSettings.length)
+    throw new Error("Gmail notifications are not configured; missing Worker binding(s): " + missingGmailSettings.join(", "));
   const body=new URLSearchParams({
     client_id:env.GMAIL_CLIENT_ID,
     client_secret:env.GMAIL_CLIENT_SECRET,
