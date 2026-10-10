@@ -110,7 +110,7 @@ th{background:#ead9b7;color:#4b301b}
 
 
 /* Full-page Fleury crest background; all chart canvases stay transparent. */
-html,body{min-height:100%;background-color:#ead9b7!important;background-image:url('./fleury-parchment.svg')!important;background-size:cover!important;background-repeat:repeat!important;background-position:center top!important;background-attachment:fixed!important}
+html,body{min-height:100%;background-color:#ead9b7!important;background-image:url('./fleury-parchment.svg')!important;background-size:cover!important;background-repeat:repeat!important;background-position:center top!important;background-attachment:fixed!important}body{position:relative;isolation:isolate}body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background-image:url('./fleury-crest.png');background-size:100% 100%;background-position:center center;background-repeat:no-repeat;opacity:.13}
 .view.active{background:transparent!important;border-color:#bca477!important;box-shadow:none!important}
 .view.active>.panel,.view.active .panel{background-color:rgba(255,250,236,.42)!important}
 .view.active .section-links{background-color:rgba(255,250,236,.38)!important}
@@ -291,7 +291,7 @@ function renderChartOutput(container,svg,notice=''){
       .replace(/<rect x="18" y="[^"]+" width="[^"]+" height="[^"]+" rx="12" fill="[^"]+" stroke="#c5a979"\s*\/>/g,'');
     if(!svg.includes('class="crest-chart-watermark"')){
       const crestUrl=new URL('./fleury-crest.png',document.baseURI).href;
-      const mark='<image class="crest-chart-watermark" href="'+esc(crestUrl)+'" x="0" y="0" width="100%" height="100%" preserveAspectRatio="none" opacity="0.48" pointer-events="none"/>';
+      const mark='<image class="crest-chart-watermark" href="'+esc(crestUrl)+'" x="0" y="0" width="100%" height="100%" preserveAspectRatio="none" opacity="0.16" pointer-events="none"/>';
       svg=svg.replace(/(<svg\b[^>]*>)/, '$1'+mark);
     }
   }
