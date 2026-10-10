@@ -288,11 +288,17 @@ async function exportChartRaster(format='jpeg',wallMode=false){if(!lastSvg){aler
 function exportChartPdf(wallMode=false){setPrintPaper(wallMode?wallPaper.value:'A4');printView(wallMode?'wallcharts':'charts')}
 function setPrintPaper(paper='A4'){let st=document.getElementById('dynamicPrintStyle');if(!st){st=document.createElement('style');st.id='dynamicPrintStyle';document.head.appendChild(st)}st.textContent=`@page{size:${paper} landscape;margin:6mm}`;}
 function renderChartOutput(container,svg,notice=''){
-  /* Add the exact uploaded full-colour crest to the chart artwork itself so it appears
-     on screen and is carried into SVG, PNG, JPEG and print/PDF output. */
-  if(svg&&svg.includes('</svg>')&&!svg.includes('class="crest-chart-watermark"')){
-    const mark='<image class="crest-chart-watermark" href="./fleury-crest.png" x="0" y="0" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" opacity="0.12" pointer-events="none"/>';
-    svg=svg.replace('</svg>',mark+'</svg>');
+  /* Charts use only the exact uploaded Fleury crest as their canvas background.
+     Remove decorative paper/white canvas fills and alternating tan generation bands. */
+  if(svg&&svg.includes('</svg>')){
+    svg=svg
+      .replace(/<rect width="100%" height="100%" fill="[^"]*"\s*\/>/g,'')
+      .replace(/<rect x="18" y="[^"]+" width="[^"]+" height="[^"]+" rx="12" fill="[^"]+" stroke="#c5a979"\s*\/>/g,'');
+    if(!svg.includes('class="crest-chart-watermark"')){
+      const crestUrl=new URL('./fleury-crest.png',document.baseURI).href;
+      const mark='<image class="crest-chart-watermark" href="'+esc(crestUrl)+'" x="0" y="0" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" opacity="0.22" pointer-events="none"/>';
+      svg=svg.replace(/(<svg\b[^>]*>)/, '$1'+mark);
+    }
   }
   lastSvg=svg||'';
   container.innerHTML=svg?'<div class="tree-scroll">'+svg+'</div>'+(notice?'<div class="notice no-print">'+notice+'</div>':''):'<div class="notice">There is not enough linked family information to draw this chart.</div>';
