@@ -327,7 +327,51 @@ function makeGedcom(ids){const people=[...ids].map(person).filter(Boolean),set=n
 function exportGedcom(selectedOnly=false){const id=selectedOnly?(selected.toolTimeline||selected.matrix||selected.compareA||selected.detail):null;if(selectedOnly&&!id){alert('Select a person in Research & Tools first.');return}const ids=selectedOnly?branchIds(id,30):new Set(allPeople().map(p=>p.id));download(selectedOnly?'fleury-selected-branch.ged':'fleury-family-tree.ged',makeGedcom(ids),'text/plain')}
 function exportBranchJSON(){const id=selected.toolTimeline||selected.matrix||selected.compareA||selected.detail;if(!id){alert('Select a person in Research & Tools first.');return}const ids=branchIds(id,30);download('fleury-selected-branch.json',JSON.stringify({version:2,root:id,people:[...ids].map(person).filter(Boolean),relationships:db.relationships.filter(r=>ids.has(r.a)&&ids.has(r.b))},null,2),'application/json')}
 function exportBranchCSV(){const id=selected.toolTimeline||selected.matrix||selected.compareA||selected.detail;if(!id){alert('Select a person in Research & Tools first.');return}const ids=branchIds(id,30),rows=[['ID','Name','Gender','Birth','Death','Places','Sources']];for(const i of ids){const p=person(i);if(p)rows.push([p.id,p.name,p.gender,p.birth,p.death,p.places,p.sources])}const csv=rows.map(r=>r.map(v=>'"'+String(v||'').replaceAll('"','""')+'"').join(',')).join('\n');download('fleury-selected-branch.csv',csv,'text/csv')}
-function printPersonProfile(id){const p=person(id);if(!p)return;const pars=[...(parentMap.get(id)||[])],kids=[...(childMap.get(id)||[])],sps=[...(spouseMap.get(id)||[])];const w=window.open('','_blank');if(!w){alert('Please allow pop-ups for the person profile printout.');return}w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(nm(p))}</title><style>body{font:15px Arial;margin:35px;color:#182230}h1{border-bottom:2px solid #2f5fa8;padding-bottom:8px}section{margin:18px 0}li{margin:5px 0}.muted{color:#667085}</style></head><body><h1>${esc(nm(p))}</h1><p class="muted">Person ID: ${esc(p.id)}</p><section><b>Birth:</b> ${esc(p.birth||'Not recorded')}<br><b>Death:</b> ${esc(p.death||'Not recorded')}<br><b>Places:</b> ${esc(p.places||'Not recorded')}<br><b>Sources:</b> ${esc(p.sources||'Not recorded')}</section><section><h2>Parents</h2><ul>${pars.map(x=>`<li>${esc(nm(person(x)))}</li>`).join('')||'<li>None recorded</li>'}</ul><h2>Spouses / partners</h2><ul>${sps.map(x=>`<li>${esc(nm(person(x)))}</li>`).join('')||'<li>None recorded</li>'}</ul><h2>Children</h2><ul>${kids.map(x=>`<li>${esc(nm(person(x)))}</li>`).join('')||'<li>None recorded</li>'}</ul></section><section><h2>Notes</h2><p>${esc(p.notes||'None recorded')}</p></section><script>window.onload=()=>setTimeout(()=>window.print(),250)<\/script></body></html>`);w.document.close()}
+function printPersonProfile(id){const p=person(id);if(!p)return;const pars=[...(parentMap.get(id)||[])],kids=[...(childMap.get(id)||[])],sps=[...(spouseMap.get(id)||[])];const w=window.open('','_blank');if(!w){alert('Please allow pop-ups for the person profile printout.');return}w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(nm(p))}</title><style>body{font:15px Arial;margin:35px;color:#182230}h1{border-bottom:2px solid #2f5fa8;padding-bottom:8px}section{margin:18px 0}li{margin:5px 0}.muted{color:#667085}
+/* Mobile masthead repair: opaque, compact, and in normal document flow. */
+@media(max-width:600px){
+  header{
+    position:relative!important;top:auto!important;z-index:30;
+    display:block;overflow:visible;
+    background:#172033!important;color:#fff!important;
+    box-shadow:0 3px 12px rgba(0,0,0,.18);
+  }
+  .head{
+    display:grid!important;grid-template-columns:minmax(0,1fr);align-items:start;
+    gap:10px!important;padding:14px 13px 10px!important;
+    width:100%;max-width:none;flex-wrap:nowrap!important;
+  }
+  .head>div:first-child{display:flex;align-items:center;gap:10px;min-width:0;width:100%}
+  .family-crest{width:44px!important;height:48px!important;flex:0 0 44px;object-fit:contain}
+  .brand-title{min-width:0;flex:1}
+  h1{font-size:clamp(19px,5.4vw,24px)!important;line-height:1.2!important;white-space:normal!important;overflow-wrap:anywhere;margin:0}
+  .sub{display:block!important;font-size:13px;line-height:1.35;opacity:.82;margin-top:5px}
+  .head .toolbar{
+    display:flex!important;width:100%!important;max-width:none!important;
+    flex:initial!important;flex-wrap:wrap!important;gap:7px!important;
+    align-items:center;overflow:visible!important;white-space:normal!important;padding:0!important;
+  }
+  .head .toolbar button{flex:1 1 auto;min-height:44px;padding:9px 11px;font-size:14px}
+  #authStatus{display:inline-block!important;flex:1 1 100%;font-size:13px}
+  #globalSearchBtn{flex:0 0 44px!important;min-width:44px!important;min-height:44px!important}
+  nav{
+    display:flex!important;position:relative;max-width:none;width:100%;
+    margin:0!important;padding:0 8px 9px!important;gap:5px!important;
+    flex-wrap:nowrap!important;overflow-x:auto!important;overflow-y:hidden!important;
+    white-space:nowrap;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;
+    background:#172033!important;
+  }
+  nav button{flex:0 0 auto!important;min-height:42px!important;padding:9px 12px!important;font-size:13px}
+  .subnav{
+    display:flex!important;position:relative;max-width:none;width:100%;
+    margin:0!important;padding:0 8px 9px!important;gap:5px!important;
+    flex-wrap:nowrap!important;overflow-x:auto!important;overflow-y:hidden!important;
+    white-space:nowrap;-webkit-overflow-scrolling:touch;background:#172033!important;
+  }
+  .subnav button{flex:0 0 auto!important;min-height:38px!important;padding:8px 10px!important;font-size:12px}
+  main{padding:7px!important}
+}
+</style></head><body><h1>${esc(nm(p))}</h1><p class="muted">Person ID: ${esc(p.id)}</p><section><b>Birth:</b> ${esc(p.birth||'Not recorded')}<br><b>Death:</b> ${esc(p.death||'Not recorded')}<br><b>Places:</b> ${esc(p.places||'Not recorded')}<br><b>Sources:</b> ${esc(p.sources||'Not recorded')}</section><section><h2>Parents</h2><ul>${pars.map(x=>`<li>${esc(nm(person(x)))}</li>`).join('')||'<li>None recorded</li>'}</ul><h2>Spouses / partners</h2><ul>${sps.map(x=>`<li>${esc(nm(person(x)))}</li>`).join('')||'<li>None recorded</li>'}</ul><h2>Children</h2><ul>${kids.map(x=>`<li>${esc(nm(person(x)))}</li>`).join('')||'<li>None recorded</li>'}</ul></section><section><h2>Notes</h2><p>${esc(p.notes||'None recorded')}</p></section><script>window.onload=()=>setTimeout(()=>window.print(),250)<\/script></body></html>`);w.document.close()}
 function renderToolHealth(){const ps=allPeople();const broken=db.relationships.filter(r=>!person(r.a)||!person(r.b)).length;const dupIds=ps.length-new Set(ps.map(p=>p.id)).size;const noRel=ps.filter(p=>(relByPerson.get(p.id)||[]).length===0).length;toolHealth.innerHTML=`<div class="kpi"><b>People</b><h2>${ps.length.toLocaleString()}</h2></div><div class="kpi"><b>Relationships</b><h2>${db.relationships.length.toLocaleString()}</h2></div><div class="kpi"><b>Broken links</b><h2 class="${broken?'bad':'ok'}">${broken.toLocaleString()}</h2></div><div class="kpi"><b>Duplicate IDs</b><h2 class="${dupIds?'bad':'ok'}">${dupIds.toLocaleString()}</h2></div><div class="kpi"><b>Unconnected people</b><h2>${noRel.toLocaleString()}</h2></div>`}
 async function renderAccessRequests(){if(currentRole!=='admin')return;try{const data=await window.archiveApi.listAccessRequests(),items=data.requests||[];pendingAccessBadge.textContent=items.filter(x=>x.status==='pending').length+' pending';accessRequestsOutput.innerHTML=items.length?items.map(x=>'<div class="card"><div class="section-title"><b>'+esc(x.name||'Unnamed')+' — '+esc(x.email)+'</b><span class="badge">'+esc(x.status)+'</span></div><p>'+esc(x.reason||'No reason supplied')+'</p><div class="small muted">Requested '+esc(String(x.created_at||'').replace('T',' ').slice(0,19))+'</div>'+(x.status==='pending'?'<div class="form-actions"><button class="primary" data-approve-request="'+esc(x.id)+'">Approve</button><button class="danger" data-reject-request="'+esc(x.id)+'">Reject</button></div>':'')+'</div>').join(''):'<p class="muted">No access requests.</p>';accessRequestsOutput.querySelectorAll('[data-approve-request]').forEach(b=>b.onclick=()=>reviewAccess(b.dataset.approveRequest,'approve'));accessRequestsOutput.querySelectorAll('[data-reject-request]').forEach(b=>b.onclick=()=>reviewAccess(b.dataset.rejectRequest,'reject'))}catch(e){accessRequestsOutput.innerHTML='<p class="bad">'+esc(e.message||e)+'</p>'}}
 async function reviewAccess(id,decision){try{await window.archiveApi.reviewAccessRequest(id,decision);await renderAccessRequests();await renderAdminUsers()}catch(e){alert('Access review failed: '+(e.message||e))}}
