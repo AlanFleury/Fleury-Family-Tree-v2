@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900">
+<defs>
+ <linearGradient id="paper" x2="0.8" y2="1"><stop stop-color="#f7efd9"/><stop offset="1" stop-color="#e7d4ae"/></linearGradient>
+ <pattern id="speck" width="83" height="71" patternUnits="userSpaceOnUse"><circle cx="12" cy="15" r="1.2" fill="#8b6c3d" opacity=".16"/><circle cx="62" cy="48" r="1" fill="#70522d" opacity=".15"/><path d="M33 6l2 5m-8 42l3 2" stroke="#9c7c4c" stroke-width="1" opacity=".14"/></pattern>
+ <g id="leaf" fill="none" stroke="#8d7148" stroke-width="2"><path d="M0 0Q-20-18-28-4Q-15 4 0 0Q13-24 27-11Q17 2 0 0"/><path d="M0 0L-23-6M0 0L21-10"/></g>
+ <g id="book" fill="none" stroke="#8b6b40" stroke-width="4" stroke-linejoin="round"><path d="M0 5Q-58-22-113 0L-113 100Q-56 74 0 103Q56 74 113 100L113 0Q58-22 0 5Z" fill="#c9ae79" fill-opacity=".20"/><path d="M0 5V103M-95 17Q-53 3-17 21M-95 39Q-53 25-17 43M-95 61Q-53 47-17 65M17 21Q53 3 95 17M17 43Q53 25 95 39M17 65Q53 47 95 61" stroke-width="2"/></g>
+ <g id="tree" fill="none" stroke="#8b6b40" stroke-width="4" stroke-linecap="round"><path d="M0 115V28M0 58L-37 31M0 73L39 42M-37 31L-49 13M-37 31L-19 13M39 42L31 21M39 42L55 25"/><circle cx="0" cy="20" r="19" fill="#bca06b" fill-opacity=".25"/><circle cx="-49" cy="11" r="12" fill="#bca06b" fill-opacity=".25"/><circle cx="-19" cy="12" r="12" fill="#bca06b" fill-opacity=".25"/><circle cx="31" cy="20" r="12" fill="#bca06b" fill-opacity=".25"/><circle cx="55" cy="24" r="12" fill="#bca06b" fill-opacity=".25"/><path d="M-26 115H27M-17 125H18" stroke-width="3"/></g>
+</defs>
+<rect width="1200" height="900" fill="url(#paper)"/><rect width="1200" height="900" fill="url(#speck)"/>
+<g opacity=".22"><rect x="22" y="22" width="1156" height="856" rx="24" fill="none" stroke="#927347" stroke-width="3"/><rect x="34" y="34" width="1132" height="832" rx="18" fill="none" stroke="#b59a69" stroke-width="1.5"/></g>
+<g opacity=".18" transform="translate(160 155) scale(1.35)"><use href="#tree"/></g>
+<g opacity=".15" transform="translate(980 680) scale(1.5)"><use href="#book"/></g>
+<g opacity=".12" transform="translate(1050 190) scale(1.1) rotate(18)"><use href="#leaf"/></g>
+<g opacity=".12" transform="translate(170 735) scale(1.1) rotate(-20)"><use href="#leaf"/></g>
+<g opacity=".08" fill="none" stroke="#9d8151" stroke-width="2"><path d="M520 0Q600 80 680 0M520 900Q600 820 680 900"/><circle cx="600" cy="450" r="300"/><circle cx="600" cy="450" r="310"/></g>
+</svg>
