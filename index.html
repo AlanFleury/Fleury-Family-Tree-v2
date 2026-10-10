@@ -606,7 +606,9 @@ function wireMergePicker(input,box,chosen,onPick){input.addEventListener('input'
      const ident=r.id?('ID: '+r.id):'NO ID RECORDED';
      const linked=r.id?String(r.relationships)+' relationship record(s) linked by ID':'Relationships cannot be reliably matched without an ID';
      const disabled=r.canDelete?'':'disabled';
-     return '<div class="card unnamed-cleanup-row"><label class="unnamed-pick-label"><input type="checkbox" id="unnamedPick_'+r.index+'" data-unnamed-index="'+r.index+'" '+disabled+'><span><b>'+(r.name?escHtml(r.name):'(blank name)')+'</b><br><span class="small muted">'+escHtml(ident)+' • '+escHtml(linked)+'</span><br><span class="small">'+(r.canDelete?'Can be deleted after final confirmation.':'Cannot be safely deleted: the current API requires a person ID.')+'</span></span></label></div>';
+     const heading=r.orphan?'(Unnamed — missing person record)':(r.name||'(blank name)');
+     const explanation=r.orphan?'This ID is referenced in family relationships, but no person record exists. Removing it will remove those dangling relationship links.':(r.canDelete?'Can be deleted after final confirmation.':'Cannot be safely deleted: the current API requires a person ID.');
+     return '<div class="card unnamed-cleanup-row"><label class="unnamed-pick-label"><input type="checkbox" id="unnamedPick_'+r.index+'" data-unnamed-index="'+r.index+'" '+disabled+'><span><b>'+escHtml(heading)+'</b><br><span class="small muted">'+escHtml(ident)+' • '+escHtml(linked)+'</span><br><span class="small">'+escHtml(explanation)+'</span></span></label></div>';
    }).join('');
    list.querySelectorAll('[data-unnamed-index]').forEach(cb=>cb.addEventListener('change',updateConfirm));
    updateConfirm();
@@ -614,8 +616,15 @@ function wireMergePicker(input,box,chosen,onPick){input.addEventListener('input'
  function scan(){
    result.innerHTML='';phrase.value='';confirmArea.classList.add('hidden');
    if(currentRole!=='admin'){status.innerHTML='<span class="bad">Administrator sign-in is required.</span>';render();return;}
-   rows=(Array.isArray(db.people)?db.people:[]).map((p,index)=>({p,index,id:rawId(p),name:rawName(p),relationships:relationshipCount(rawId(p)),canDelete:!!rawId(p)})).filter(r=>isUnnamed(r.p));
-   status.textContent='Scan complete: '+rows.length+' unnamed record(s), '+rows.filter(r=>r.canDelete).length+' with IDs and '+rows.filter(r=>!r.canDelete).length+' without IDs. No data has been changed.';
+   const people=Array.isArray(db.people)?db.people:[];
+   const personIds=new Set(people.map(rawId).filter(Boolean));
+   const namedRows=people.map((p,index)=>({p,index,id:rawId(p),name:rawName(p),relationships:relationshipCount(rawId(p)),canDelete:!!rawId(p),orphan:false})).filter(r=>isUnnamed(r.p));
+   /* Profile views also show “(Unnamed)” when a relationship points to an ID with no person row at all. Include those dangling IDs in the scan. */
+   const danglingIds=[...new Set((Array.isArray(db.relationships)?db.relationships:[]).flatMap(rel=>[String(rel.a??'').trim(),String(rel.b??'').trim()]).filter(id=>id&&!personIds.has(id)))];
+   const danglingRows=danglingIds.map((id,n)=>({p:null,index:people.length+n,id,name:'(Unnamed — missing person record)',relationships:relationshipCount(id),canDelete:true,orphan:true}));
+   const brokenRelationshipCount=(Array.isArray(db.relationships)?db.relationships:[]).filter(rel=>!String(rel.a??'').trim()||!String(rel.b??'').trim()).length;
+   rows=[...namedRows,...danglingRows];
+   status.textContent='Scan complete: '+namedRows.length+' blank-name/unnamed person record(s), '+danglingRows.length+' missing-person ID(s) still referenced by family relationships, and '+brokenRelationshipCount+' relationship record(s) with an empty endpoint ID. No data has been changed.';
    render();
  }
  byId('scanUnnamedBtn').addEventListener('click',scan);
@@ -626,7 +635,7 @@ function wireMergePicker(input,box,chosen,onPick){input.addEventListener('input'
    if(currentRole!=='admin'){result.innerHTML='<p class="bad">Administrator sign-in is required.</p>';return;}
    const chosen=selectedRows();
    if(!chosen.length||phrase.value!=='DELETE')return;
-   const details=chosen.map(r=>(r.name||'(blank name)')+' — '+r.id+' ('+r.relationships+' linked relationship record(s))').join('\n');
+   const details=chosen.map(r=>(r.orphan?'Dangling relationship reference (no person record)':(r.name||'(blank name)'))+' — '+r.id+' ('+r.relationships+' linked relationship record(s))').join('\n');
    if(!confirm('FINAL CONFIRMATION: permanently delete these '+chosen.length+' people and all relationships referencing their IDs?\n\n'+details+'\n\nThis cannot be undone from the archive. Continue?'))return;
    deleteBtn.disabled=true;result.innerHTML='<p class="muted">Deleting selected records…</p>';
    let removed=0,failures=[];
