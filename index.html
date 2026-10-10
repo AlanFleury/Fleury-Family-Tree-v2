@@ -409,30 +409,71 @@ gmailConnectBtn.onclick=async()=>{if(currentRole!=='admin'){gmailConnectStatus.t
 const masterRestoreFile=document.getElementById('masterRestoreFile'),masterRestoreBtn=document.getElementById('masterRestoreBtn'),masterRestoreStatus=document.getElementById('masterRestoreStatus');
 masterRestoreFile.onchange=()=>{masterRestoreBtn.disabled=!masterRestoreFile.files.length||currentRole!=='admin';masterRestoreStatus.textContent=masterRestoreFile.files.length?'Ready: '+masterRestoreFile.files[0].name:''};
 masterRestoreBtn.onclick=async()=>{if(currentRole!=='admin'){alert('Administrator access is required.');return}const f=masterRestoreFile.files[0];if(!f)return;masterRestoreBtn.disabled=true;masterRestoreFile.disabled=true;try{masterRestoreStatus.textContent='Reading Excel master workbook…';const buf=await f.arrayBuffer();const wb=XLSX.read(buf,{type:'array'});const peopleRows=XLSX.utils.sheet_to_json(wb.Sheets['People'],{header:1,defval:''});const relRows=XLSX.utils.sheet_to_json(wb.Sheets['Relationships'],{header:1,defval:''});const metaRows=XLSX.utils.sheet_to_json(wb.Sheets['Meta'],{header:1,defval:''});if(peopleRows.length!==17973||relRows.length!==30080)throw new Error('Wrong workbook: found '+Math.max(0,peopleRows.length-1)+' people and '+Math.max(0,relRows.length-1)+' relationships.');const ph=peopleRows[0],rh=relRows[0],mh=metaRows[0];const people=peopleRows.slice(1).map(r=>Object.fromEntries(ph.map((h,i)=>[h,r[i]??'']))).map(v=>({person_id:String(v['Person ID']??''),name:String(v['Name']??''),gender:String(v['Gender']??''),birth:String(v['Birth']??''),death:String(v['Death']??''),relationship_to_alan:String(v['Relationship to Alan']??''),evidence_status:String(v['Evidence Status']??''),source_ids:String(v['Source IDs']??''),notes:String(v['Notes']??''),places:String(v['Places']??''),json_extra:String(v['JSON Extra']??'')}));const relationships=relRows.slice(1).map(r=>Object.fromEntries(rh.map((h,i)=>[h,r[i]??'']))).map(v=>({type:String(v['Type']??''),person1:String(v['Person 1']??''),person2:String(v['Person 2']??'')}));const meta=metaRows.slice(1).map(r=>Object.fromEntries(mh.map((h,i)=>[h,r[i]??'']))).map(v=>({key:String(v['Key']??''),value:String(v['Value']??'')}));if(people.some(p=>!p.person_id)||relationships.some(r=>!r.person1||!r.person2))throw new Error('The workbook contains a blank person ID or relationship endpoint. Nothing was changed.');masterRestoreStatus.textContent='Starting verified restore…';const result=await archiveApi.restoreArchiveFromWorkbook({people,relationships,meta},(kind,done,total)=>{masterRestoreStatus.textContent='Restoring '+kind+': '+done.toLocaleString()+' / '+total.toLocaleString()});masterRestoreStatus.innerHTML='<span class="ok"><b>RESTORE COMPLETE.</b> '+result.people.toLocaleString()+' people and '+result.relationships.toLocaleString()+' relationships.</span>';masterRestoreFile.disabled=false;renderStats();}catch(e){masterRestoreStatus.innerHTML='<span class="bad"><b>RESTORE FAILED:</b> '+esc(e.message||e)+'</span>';masterRestoreFile.disabled=false;masterRestoreBtn.disabled=false}};
-savePerson.onclick=async()=>{
+document.getElementById('savePerson').addEventListener('click',async(event)=>{
+  event.preventDefault();
   const beforePeople=JSON.stringify(db.people);
   const beforeRelationships=JSON.stringify(db.relationships);
+  const status=document.getElementById('saveMsg');
   try{
-  if(!currentUser){alert('Please sign in first.');return}
-  if(!['admin','editor'].includes(currentRole)){alert('Your account does not have permission to edit the archive.');return}
-  let i=selected.edit;
-  if(!i){i='@NEW'+Date.now()+'@';db.people.push({id:i,name:editName.value.trim(),gender:editGender.value.trim(),birth:editBirth.value.trim(),death:editDeath.value.trim(),relationshipToAlan:'',evidence:'',sources:editSources.value.trim(),notes:editNotes.value,places:editBirthPlace.value.trim(),jsonExtra:''})}
-  else{const p=person(i);Object.assign(p,{name:editName.value.trim(),gender:editGender.value.trim(),birth:editBirth.value.trim(),death:editDeath.value.trim(),places:editBirthPlace.value.trim(),notes:editNotes.value,sources:editSources.value.trim()})}
-  db.relationships=db.relationships.filter(r=>!(r.type==='parent'&&(r.a===i||r.b===i)));
-  const addRows=(box,reverse)=>{for(const row of box.querySelectorAll('.family-row')){const q=row.querySelector('input').value.trim().toLowerCase();const hit=allPeople().find(p=>lower(nm(p))===q);if(hit)db.relationships.push({type:'parent',a:reverse?i:hit.id,b:reverse?hit.id:i})}};
-  addRows(editParents,false); addRows(editChildren,true); reindex();
+    if(!currentUser){alert('Please sign in first.');return}
+    if(!['admin','editor'].includes(currentRole)){alert('Your account does not have permission to edit the archive.');return}
+    let i=selected.edit;
+    if(!i && !editName.value.trim()){status.innerHTML='<p class="bad">Enter a name before saving a new person.</p>';return}
+    if(!i){i='@NEW'+Date.now()+'@';db.people.push({id:i,name:editName.value.trim(),gender:editGender.value.trim(),birth:editBirth.value.trim(),death:editDeath.value.trim(),relationshipToAlan:'',evidence:'',sources:editSources.value.trim(),notes:editNotes.value,places:editBirthPlace.value.trim(),jsonExtra:''})}
+    else{
+      const p=person(i);
+      if(!p) throw new Error('The selected person is no longer in the loaded archive. Search for them again and retry.');
+      Object.assign(p,{name:editName.value.trim(),gender:editGender.value.trim(),birth:editBirth.value.trim(),death:editDeath.value.trim(),places:editBirthPlace.value.trim(),notes:editNotes.value,sources:editSources.value.trim()});
+    }
+    db.relationships=db.relationships.filter(r=>!(r.type==='parent'&&(r.a===i||r.b===i)));
+    const addRows=(box,reverse)=>{for(const row of box.querySelectorAll('.family-row')){const input=row.querySelector('input');const q=(input?.value||'').trim().toLowerCase();const hit=allPeople().find(p=>lower(nm(p))===q);if(hit&&hit.id!==i)db.relationships.push({type:'parent',a:reverse?i:hit.id,b:reverse?hit.id:i})}};
+    addRows(document.getElementById('editParents'),false);
+    addRows(document.getElementById('editChildren'),true);
+    reindex();
+    const p=person(i);
+    const family=db.relationships.filter(r=>r.type==='parent'&&(r.a===i||r.b===i)).map(r=>({type:r.type,person1:r.a,person2:r.b}));
+    const result=await window.archiveApi.savePerson({
+      'Person ID':p.id,Name:p.name,Gender:p.gender,Birth:p.birth,Death:p.death,Places:p.places,Notes:p.notes,'Source IDs':p.sources,'Relationship to Alan':p.relationshipToAlan,'Evidence Status':p.evidence
+    },family);
+    if(!result?.ok) throw new Error('The archive did not confirm the save.');
+    await persist();
+    selected.edit=i;
+    document.getElementById('editPerson').value=nm(p);
+    status.innerHTML='<p class="ok">Saved to the private online archive.</p>';
+    renderStats();renderPeople();renderFamilyInputs();
+  }catch(e){
+    console.error(e);
+    try{db.people=JSON.parse(beforePeople);db.relationships=JSON.parse(beforeRelationships);reindex()}catch(restoreError){console.error('Rollback failed:',restoreError)}
+    status.innerHTML='<p class="bad">Save failed: '+esc(e.message||e)+'</p>';
+  }
+});
+document.getElementById('deletePerson').addEventListener('click',async(event)=>{
+  event.preventDefault();
+  const status=document.getElementById('saveMsg');
+  const i=selected.edit;
+  if(!i){status.innerHTML='<p class="bad">Select a person from the search results before deleting.</p>';return}
+  if(currentRole!=='admin'){alert('Admin access is required to delete a person.');return}
   const p=person(i);
-  const family=db.relationships.filter(r=>r.type==='parent'&&(r.a===i||r.b===i)).map(r=>({type:r.type,person1:r.a,person2:r.b}));
-  await window.archiveApi.savePerson({
-    'Person ID':p.id,Name:p.name,Gender:p.gender,Birth:p.birth,Death:p.death,Places:p.places,Notes:p.notes,'Source IDs':p.sources,'Relationship to Alan':p.relationshipToAlan,'Evidence Status':p.evidence
-  },family);
-  await persist(); selected.edit=i; saveMsg.innerHTML='<p class="ok">Saved to the private online archive.</p>'; renderStats(); renderPeople(); renderFamilyInputs();
-}catch(e){
-  console.error(e);
-  try{db.people=JSON.parse(beforePeople);db.relationships=JSON.parse(beforeRelationships);reindex()}catch(restoreError){console.error('Rollback failed:',restoreError)}
-  saveMsg.innerHTML='<p class="bad">Save failed — no local change was kept: '+esc(e.message||e)+'</p>'
-}};
-deletePerson.onclick=async()=>{if(!selected.edit)return;if(!confirm('Delete this person and all relationships involving them?'))return;try{if(currentRole!=='admin'){alert('Admin access is required to delete a person.');return}const i=selected.edit;await window.archiveApi.deletePerson(i);db.people=db.people.filter(p=>p.id!==i);db.relationships=db.relationships.filter(r=>r.a!==i&&r.b!==i);reindex();await persist();selected.edit=null;saveMsg.innerHTML='<p class="ok">Deleted from the private online archive.</p>';renderStats();renderPeople()}catch(e){saveMsg.innerHTML='<p class="bad">Delete failed: '+esc(e.message||e)+'</p>'}};
+  if(!p){status.innerHTML='<p class="bad">The selected person could not be found. Search for them again.</p>';return}
+  if(!confirm('Delete '+nm(p)+' and all relationships involving them? This cannot be undone from the archive.'))return;
+  try{
+    const result=await window.archiveApi.deletePerson(i);
+    if(!result?.ok) throw new Error('The archive did not confirm the deletion.');
+    db.people=db.people.filter(personRow=>personRow.id!==i);
+    db.relationships=db.relationships.filter(r=>r.a!==i&&r.b!==i);
+    reindex();await persist();
+    selected.edit=null;
+    document.getElementById('editPerson').value='';
+    ['editName','editGender','editBirth','editDeath','editBirthPlace','editDeathPlace','editNotes','editSources'].forEach(id=>{const field=document.getElementById(id);if(field)field.value=''});
+    document.getElementById('editParents').innerHTML='';
+    document.getElementById('editChildren').innerHTML='';
+    status.innerHTML='<p class="ok">Deleted from the private online archive.</p>';
+    renderStats();renderPeople();renderFamilyInputs();
+  }catch(e){
+    console.error(e);
+    status.innerHTML='<p class="bad">Delete failed: '+esc(e.message||e)+'</p>';
+  }
+});
 newPerson.onclick=()=>{selected.edit=null;editPerson.value='';editName.value='';editGender.value='';editBirth.value='';editDeath.value='';editBirthPlace.value='';editDeathPlace.value='';editNotes.value='';editSources.value='';editParents.innerHTML='';editChildren.innerHTML='';saveMsg.innerHTML='<p class="muted">Enter the new person details and press Save person.</p>'};
 async function useOfflineArchive(cause){
   const cached=await loadPersisted();
