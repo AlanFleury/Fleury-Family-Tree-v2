@@ -596,7 +596,9 @@ function wireMergePicker(input,box,chosen,onPick){input.addEventListener('input'
  const rawId=p=>String(p?.id??p?.['Person ID']??p?.person_id??'').trim();
  const rawName=p=>String(p?.name??p?.Name??p?.['Full Name']??'').trim();
  const isUnnamed=p=>{const n=rawName(p).toLowerCase();return !n||n==='(unnamed)'||n==='unnamed';};
- const relationshipCount=id=>id?db.relationships.filter(r=>String(r.a??'')===id||String(r.b??'')===id).length:0;
+ const relationA=r=>String(r?.a??r?.person1??r?.person_1??'').trim();
+ const relationB=r=>String(r?.b??r?.person2??r?.person_2??'').trim();
+ const relationshipCount=id=>id?db.relationships.filter(r=>relationA(r)===id||relationB(r)===id).length:0;
  function selectedRows(){return rows.filter(r=>r.canDelete&&byId('unnamedPick_'+r.index)?.checked);}
  function updateConfirm(){const chosen=selectedRows();confirmArea.classList.toggle('hidden',chosen.length===0);deleteBtn.disabled=chosen.length===0||phrase.value!=='DELETE'||currentRole!=='admin';}
  function render(){
@@ -620,9 +622,9 @@ function wireMergePicker(input,box,chosen,onPick){input.addEventListener('input'
    const personIds=new Set(people.map(rawId).filter(Boolean));
    const namedRows=people.map((p,index)=>({p,index,id:rawId(p),name:rawName(p),relationships:relationshipCount(rawId(p)),canDelete:!!rawId(p),orphan:false})).filter(r=>isUnnamed(r.p));
    /* Profile views also show “(Unnamed)” when a relationship points to an ID with no person row at all. Include those dangling IDs in the scan. */
-   const danglingIds=[...new Set((Array.isArray(db.relationships)?db.relationships:[]).flatMap(rel=>[String(rel.a??'').trim(),String(rel.b??'').trim()]).filter(id=>id&&!personIds.has(id)))];
+   const danglingIds=[...new Set((Array.isArray(db.relationships)?db.relationships:[]).flatMap(rel=>[relationA(rel),relationB(rel)]).filter(id=>id&&!personIds.has(id)))];
    const danglingRows=danglingIds.map((id,n)=>({p:null,index:people.length+n,id,name:'(Unnamed — missing person record)',relationships:relationshipCount(id),canDelete:true,orphan:true}));
-   const brokenRelationshipCount=(Array.isArray(db.relationships)?db.relationships:[]).filter(rel=>!String(rel.a??'').trim()||!String(rel.b??'').trim()).length;
+   const brokenRelationshipCount=(Array.isArray(db.relationships)?db.relationships:[]).filter(rel=>!relationA(rel)||!relationB(rel)).length;
    rows=[...namedRows,...danglingRows];
    status.textContent='Scan complete: '+namedRows.length+' blank-name/unnamed person record(s), '+danglingRows.length+' missing-person ID(s) still referenced by family relationships, and '+brokenRelationshipCount+' relationship record(s) with an empty endpoint ID. No data has been changed.';
    render();
@@ -644,7 +646,7 @@ function wireMergePicker(input,box,chosen,onPick){input.addEventListener('input'
        const response=await window.archiveApi.deletePerson(r.id);
        if(!response?.ok)throw new Error('The archive did not confirm deletion.');
        db.people=db.people.filter(p=>rawId(p)!==r.id);
-       db.relationships=db.relationships.filter(rel=>String(rel.a??'')!==r.id&&String(rel.b??'')!==r.id);
+       db.relationships=db.relationships.filter(rel=>relationA(rel)!==r.id&&relationB(rel)!==r.id);
        removed++;
      }catch(e){failures.push((r.name||'(blank name)')+' ['+r.id+']: '+(e?.message||e));}
    }
