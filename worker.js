@@ -460,7 +460,7 @@ export default {
         if(!found.has(keepId)||!found.has(dropId)) return json({error:"Both people must exist in the archive before merging"},404,env,origin);
         try{
           await env.DB.batch([
-            // Remove links that would become duplicates or self-links after redirecting dropId to keepId.
+            // Remove links that would become duplicates or self-links after redirecting dropId to keepId. (merge-fix deployment trigger)
             // This must happen BEFORE the UPDATE statements because the relationship unique constraint
             // is enforced immediately; cleaning duplicates afterwards is too late.
             env.DB.prepare(`DELETE FROM relationships
