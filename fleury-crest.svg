@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 190" role="img" aria-labelledby="title">
+<title id="title">Fleury family crest</title>
+<defs><linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#e8cf88"/><stop offset="1" stop-color="#a97a2f"/></linearGradient><linearGradient id="shield" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#4d6487"/><stop offset="1" stop-color="#243953"/></linearGradient></defs>
+<g stroke="#67431f" stroke-linejoin="round" stroke-linecap="round">
+<path fill="url(#gold)" stroke-width="3" d="M48 35 38 15 58 24 70 5 83 23 96 5 108 24 129 15 120 36Z"/>
+<path fill="#8b642b" stroke-width="2" d="M44 34H124V43H44Z"/>
+<path fill="url(#shield)" stroke-width="5" d="M31 43Q90 55 149 43L141 112Q132 150 90 170Q48 150 39 112Z"/>
+<path fill="none" stroke="url(#gold)" stroke-width="3" d="M41 52Q90 61 139 52L132 110Q124 140 90 158Q56 140 48 110Z"/>
+<g fill="url(#gold)" stroke="#fff0c0" stroke-width="1.2" transform="translate(43 62) scale(.8)">
+<path d="M50 7 39 22 47 34 34 48 41 61 25 72 38 82 50 72 61 82 74 72 59 61 66 48 53 34 61 22Z"/>
+<path d="M49 10 30 2 33 18 45 25 49 43 56 43 56 25 68 18 71 2Z"/>
+<path d="M32 49 18 40 13 47 27 60 38 60Z"/><path d="M67 49 81 40 86 47 72 60 61 60Z"/>
+</g>
+<path fill="url(#gold)" stroke-width="2" d="M22 145Q90 160 158 145L151 166Q90 184 29 166Z"/>
+<path fill="#f8efd9" stroke-width="1.5" d="M31 148Q90 161 149 148L144 161Q90 175 36 161Z"/>
+</g><text x="90" y="161" text-anchor="middle" font-family="Georgia,serif" font-size="15" font-weight="bold" letter-spacing="2" fill="#4c321d">FLEURY</text></svg>
