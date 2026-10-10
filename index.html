@@ -108,6 +108,14 @@ th{background:#ead9b7;color:#4b301b}
 .section-links button:hover{background:#ead8b4}
 @media(max-width:700px){#nav button{padding:8px 9px;font-size:13px}.family-crest{width:54px;height:58px}}
 
+
+/* Illustrated antique-paper treatment: family tree, open book and archival foliage */
+body{background-color:#e8dcc0;background-image:url('./fleury-parchment.svg');background-size:cover;background-attachment:fixed;background-position:center top}
+.view.active{background-color:rgba(246,235,211,.88)!important;background-image:linear-gradient(rgba(249,241,222,.79),rgba(249,241,222,.79)),url('./fleury-parchment.svg')!important;background-size:auto,cover!important;background-position:center!important;background-attachment:fixed!important;border-color:#bca477!important}
+.view.active>.panel,.view.active .panel{background-color:rgba(255,250,236,.91)}
+header{background-image:linear-gradient(rgba(246,235,211,.94),rgba(235,218,182,.91)),url('./fleury-parchment.svg');background-size:auto,cover;background-position:center}
+.tree-svg{background:#fbf4e4}
+
 </style></head><body>
 <header><div class="head"><img class="family-crest" src="./fleury-crest.svg" alt="Fleury family crest — crowned helmet, spread-wing eagle and FLEURY banner" title="Fleury family crest"><div class="brand-title"><h1>Fleury Family Tree — Ultimate Edition</h1><div class="sub">Private online family archive • 17,972 people • 30,079 recorded relationships • no subscription required</div></div><div class="toolbar"><span id="authStatus" class="small"></span><button id="signInBtn">Sign in</button><button id="signOutBtn" class="hidden">Sign out</button><button id="backupBtn">Backup</button><button id="importBtn">Restore backup</button><input id="importFile" type="file" accept="application/json" class="hidden"><button id="resetBtn">Reset local edits</button></div></div><nav id="nav"></nav></header>
 <main>
