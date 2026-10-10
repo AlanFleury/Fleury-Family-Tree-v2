@@ -444,6 +444,36 @@ export default {
         return json({ok:true,email,personId},200,env);
       }
 
+      if(url.pathname==="/api/person/merge" && request.method==="POST"){
+        if(u.role!=="admin") return json({error:"Admin access required"},403,env,origin);
+        const x=await request.json(),p=x?.person||{};
+        const keepId=String(p["Person ID"]||p.person_id||p.id||""),dropId=String(x?.duplicateId||"");
+        if(!keepId||!dropId||keepId===dropId) return json({error:"Two different person IDs are required"},400,env,origin);
+        const existing=await env.DB.prepare("SELECT person_id FROM people WHERE person_id IN (?,?)").bind(keepId,dropId).all();
+        const found=new Set((existing.results||[]).map(r=>String(r.person_id)));
+        if(!found.has(keepId)||!found.has(dropId)) return json({error:"Both people must exist in the archive before merging"},404,env,origin);
+        try{
+          await env.DB.batch([
+            env.DB.prepare(`UPDATE people SET name=?,gender=?,birth=?,death=?,relationship_to_alan=?,evidence_status=?,source_ids=?,notes=?,places=?,json_extra=? WHERE person_id=?`)
+              .bind(String(p.Name||""),String(p.Gender||""),String(p.Birth||""),String(p.Death||""),
+                String(p["Relationship to Alan"]||""),String(p["Evidence Status"]||""),String(p["Source IDs"]||""),
+                String(p.Notes||""),String(p.Places||""),JSON.stringify(p),keepId),
+            env.DB.prepare("UPDATE relationships SET person1=? WHERE person1=?").bind(keepId,dropId),
+            env.DB.prepare("UPDATE relationships SET person2=? WHERE person2=?").bind(keepId,dropId),
+            env.DB.prepare("DELETE FROM relationships WHERE person1=? AND person2=?").bind(keepId,keepId),
+            env.DB.prepare(`DELETE FROM relationships WHERE rowid IN (
+              SELECT r.rowid FROM relationships r WHERE (r.person1=? OR r.person2=?)
+              AND EXISTS (SELECT 1 FROM relationships d WHERE d.type=r.type AND d.person1=r.person1 AND d.person2=r.person2 AND d.rowid<r.rowid)
+            )`).bind(keepId,keepId),
+            env.DB.prepare("DELETE FROM people WHERE person_id=?").bind(dropId)
+          ]);
+          return json({ok:true,keptPersonId:keepId,removedPersonId:dropId,relationshipsRedirected:true},200,env,origin);
+        }catch(e){
+          console.error("Atomic person merge failed:",e);
+          return json({error:"Person merge failed; the database batch was rolled back.",detail:String(e?.message||e)},500,env,origin);
+        }
+      }
+
       if(url.pathname==="/api/person" && request.method==="PUT"){
         if(!["admin","editor"].includes(u.role))
           return json({error:"Editor or admin access required"},403,env);
@@ -527,143 +557,130 @@ export default {
       }
 
       if(url.pathname==="/api/archive/import/start" && request.method==="POST"){
-        if(u.role!=="admin") return json({error:"Admin access required"},403,env);
-        await env.DB.batch([
-          env.DB.prepare("DELETE FROM relationships"),
-          env.DB.prepare("DELETE FROM people"),
-          env.DB.prepare("DELETE FROM meta")
-        ]);
-        return json({ok:true,started:true},200,env);
+        if(u.role!=="admin") return json({error:"Admin access required"},403,env,origin);
+        try{
+          await env.DB.batch([
+            env.DB.prepare(`CREATE TABLE IF NOT EXISTS restore_imports(id TEXT PRIMARY KEY,created_at TEXT NOT NULL)`),
+            env.DB.prepare(`CREATE TABLE IF NOT EXISTS restore_people_stage(
+              import_id TEXT NOT NULL,person_id TEXT NOT NULL,name TEXT,gender TEXT,birth TEXT,death TEXT,
+              relationship_to_alan TEXT,evidence_status TEXT,source_ids TEXT,notes TEXT,places TEXT,json_extra TEXT,
+              PRIMARY KEY(import_id,person_id))`),
+            env.DB.prepare(`CREATE TABLE IF NOT EXISTS restore_relationships_stage(
+              import_id TEXT NOT NULL,type TEXT NOT NULL,person1 TEXT NOT NULL,person2 TEXT NOT NULL,
+              PRIMARY KEY(import_id,type,person1,person2))`),
+            env.DB.prepare(`CREATE TABLE IF NOT EXISTS restore_meta_stage(
+              import_id TEXT NOT NULL,key TEXT NOT NULL,value TEXT,PRIMARY KEY(import_id,key))`)
+          ]);
+          const importId=crypto.randomUUID();
+          await env.DB.prepare("INSERT INTO restore_imports(id,created_at) VALUES(?,?)").bind(importId,new Date().toISOString()).run();
+          return json({ok:true,importId,staging:true},200,env,origin);
+        }catch(e){
+          console.error("Restore staging setup failed:",e);
+          return json({error:"Could not prepare a safe restore",detail:String(e?.message||e)},500,env,origin);
+        }
       }
 
       if(url.pathname==="/api/archive/import/batch" && request.method==="POST"){
-        if(u.role!=="admin") return json({error:"Admin access required"},403,env);
+        if(u.role!=="admin") return json({error:"Admin access required"},403,env,origin);
         const x=await request.json();
+        const importId=String(x?.importId||"");
         const kind=String(x?.kind||"");
         const rows=Array.isArray(x?.rows)?x.rows:[];
-        if(!["people","relationships","meta"].includes(kind) || !rows.length)
-          return json({error:"Invalid import batch"},400,env);
-
+        if(!importId||!["people","relationships","meta"].includes(kind)||!rows.length)
+          return json({error:"Invalid staged import batch"},400,env,origin);
+        const active=await env.DB.prepare("SELECT id FROM restore_imports WHERE id=?").bind(importId).first();
+        if(!active) return json({error:"Restore session not found or expired"},404,env,origin);
         try{
           const batch=[];
           if(kind==="people"){
             for(const p of rows){
               const id=String(p?.person_id||"");
-              if(!id) continue;
-              batch.push(env.DB.prepare(`INSERT INTO people(
-                person_id,name,gender,birth,death,relationship_to_alan,
-                evidence_status,source_ids,notes,places,json_extra
-              ) VALUES(?,?,?,?,?,?,?,?,?,?,?)
-              ON CONFLICT(person_id) DO UPDATE SET
-                name=excluded.name,gender=excluded.gender,birth=excluded.birth,
-                death=excluded.death,relationship_to_alan=excluded.relationship_to_alan,
-                evidence_status=excluded.evidence_status,source_ids=excluded.source_ids,
-                notes=excluded.notes,places=excluded.places,json_extra=excluded.json_extra`
-              ).bind(
-                id,String(p.name||""),String(p.gender||""),String(p.birth||""),
-                String(p.death||""),String(p.relationship_to_alan||""),
-                String(p.evidence_status||""),String(p.source_ids||""),
-                String(p.notes||""),String(p.places||""),String(p.json_extra||"")
-              ));
+              if(!id) throw new Error("A staged person has no person ID.");
+              batch.push(env.DB.prepare(`INSERT INTO restore_people_stage(
+                import_id,person_id,name,gender,birth,death,relationship_to_alan,evidence_status,source_ids,notes,places,json_extra
+              ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
+              ON CONFLICT(import_id,person_id) DO UPDATE SET name=excluded.name,gender=excluded.gender,birth=excluded.birth,
+                death=excluded.death,relationship_to_alan=excluded.relationship_to_alan,evidence_status=excluded.evidence_status,
+                source_ids=excluded.source_ids,notes=excluded.notes,places=excluded.places,json_extra=excluded.json_extra`
+              ).bind(importId,id,String(p.name||""),String(p.gender||""),String(p.birth||""),String(p.death||""),
+                String(p.relationship_to_alan||""),String(p.evidence_status||""),String(p.source_ids||""),
+                String(p.notes||""),String(p.places||""),String(p.json_extra||"")));
             }
           }else if(kind==="relationships"){
             for(const r of rows){
-              if(!r?.type||!r?.person1||!r?.person2) continue;
-              batch.push(env.DB.prepare(
-                "INSERT INTO relationships(type,person1,person2) VALUES(?,?,?)"
-              ).bind(String(r.type),String(r.person1),String(r.person2)));
+              if(!r?.type||!r?.person1||!r?.person2) throw new Error("A staged relationship has a missing field.");
+              batch.push(env.DB.prepare("INSERT OR IGNORE INTO restore_relationships_stage(import_id,type,person1,person2) VALUES(?,?,?,?)")
+                .bind(importId,String(r.type),String(r.person1),String(r.person2)));
             }
           }else{
             for(const m of rows){
-              if(!m?.key) continue;
-              batch.push(env.DB.prepare(
-                "INSERT INTO meta(key,value) VALUES(?,?)"
-              ).bind(String(m.key),String(m.value??"")));
+              if(!m?.key) throw new Error("A staged metadata record has no key.");
+              batch.push(env.DB.prepare("INSERT OR REPLACE INTO restore_meta_stage(import_id,key,value) VALUES(?,?,?)")
+                .bind(importId,String(m.key),String(m.value??"")));
             }
           }
           if(batch.length) await env.DB.batch(batch);
-          return json({ok:true,kind,count:batch.length},200,env);
+          return json({ok:true,kind,count:batch.length,staged:true},200,env,origin);
         }catch(e){
-          console.error("Archive import batch failed:",e);
-          return json({error:"Archive import batch failed",detail:String(e?.message||e)},500,env);
+          console.error("Archive staging batch failed:",e);
+          return json({error:"Archive staging batch failed; the live archive has not been replaced.",detail:String(e?.message||e)},500,env,origin);
         }
       }
 
       if(url.pathname==="/api/archive/import/finish" && request.method==="POST"){
-        if(u.role!=="admin") return json({error:"Admin access required"},403,env);
-        const people=await env.DB.prepare("SELECT COUNT(*) AS count FROM people").first();
-        const relationships=await env.DB.prepare("SELECT COUNT(*) AS count FROM relationships").first();
-        const meta=await env.DB.prepare("SELECT COUNT(*) AS count FROM meta").first();
-        return json({
-          ok:Number(people?.count||0)===17972 && Number(relationships?.count||0)===30079,
-          people:Number(people?.count||0),
-          relationships:Number(relationships?.count||0),
-          meta:Number(meta?.count||0)
-        },200,env);
+        if(u.role!=="admin") return json({error:"Admin access required"},403,env,origin);
+        const x=await request.json();
+        const importId=String(x?.importId||"");
+        if(!importId) return json({error:"Restore session ID is required"},400,env,origin);
+        const active=await env.DB.prepare("SELECT id FROM restore_imports WHERE id=?").bind(importId).first();
+        if(!active) return json({error:"Restore session not found or expired"},404,env,origin);
+        const people=await env.DB.prepare("SELECT COUNT(*) AS count FROM restore_people_stage WHERE import_id=?").bind(importId).first();
+        const relationships=await env.DB.prepare("SELECT COUNT(*) AS count FROM restore_relationships_stage WHERE import_id=?").bind(importId).first();
+        const meta=await env.DB.prepare("SELECT COUNT(*) AS count FROM restore_meta_stage WHERE import_id=?").bind(importId).first();
+        const pc=Number(people?.count||0),rc=Number(relationships?.count||0),mc=Number(meta?.count||0);
+        if(pc!==17972||rc!==30079||mc<1)
+          return json({ok:false,people:pc,relationships:rc,meta:mc,error:"Staged counts do not match the verified master. The live archive remains untouched."},409,env,origin);
+        const orphan=await env.DB.prepare(`SELECT COUNT(*) AS count FROM restore_relationships_stage r
+          LEFT JOIN restore_people_stage a ON a.import_id=r.import_id AND a.person_id=r.person1
+          LEFT JOIN restore_people_stage b ON b.import_id=r.import_id AND b.person_id=r.person2
+          WHERE r.import_id=? AND (a.person_id IS NULL OR b.person_id IS NULL)`).bind(importId).first();
+        if(Number(orphan?.count||0)>0)
+          return json({ok:false,people:pc,relationships:rc,meta:mc,error:"Staged relationships reference missing people. The live archive remains untouched."},409,env,origin);
+        try{
+          await env.DB.batch([
+            env.DB.prepare("DELETE FROM relationships"),
+            env.DB.prepare("DELETE FROM people"),
+            env.DB.prepare("DELETE FROM meta"),
+            env.DB.prepare(`INSERT INTO people(person_id,name,gender,birth,death,relationship_to_alan,evidence_status,source_ids,notes,places,json_extra)
+              SELECT person_id,name,gender,birth,death,relationship_to_alan,evidence_status,source_ids,notes,places,json_extra
+              FROM restore_people_stage WHERE import_id=?`).bind(importId),
+            env.DB.prepare(`INSERT INTO relationships(type,person1,person2)
+              SELECT type,person1,person2 FROM restore_relationships_stage WHERE import_id=?`).bind(importId),
+            env.DB.prepare(`INSERT INTO meta(key,value)
+              SELECT key,value FROM restore_meta_stage WHERE import_id=?`).bind(importId),
+            env.DB.prepare("DELETE FROM restore_people_stage WHERE import_id=?").bind(importId),
+            env.DB.prepare("DELETE FROM restore_relationships_stage WHERE import_id=?").bind(importId),
+            env.DB.prepare("DELETE FROM restore_meta_stage WHERE import_id=?").bind(importId),
+            env.DB.prepare("DELETE FROM restore_imports WHERE id=?").bind(importId)
+          ]);
+          const finalPeople=await env.DB.prepare("SELECT COUNT(*) AS count FROM people").first();
+          const finalRelationships=await env.DB.prepare("SELECT COUNT(*) AS count FROM relationships").first();
+          const finalMeta=await env.DB.prepare("SELECT COUNT(*) AS count FROM meta").first();
+          const fp=Number(finalPeople?.count||0),fr=Number(finalRelationships?.count||0),fm=Number(finalMeta?.count||0);
+          return json({ok:fp===17972&&fr===30079,people:fp,relationships:fr,meta:fm},200,env,origin);
+        }catch(e){
+          console.error("Archive promotion failed:",e);
+          return json({error:"Archive promotion failed. The D1 batch was rolled back; the existing archive should remain intact.",detail:String(e?.message||e)},500,env,origin);
+        }
       }
 
       if(url.pathname==="/api/archive" && request.method==="GET")
         return json(await archive(env),200,env);
 
       if(url.pathname==="/api/archive" && request.method==="PUT"){
-        if(!["admin","editor"].includes(u.role))
-          return json({error:"Editor or admin access required"},403,env);
-
-        const x=await request.json();
-        if(!Array.isArray(x.people)||!Array.isArray(x.relationships))
-          return json({error:"Invalid archive payload"},400,env);
-        if(x.people.length===0)
-          return json({error:"Refusing to save an empty archive"},400,env);
-
-        try{
-          await env.DB.batch([
-            env.DB.prepare("DELETE FROM people"),
-            env.DB.prepare("DELETE FROM relationships"),
-            env.DB.prepare("DELETE FROM meta")
-          ]);
-
-          for(let i=0;i<x.people.length;i+=100){
-            const batch=[];
-            for(const p of x.people.slice(i,i+100)){
-              const id=p["Person ID"];
-              if(!id) continue;
-              batch.push(env.DB.prepare(`INSERT INTO people(
-                person_id,name,gender,birth,death,relationship_to_alan,
-                evidence_status,source_ids,notes,places,json_extra
-              ) VALUES(?,?,?,?,?,?,?,?,?,?,?)`).bind(
-                id,p.Name||"",p.Gender||"",p.Birth||"",p.Death||"",
-                p["Relationship to Alan"]||"",p["Evidence Status"]||"",
-                p["Source IDs"]||"",p.Notes||"",p.Places||"",JSON.stringify(p)
-              ));
-            }
-            if(batch.length) await env.DB.batch(batch);
-          }
-
-          for(let i=0;i<x.relationships.length;i+=100){
-            const batch=[];
-            for(const r of x.relationships.slice(i,i+100)){
-              if(!r.type||!r.person1||!r.person2) continue;
-              batch.push(env.DB.prepare(
-                "INSERT INTO relationships(type,person1,person2) VALUES(?,?,?)"
-              ).bind(r.type,r.person1,r.person2));
-            }
-            if(batch.length) await env.DB.batch(batch);
-          }
-
-          const metaBatch=[];
-          for(const [k,v] of Object.entries(x.meta||{})){
-            metaBatch.push(env.DB.prepare(
-              "INSERT INTO meta(key,value) VALUES(?,?)"
-            ).bind(k,JSON.stringify(v)));
-          }
-          if(metaBatch.length) await env.DB.batch(metaBatch);
-
-          return json({ok:true,people:x.people.length,relationships:x.relationships.length},200,env);
-        }catch(e){
-          console.error("Archive save failed:",e);
-          return json({error:"Archive save failed",detail:String(e?.message||e)},500,env);
-        }
+        return json({error:"Full-archive replacement is disabled for normal saves. Use individual person/relationship operations; a verified staged restore is available to administrators."},405,env,origin);
       }
+
 
       return withCors(json({error:"Not found"},404,env,origin));
     }catch(e){
