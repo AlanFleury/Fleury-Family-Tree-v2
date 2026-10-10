@@ -460,6 +460,23 @@ export default {
         if(!found.has(keepId)||!found.has(dropId)) return json({error:"Both people must exist in the archive before merging"},404,env,origin);
         try{
           await env.DB.batch([
+            // Remove links that would become duplicates or self-links after redirecting dropId to keepId.
+            // This must happen BEFORE the UPDATE statements because the relationship unique constraint
+            // is enforced immediately; cleaning duplicates afterwards is too late.
+            env.DB.prepare(`DELETE FROM relationships
+              WHERE (person1=? OR person2=?)
+              AND (
+                (person1=? AND (person2=? OR person2=?))
+                OR (person2=? AND person1=?)
+                OR EXISTS (
+                  SELECT 1 FROM relationships AS existing
+                  WHERE existing.type=relationships.type
+                    AND existing.person1=CASE WHEN relationships.person1=? THEN ? ELSE relationships.person1 END
+                    AND existing.person2=CASE WHEN relationships.person2=? THEN ? ELSE relationships.person2 END
+                    AND existing.person1<>? AND existing.person2<>?
+                )
+              )`).bind(dropId,dropId,dropId,dropId,keepId,dropId,keepId,
+                dropId,keepId,dropId,keepId,dropId,dropId),
             env.DB.prepare(`UPDATE people SET name=?,gender=?,birth=?,death=?,relationship_to_alan=?,evidence_status=?,source_ids=?,notes=?,places=?,json_extra=? WHERE person_id=?`)
               .bind(String(p.Name||""),String(p.Gender||""),String(p.Birth||""),String(p.Death||""),
                 String(p["Relationship to Alan"]||""),String(p["Evidence Status"]||""),String(p["Source IDs"]||""),
