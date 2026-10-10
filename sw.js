@@ -1,8 +1,8 @@
 // Fleury Family Tree v2: cache the application shell for offline browsing.
 // Private family records stay in IndexedDB; they are never placed in CacheStorage.
-const CACHE='fleury-family-shell-v6';
+const CACHE='fleury-family-shell-v7';
 const BASE=new URL('./',self.location.href);
-const SHELL=['./','./index.html','./config.js','./archive-api.js','./manifest.webmanifest','./icon-192.svg','./icon-512.svg','./fleury-crest.svg','./fleury-parchment.svg'];
+const SHELL=['./','./index.html','./config.js','./archive-api.js','./manifest.webmanifest','./icon-192.svg','./icon-512.svg','./fleury-crest.svg','./fleury-crest.png','./fleury-parchment.svg'];
 self.addEventListener('install',event=>event.waitUntil((async()=>{
   const cache=await caches.open(CACHE);
   for(const path of SHELL){try{await cache.add(new Request(new URL(path,BASE),{cache:'reload'}))}catch(e){}}
