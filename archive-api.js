@@ -138,10 +138,8 @@ async function loadDatabase(){
 }
 
 /* Kept for legacy/manual use. The website must not call this for person edits. */
-async function saveDatabase(database){
-  if(!database || !Array.isArray(database.people) || !Array.isArray(database.relationships))
-    throw new Error('Refusing to save an invalid archive.');
-  return api('/api/archive',{method:'PUT',body:JSON.stringify(database)});
+async function saveDatabase(){
+  throw new Error('Full-archive replacement is disabled. Save individual people and relationships instead.');
 }
 
 /* Safe individual-person save. */
@@ -166,6 +164,15 @@ async function deletePerson(personId){
     method:'DELETE',
     body:JSON.stringify({personId:String(personId)})
   });
+}
+
+/* Atomic duplicate merge: redirect every relationship type and remove the duplicate in one D1 batch. */
+async function mergePeople(person,duplicateId){
+  if(!person) throw new Error('The kept person is required.');
+  const keepId=String(person['Person ID']||person.person_id||person.id||'');
+  const dropId=String(duplicateId||'');
+  if(!keepId||!dropId||keepId===dropId) throw new Error('Choose two different person IDs.');
+  return api('/api/person/merge',{method:'POST',body:JSON.stringify({person,duplicateId:dropId})});
 }
 
 async function startGmailOAuth(){const data=await api('/api/gmail/start');if(!data?.url)throw new Error('Gmail OAuth setup URL was not returned.');location.href=data.url;}
@@ -206,16 +213,18 @@ async function savePersonMapping(email,personId){
 async function restoreArchiveFromWorkbook(data,onProgress){
   if(!data||!Array.isArray(data.people)||!Array.isArray(data.relationships)) throw new Error('Invalid master workbook data.');
   if(data.people.length!==17972||data.relationships.length!==30079) throw new Error('Master workbook must contain exactly 17,972 people and 30,079 relationships.');
-  await api('/api/archive/import/start',{method:'POST',body:JSON.stringify({})});
-  const send=async(kind,rows)=>{for(let i=0;i<rows.length;i+=200){await api('/api/archive/import/batch',{method:'POST',body:JSON.stringify({kind,rows:rows.slice(i,i+200)})});if(onProgress)onProgress(kind,Math.min(i+200,rows.length),rows.length);}};
+  const start=await api('/api/archive/import/start',{method:'POST',body:JSON.stringify({})});
+  if(!start?.importId) throw new Error('The server did not create a safe restore staging session. The live archive was not changed.');
+  const importId=String(start.importId);
+  const send=async(kind,rows)=>{for(let i=0;i<rows.length;i+=200){await api('/api/archive/import/batch',{method:'POST',body:JSON.stringify({importId,kind,rows:rows.slice(i,i+200)})});if(onProgress)onProgress(kind,Math.min(i+200,rows.length),rows.length);}};
   await send('people',data.people); await send('relationships',data.relationships); await send('meta',data.meta||[]);
-  const result=await api('/api/archive/import/finish',{method:'POST',body:JSON.stringify({})});
-  if(!result?.ok) throw new Error('Verification failed: '+result.people+' people, '+result.relationships+' relationships.');
+  const result=await api('/api/archive/import/finish',{method:'POST',body:JSON.stringify({importId})});
+  if(!result?.ok) throw new Error('Verification failed: '+(result?.people??0)+' people and '+(result?.relationships??0)+' relationships. The existing live archive was not promoted from staging.');
   return result;
 }
 
 window.archiveApi={
   initAuth,signInWithEmail,signOutUser,getMyRole,startGmailOAuth,testGmailNotification,restoreArchiveFromWorkbook,
-  loadDatabase,saveDatabase,savePerson,deletePerson,requestAccess,listAccessRequests,reviewAccessRequest,
+  loadDatabase,saveDatabase,savePerson,deletePerson,mergePeople,requestAccess,listAccessRequests,reviewAccessRequest,
   listUsers,updateUser,savePersonMapping
 };
