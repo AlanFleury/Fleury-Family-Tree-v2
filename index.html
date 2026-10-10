@@ -196,7 +196,7 @@ function buildTreeLevels(start,type,depth){
     addWithSpouses([start],'');
     for(let d=1;d<=depth;d++)addWithSpouses(D.filter(x=>x.d===d).map(x=>x.id),'');
   } else if(type==='hourglass'||type==='bloodline'){
-    for(let d=depth;d>=1;d--)addWithSpouses(A.filter(x=>x.d===d).map(x=>x.id),`${ord(d)} generation ancestor / spouse`);
+    for(let d=depth;d>=1;d--)addWithSpouses(A.filter(x=>x.d===d).map(x=>x.id),'');
     addWithSpouses([start],'');
     for(let d=1;d<=depth;d++)addWithSpouses(D.filter(x=>x.d===d).map(x=>x.id),'');
   } else if(type==='siblings'){
