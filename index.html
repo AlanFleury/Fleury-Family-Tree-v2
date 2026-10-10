@@ -109,19 +109,15 @@ th{background:#ead9b7;color:#4b301b}
 @media(max-width:700px){#nav button{padding:8px 9px;font-size:13px}.family-crest{width:54px;height:58px}}
 
 
-/* Use only the exact uploaded full-colour Fleury crest as a full-page watermark. */
-.view.active{
-  background-color:transparent!important;
-  background-image:url('./fleury-crest.png')!important;
-  background-size:100% 100%!important;
-  background-repeat:no-repeat!important;
-  background-position:center top!important;
-  background-attachment:scroll!important;
-  border-color:#bca477!important
-}
-.view.active>.panel,.view.active .panel{background-color:rgba(255,250,236,.48)!important}
-header{background-image:none!important;background-color:#f1e4c8!important}
-.tree-svg{background:transparent!important}
+/* Full-page Fleury crest background; all chart canvases stay transparent. */
+html,body{min-height:100%;background-color:#ead9b7!important;background-image:url('./fleury-crest.png')!important;background-size:100% 100vh!important;background-repeat:no-repeat!important;background-position:center top!important;background-attachment:fixed!important}
+.view.active{background:transparent!important;border-color:#bca477!important;box-shadow:none!important}
+.view.active>.panel,.view.active .panel{background-color:rgba(255,250,236,.42)!important}
+.view.active .section-links{background-color:rgba(255,250,236,.38)!important}
+header{background-image:none!important;background-color:rgba(241,228,200,.72)!important}
+.tree-scroll,.tree-svg{background:transparent!important;background-color:transparent!important}
+.tree-scroll{border-color:rgba(188,164,119,.65)!important}
+.tree-svg .person-node rect{fill:rgba(255,250,236,.80)}
 </style></head><body>
 <header><div class="head"><img class="family-crest" src="./fleury-crest.png" alt="Fleury family crest — crowned helmet, spread-wing eagle and FLEURY banner" title="Fleury family crest"><div class="brand-title"><h1>Fleury Family Tree — Ultimate Edition</h1><div class="sub">Private online family archive • 17,972 people • 30,079 recorded relationships • no subscription required</div></div><div class="toolbar"><span id="authStatus" class="small"></span><button id="signInBtn">Sign in</button><button id="signOutBtn" class="hidden">Sign out</button><button id="backupBtn">Backup</button><button id="importBtn">Restore backup</button><input id="importFile" type="file" accept="application/json" class="hidden"><button id="resetBtn">Reset local edits</button></div></div><nav id="nav"></nav></header>
 <main>
@@ -224,7 +220,7 @@ function buildTreeSvg(start,type,depth,wall=false){
   s+=`<g class="chart-connectors" fill="none" stroke="#c1121f" stroke-width="3.5" opacity=".98">`;
   for(const [pid,z] of pos)for(const cid of childMap.get(pid)||[]){if(!pos.has(cid))continue;const q=pos.get(cid),mid=(z.y+q.y)/2;s+=`<path d="M${z.x} ${z.y+boxH/2} V${mid} H${q.x} V${q.y-boxH/2}" stroke-linecap="round"/>`}s+='</g><g class="marriage-connectors" fill="none" stroke="#7b4ea3" stroke-width="2">';
   for(const [pid,z] of pos)for(const sp of spouseMap.get(pid)||[]){if(!pos.has(sp)||pid>sp)continue;const q=pos.get(sp),mx=(z.x+q.x)/2;s+=`<line x1="${z.x+boxW/2}" y1="${z.y}" x2="${q.x-boxW/2}" y2="${q.y}" stroke-linecap="round"/><text x="${mx}" y="${z.y+5}" fill="#7b4ea3" stroke="white" stroke-width="4" paint-order="stroke" font-size="18" text-anchor="middle">💍</text>`}s+='</g>';
-  levels.forEach((lv,li)=>lv.ids.forEach(pid=>{const z=pos.get(pid),pp=person(pid),rel=li===0?'Selected person':lv.label,blood=bloodIds.has(pid);s+=nodeSvg(z.x,z.y,pp,boxW,boxH,rel,blood?' data-blood="1"':'')}));return s+'</svg>';
+  levels.forEach((lv,li)=>lv.ids.forEach(pid=>{const z=pos.get(pid),pp=person(pid),blood=bloodIds.has(pid);s+=nodeSvg(z.x,z.y,pp,boxW,boxH,'',blood?' data-blood="1"':'')}));return s+'</svg>';
 }
 function wireSvgClicks(container){container.querySelectorAll('.person-node,[data-person-id]').forEach(g=>g.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const id=g.getAttribute('data-person-id');if(id){showPerson(id,true)}}));}
 function openChartPerson(id){if(id){showPerson(id,true)}}
