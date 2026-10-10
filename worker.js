@@ -476,64 +476,51 @@ export default {
 
       if(url.pathname==="/api/person" && request.method==="PUT"){
         if(!["admin","editor"].includes(u.role))
-          return json({error:"Editor or admin access required"},403,env);
+          return json({error:"Editor or admin access required"},403,env,origin);
 
         const x=await request.json();
         const p=x?.person;
         const family=Array.isArray(x?.relationships)?x.relationships:[];
         const id=String(p?.["Person ID"]||p?.person_id||p?.id||"");
-
-        if(!id) return json({error:"Person ID is required"},400,env);
+        if(!id) return json({error:"Person ID is required"},400,env,origin);
 
         const familyTypes=new Set(["parent","mother","father","child","son","daughter"]);
         const cleanFamily=family.map(r=>({
-          type:String(r?.type||""),
+          type:String(r?.type||"").toLowerCase(),
           person1:String(r?.person1??r?.fromId??r?.from??r?.Person1??""),
           person2:String(r?.person2??r?.toId??r?.to??r?.Person2??"")
-        })).filter(r=>
-          familyTypes.has(r.type.toLowerCase()) &&
-          r.person1 && r.person2 && r.person1!==r.person2
-        );
-
+        })).filter(r=>familyTypes.has(r.type)&&r.person1&&r.person2&&r.person1!==r.person2);
+        const desired=new Map();
+        for(const r of cleanFamily) desired.set([r.type,r.person1,r.person2].join("|"),r);
         try{
-          const writes=[
+          const current=await env.DB.prepare(`SELECT rowid AS row_id,type,person1,person2 FROM relationships
+            WHERE (person1=? OR person2=?) AND lower(type)='parent'`).bind(id,id).all();
+          const existingKeys=new Set(),writes=[
             env.DB.prepare(`INSERT INTO people(
-              person_id,name,gender,birth,death,relationship_to_alan,
-              evidence_status,source_ids,notes,places,json_extra
+              person_id,name,gender,birth,death,relationship_to_alan,evidence_status,source_ids,notes,places,json_extra
             ) VALUES(?,?,?,?,?,?,?,?,?,?,?)
             ON CONFLICT(person_id) DO UPDATE SET
-              name=excluded.name,
-              gender=excluded.gender,
-              birth=excluded.birth,
-              death=excluded.death,
-              relationship_to_alan=excluded.relationship_to_alan,
-              evidence_status=excluded.evidence_status,
-              source_ids=excluded.source_ids,
-              notes=excluded.notes,
-              places=excluded.places,
-              json_extra=excluded.json_extra`).bind(
-                id,p.Name||"",p.Gender||"",p.Birth||"",p.Death||"",
-                p["Relationship to Alan"]||"",p["Evidence Status"]||"",
-                p["Source IDs"]||"",p.Notes||"",p.Places||"",
-                JSON.stringify(p)
-              ),
-            env.DB.prepare(`DELETE FROM relationships
-              WHERE (person1=? OR person2=?)
-              AND lower(type) IN ('parent','mother','father','child','son','daughter')`
-            ).bind(id,id)
+              name=excluded.name,gender=excluded.gender,birth=excluded.birth,death=excluded.death,
+              relationship_to_alan=excluded.relationship_to_alan,evidence_status=excluded.evidence_status,
+              source_ids=excluded.source_ids,notes=excluded.notes,places=excluded.places,json_extra=excluded.json_extra
+            `).bind(id,String(p.Name||""),String(p.Gender||""),String(p.Birth||""),String(p.Death||""),
+              String(p["Relationship to Alan"]||""),String(p["Evidence Status"]||""),String(p["Source IDs"]||""),
+              String(p.Notes||""),String(p.Places||""),JSON.stringify(p))
           ];
-
-          for(const r of cleanFamily){
-            writes.push(env.DB.prepare(
-              "INSERT OR IGNORE INTO relationships(type,person1,person2) VALUES(?,?,?)"
-            ).bind(r.type,r.person1,r.person2));
+          for(const r of current.results||[]){
+            const key=[String(r.type||"").toLowerCase(),String(r.person1||""),String(r.person2||"")].join("|");
+            if(!desired.has(key)||existingKeys.has(key)){
+              writes.push(env.DB.prepare("DELETE FROM relationships WHERE rowid=?").bind(r.row_id));
+            }else existingKeys.add(key);
           }
-
+          for(const [key,r] of desired) if(!existingKeys.has(key)){
+            writes.push(env.DB.prepare("INSERT INTO relationships(type,person1,person2) VALUES(?,?,?)").bind(r.type,r.person1,r.person2));
+          }
           await env.DB.batch(writes);
-          return json({ok:true,personId:id,relationships:cleanFamily.length},200,env);
+          return json({ok:true,personId:id,relationshipsAdded:cleanFamily.length-existingKeys.size},200,env,origin);
         }catch(e){
           console.error("Person save failed:",e);
-          return json({error:"Person save failed",detail:String(e?.message||e)},500,env);
+          return json({error:"Person save failed; no full-archive replacement was attempted.",detail:String(e?.message||e)},500,env,origin);
         }
       }
 
