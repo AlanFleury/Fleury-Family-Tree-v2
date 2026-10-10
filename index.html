@@ -263,6 +263,29 @@ a,.link{overflow-wrap:anywhere}
 #unnamedCleanupPanel .unnamed-pick-label input:disabled{opacity:.45}
 @media(max-width:700px){#unnamedCleanupPanel .unnamed-pick-label{min-height:48px;padding:6px 0}#unnamedCleanupPanel .unnamed-pick-label input{width:24px;height:24px}}
 
+
+/* Mobile layout repair: keep header actions and tab rows inside the screen. */
+@media(max-width:700px){
+  html,body{width:100%;max-width:100%;overflow-x:hidden}
+  .head{display:flex;align-items:flex-start;gap:10px;padding:12px;min-width:0}
+  .brand-title{flex:1 1 0;min-width:0}
+  h1{font-size:clamp(19px,5.2vw,25px);line-height:1.18;overflow-wrap:anywhere}
+  .sub{font-size:12px;line-height:1.35;overflow-wrap:anywhere}
+  .toolbar{width:100%;min-width:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+  .toolbar button{width:100%;min-width:0;white-space:normal;overflow-wrap:anywhere;padding:10px 7px;font-size:14px}
+  #authStatus{grid-column:1/-1;overflow-wrap:anywhere}
+  nav{width:100%;min-width:0;padding:0 10px 10px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+  nav button{width:100%;min-width:0;white-space:normal;overflow-wrap:anywhere;padding:9px 6px;font-size:13px}
+  main{width:100%;min-width:0;padding:10px}
+  .panel{min-width:0;padding:12px}
+  .section-links{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;max-width:100%;min-width:0}
+  .section-links button{width:100%;min-width:0;white-space:normal;overflow-wrap:anywhere;padding:10px 7px;font-size:13px}
+  .form,.two,.detail,.grid{grid-template-columns:minmax(0,1fr)!important;min-width:0}
+  input,select,textarea{min-width:0;max-width:100%}
+  .form-actions{min-width:0}
+  .form-actions button{max-width:100%;white-space:normal;overflow-wrap:anywhere}
+  .footer{overflow-wrap:anywhere;padding-left:12px;padding-right:12px}
+}
 </style></head><body>
 <header><div class="head"><img class="family-crest" src="./fleury-crest.png" alt="Fleury family crest — crowned helmet, spread-wing eagle and FLEURY banner" title="Fleury family crest"><div class="brand-title"><h1>Fleury Family Tree — Ultimate Edition</h1><div class="sub">Private online family archive • 17,972 people • 30,079 recorded relationships • no subscription required</div></div><div class="toolbar"><span id="authStatus" class="small"></span><button id="signInBtn">Sign in</button><button id="signOutBtn" class="hidden">Sign out</button><button id="backupBtn">Backup</button><button id="importBtn">Restore backup</button><input id="importFile" type="file" accept="application/json" class="hidden"><button id="resetBtn">Reset local edits</button></div></div><nav id="nav"></nav></header>
 <main>
