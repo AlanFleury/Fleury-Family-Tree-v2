@@ -598,7 +598,7 @@ function wireMergePicker(input,box,chosen,onPick){input.addEventListener('input'
  const isUnnamed=p=>{const n=rawName(p).toLowerCase();return !n||n==='(unnamed)'||n==='unnamed';};
  const relationA=r=>String(r?.a??r?.person1??r?.person_1??'').trim();
  const relationB=r=>String(r?.b??r?.person2??r?.person_2??'').trim();
- const relationshipCount=id=>id?db.relationships.filter(r=>relationA(r)===id||relationB(r)===id).length:0;
+ const relationshipCount=(id,relationships=db.relationships)=>id?relationships.filter(r=>relationA(r)===id||relationB(r)===id).length:0;
  function selectedRows(){return rows.filter(r=>r.canDelete&&byId('unnamedPick_'+r.index)?.checked);}
  function updateConfirm(){const chosen=selectedRows();confirmArea.classList.toggle('hidden',chosen.length===0);deleteBtn.disabled=chosen.length===0||phrase.value!=='DELETE'||currentRole!=='admin';}
  function render(){
@@ -615,18 +615,31 @@ function wireMergePicker(input,box,chosen,onPick){input.addEventListener('input'
    list.querySelectorAll('[data-unnamed-index]').forEach(cb=>cb.addEventListener('change',updateConfirm));
    updateConfirm();
  }
- function scan(){
+ async function scan(){
    result.innerHTML='';phrase.value='';confirmArea.classList.add('hidden');
-   if(currentRole!=='admin'){status.innerHTML='<span class="bad">Administrator sign-in is required.</span>';render();return;}
-   const people=Array.isArray(db.people)?db.people:[];
-   const personIds=new Set(people.map(rawId).filter(Boolean));
-   const namedRows=people.map((p,index)=>({p,index,id:rawId(p),name:rawName(p),relationships:relationshipCount(rawId(p)),canDelete:!!rawId(p),orphan:false})).filter(r=>isUnnamed(r.p));
-   /* Profile views also show “(Unnamed)” when a relationship points to an ID with no person row at all. Include those dangling IDs in the scan. */
-   const danglingIds=[...new Set((Array.isArray(db.relationships)?db.relationships:[]).flatMap(rel=>[relationA(rel),relationB(rel)]).filter(id=>id&&!personIds.has(id)))];
-   const danglingRows=danglingIds.map((id,n)=>({p:null,index:people.length+n,id,name:'(Unnamed — missing person record)',relationships:relationshipCount(id),canDelete:true,orphan:true}));
-   const brokenRelationshipCount=(Array.isArray(db.relationships)?db.relationships:[]).filter(rel=>!relationA(rel)||!relationB(rel)).length;
+   if(currentRole!=='admin'){status.innerHTML='<span class="bad">Administrator sign-in is required. Current role: '+escHtml(currentRole||'not signed in')+'.</span>';render();return;}
+   status.textContent='Refreshing the live archive and scanning person records and relationship references…';
+   let scanPeople=Array.isArray(db.people)?db.people:[];
+   let scanRelationships=Array.isArray(db.relationships)?db.relationships:[];
+   let source='current browser archive';
+   try{
+     if(!window.archiveApi||typeof window.archiveApi.loadDatabase!=='function')throw new Error('Live archive API is unavailable in this page.');
+     const live=await window.archiveApi.loadDatabase();
+     if(!Array.isArray(live.people)||!Array.isArray(live.relationships))throw new Error('The live archive returned invalid people/relationship lists.');
+     scanPeople=live.people;
+     scanRelationships=live.relationships;
+     source='fresh live archive';
+   }catch(e){
+     status.textContent='WARNING: live refresh failed; scanning only the current browser copy. '+(e?.message||e);
+   }
+   const idsOf=scanPeople.map(rawId);
+   const personIds=new Set(idsOf.filter(Boolean));
+   const namedRows=scanPeople.map((p,index)=>({p,index,id:rawId(p),name:rawName(p),relationships:relationshipCount(rawId(p),scanRelationships),canDelete:!!rawId(p),orphan:false})).filter(r=>isUnnamed(r.p));
+   const danglingIds=[...new Set(scanRelationships.flatMap(rel=>[relationA(rel),relationB(rel)]).filter(id=>id&&!personIds.has(id)))];
+   const danglingRows=danglingIds.map((id,n)=>({p:null,index:scanPeople.length+n,id,name:'(Unnamed — missing person record)',relationships:relationshipCount(id,scanRelationships),canDelete:true,orphan:true}));
+   const brokenRelationshipCount=scanRelationships.filter(rel=>!relationA(rel)||!relationB(rel)).length;
    rows=[...namedRows,...danglingRows];
-   status.textContent='Scan complete: '+namedRows.length+' blank-name/unnamed person record(s), '+danglingRows.length+' missing-person ID(s) still referenced by family relationships, and '+brokenRelationshipCount+' relationship record(s) with an empty endpoint ID. No data has been changed.';
+   status.textContent='Scan source: '+source+'. People records: '+scanPeople.length.toLocaleString()+'. Relationship records: '+scanRelationships.length.toLocaleString()+'. Blank/unnamed person records: '+namedRows.length+'. Missing-person IDs referenced by relationships: '+danglingRows.length+'. Relationships with empty endpoint IDs: '+brokenRelationshipCount+'. No data has been changed.';
    render();
  }
  byId('scanUnnamedBtn').addEventListener('click',scan);
