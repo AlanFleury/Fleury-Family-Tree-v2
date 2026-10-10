@@ -34,6 +34,14 @@
   nav{overflow-x:auto;flex-wrap:nowrap}
 }
 
+/* Archival parchment styling — warm paper without reducing contrast */
+:root{--bg:#eee4cf;--panel:#fbf5e7;--text:#332719;--muted:#76664e;--line:#d4c2a0;--accent:#76532b;--accent2:#987447;--shadow:0 3px 14px rgba(71,49,22,.12)}
+body{background-color:var(--bg);background-image:radial-gradient(ellipse at 12% 8%,rgba(255,255,255,.48),transparent 48%),linear-gradient(135deg,rgba(133,94,43,.035) 25%,transparent 25%,transparent 75%,rgba(133,94,43,.035) 75%)}
+header{background:#382b1d;border-bottom:4px solid #b89a67}
+.panel,.card,.research-card,.tree-scroll{background-color:var(--panel);border-color:var(--line)}
+button{border-color:#d1bd99}button:hover{background:#f1e5ce}button.primary{background:#76532b;border-color:#76532b}button.secondary{background:#efe2c9}
+nav button.active{color:#382b1d}
+th{background:#eee1c7}
 /* 10/10 visual system */
 .person-node.gender-male rect{fill:#dcecff;stroke:#2f5fa8}
 .person-node.gender-female rect{fill:#ffe0ea;stroke:#c85b7a}
