@@ -632,10 +632,12 @@ function wireMergePicker(input,box,chosen,onPick){input.addEventListener('input'
    }catch(e){
      status.textContent='WARNING: live refresh failed; scanning only the current browser copy. '+(e?.message||e);
    }
-   const idsOf=scanPeople.map(rawId);
-   const personIds=new Set(idsOf.filter(Boolean));
+   // Compare IDs consistently: GEDCOM references may wrap IDs like @I17991@
+   // while the corresponding person row stores I17991. Preserve original IDs for display/deletion.
+   const comparableId=id=>String(id??'').trim().replace(/^@+|@+$/g,'').toUpperCase();
+   const personIds=new Set(scanPeople.map(rawId).map(comparableId).filter(Boolean));
    const namedRows=scanPeople.map((p,index)=>({p,index,id:rawId(p),name:rawName(p),relationships:relationshipCount(rawId(p),scanRelationships),canDelete:!!rawId(p),orphan:false})).filter(r=>isUnnamed(r.p));
-   const danglingIds=[...new Set(scanRelationships.flatMap(rel=>[relationA(rel),relationB(rel)]).filter(id=>id&&!personIds.has(id)))];
+   const danglingIds=[...new Set(scanRelationships.flatMap(rel=>[relationA(rel),relationB(rel)]).filter(id=>id&&!personIds.has(comparableId(id))))];
    const danglingRows=danglingIds.map((id,n)=>({p:null,index:scanPeople.length+n,id,name:'(Unnamed — missing person record)',relationships:relationshipCount(id,scanRelationships),canDelete:true,orphan:true}));
    const brokenRelationshipCount=scanRelationships.filter(rel=>!relationA(rel)||!relationB(rel)).length;
    rows=[...namedRows,...danglingRows];
