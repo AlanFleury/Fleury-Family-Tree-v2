@@ -22,3 +22,4 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           command: deploy worker.js --name fleury-family-api --config wrangler.jsonc
+
