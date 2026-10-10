@@ -67,6 +67,24 @@ header{background:linear-gradient(180deg,#38271a,#21170f);border-bottom:3px soli
 h1,h2,h3{font-family:Georgia,'Times New Roman',serif}
 nav button{border-color:rgba(218,181,117,.48)}
 @media(max-width:700px){.view.active{padding:8px;border-radius:9px;box-shadow:inset 0 0 16px rgba(104,64,29,.11)}}
+
+/* Compact iPhone header: keep the archive controls available without letting the masthead dominate the screen. */
+@media(max-width:600px){
+  header{position:relative;top:auto}
+  .head{padding:7px 9px;gap:7px;flex-wrap:nowrap;align-items:center}
+  .head>div:first-child{min-width:0;flex:1}
+  h1{font-size:15px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sub{display:none}
+  .head .toolbar{width:auto;max-width:48%;flex:0 0 auto;flex-wrap:nowrap;gap:5px;overflow-x:auto;overflow-y:hidden;white-space:nowrap;padding:1px 0 4px;-webkit-overflow-scrolling:touch}
+  .head .toolbar button{flex:0 0 auto;min-height:36px;padding:6px 8px;font-size:12px}
+  #authStatus{display:none}
+  #globalSearchBtn{min-width:36px!important;min-height:36px!important}
+  nav{padding:0 7px 5px;gap:4px;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;white-space:nowrap}
+  nav button{flex:0 0 auto;min-height:36px;padding:7px 9px;font-size:12px}
+  .subnav{margin:0;padding:0 7px 6px;gap:4px;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;white-space:nowrap}
+  .subnav button{flex:0 0 auto;min-height:32px;padding:6px 8px;font-size:11px}
+  main{padding:6px}
+}
 </style></head><body>
 <header><div class="head"><div><h1>Fleury Family Tree — Ultimate Edition</h1><div class="sub">Private online family archive • 17,972 people • 30,079 recorded relationships • no subscription required</div></div><div class="toolbar"><span id="authStatus" class="small"></span><button id="globalSearchBtn" type="button" title="Search the family archive" aria-label="Search the family archive" style="min-width:42px;min-height:40px;display:inline-flex;align-items:center;justify-content:center" onclick="goTab('explore');document.getElementById('globalSearch').focus()"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="10.8" cy="10.8" r="6.8"></circle><path d="m16 16 5 5"></path></svg></button><button id="signInBtn">Sign in</button><button id="signOutBtn" class="hidden">Sign out</button><button id="backupBtn">Backup</button><button id="importBtn">Restore backup</button><input id="importFile" type="file" accept="application/json" class="hidden"><button id="resetBtn">Reset local edits</button></div></div><nav id="nav" aria-label="Main navigation"></nav><div id="subnav" class="subnav" aria-label="Section navigation"></div></header>
 <main>
