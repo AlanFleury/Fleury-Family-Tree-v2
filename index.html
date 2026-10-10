@@ -643,7 +643,7 @@ function wireMergePicker(input,box,chosen,onPick){input.addEventListener('input'
    phrase.value='';scan();
    result.innerHTML='<div class="'+(failures.length?'notice':'notice')+'"><b>Cleanup result</b><p>Deleted and confirmed by the archive: '+removed+'.</p>'+(failures.length?'<p class="bad">Not deleted:</p><ul>'+failures.map(x=>'<li>'+escHtml(x)+'</li>').join('')+'</ul>':'<p class="ok">All selected deletions were confirmed by the archive.</p>')+'</div>';
  });
- if(currentRole!=='admin'){panel.querySelectorAll('button,input').forEach(el=>el.disabled=true);}
+
 })();
 
 wireMergePicker(mergeKeepInput,mergeKeepMatches,mergeKeepChosen,i=>{mergeKeepId=i});
