@@ -190,15 +190,15 @@ function buildTreeLevels(start,type,depth){
     add(all,label);
   };
   if(type==='ancestors'||type==='pedigree'){
-    for(let d=depth;d>=1;d--)addWithSpouses(A.filter(x=>x.d===d).map(x=>x.id),`${ord(d)} generation ancestor / spouse`);
+    for(let d=depth;d>=1;d--)addWithSpouses(A.filter(x=>x.d===d).map(x=>x.id),'');
     addWithSpouses([start],'Starting person / spouse');
   } else if(type==='descendants'||type==='descendant'){
-    addWithSpouses([start],'Starting person / spouse');
-    for(let d=1;d<=depth;d++)addWithSpouses(D.filter(x=>x.d===d).map(x=>x.id),`${ord(d)} generation descendant / spouse`);
+    addWithSpouses([start],'');
+    for(let d=1;d<=depth;d++)addWithSpouses(D.filter(x=>x.d===d).map(x=>x.id),'');
   } else if(type==='hourglass'||type==='bloodline'){
     for(let d=depth;d>=1;d--)addWithSpouses(A.filter(x=>x.d===d).map(x=>x.id),`${ord(d)} generation ancestor / spouse`);
-    addWithSpouses([start],'Starting person / spouse');
-    for(let d=1;d<=depth;d++)addWithSpouses(D.filter(x=>x.d===d).map(x=>x.id),`${ord(d)} generation descendant / spouse`);
+    addWithSpouses([start],'');
+    for(let d=1;d<=depth;d++)addWithSpouses(D.filter(x=>x.d===d).map(x=>x.id),'');
   } else if(type==='siblings'){
     const pars=[...(parentMap.get(start)||[])];
     const sib=new Set(); for(const pa of pars)for(const c of childMap.get(pa)||[])if(c!==start)sib.add(c);
