@@ -756,8 +756,8 @@ function renderFamilyInputs(){
   [editParents,editChildren,editSpouses].forEach(box=>box.querySelectorAll('.family-row').forEach(wireFamilyRow));
 }
 function nextManualPersonId(){
-  const nums=db.people.map(p=>{const m=String(p.id||'').match(/^@I(\\d+)@$/i);return m?Number(m[1]):0;});
-  document.querySelectorAll('.manual-person-id').forEach(el=>{const m=String(el.textContent||'').match(/^@I(\\d+)@$/i);if(m)nums.push(Number(m[1]));});
+  const nums=db.people.map(p=>{const m=String(p.id||'').match(/^@I(\d+)@$/i);return m?Number(m[1]):0;});
+  document.querySelectorAll('.manual-person-id').forEach(el=>{const m=String(el.textContent||'').match(/^@I(\d+)@$/i);if(m)nums.push(Number(m[1]));});
   return '@I'+(Math.max(0,...nums)+1)+'@';
 }
 function addFamily(box){
