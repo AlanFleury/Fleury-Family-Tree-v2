@@ -143,17 +143,30 @@ async function saveDatabase(){
 }
 
 /* Safe individual-person save. */
-async function savePerson(person,relationships){
+async function savePerson(person,relationships,relatedPeople=[]){
   if(!person) throw new Error('A valid person is required.');
   const id=String(person['Person ID']||person.person_id||person.id||'');
   if(!id) throw new Error('A valid person ID is required.');
   if(!Array.isArray(relationships)) throw new Error('Invalid person relationships.');
+  if(!Array.isArray(relatedPeople)) throw new Error('Invalid manually-created related people.');
 
   const payload={...person};
   payload['Person ID']=id;
+  const newPeople=relatedPeople.map(p=>({
+    'Person ID':String(p.id||''),
+    Name:String(p.name||''),
+    Gender:String(p.gender||''),
+    Birth:String(p.birth||''),
+    Death:String(p.death||''),
+    Places:String(p.places||''),
+    Notes:String(p.notes||''),
+    'Source IDs':String(p.sources||''),
+    'Relationship to Alan':String(p.relationshipToAlan||''),
+    'Evidence Status':String(p.evidence||'')
+  }));
   return api('/api/person',{
     method:'PUT',
-    body:JSON.stringify({person:payload,relationships})
+    body:JSON.stringify({person:payload,relationships,relatedPeople:newPeople})
   });
 }
 
