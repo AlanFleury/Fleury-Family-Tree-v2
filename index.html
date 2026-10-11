@@ -346,7 +346,23 @@ function relFinder(){const a=selected.a,b=selected.b;if(!a||!b){relOutput.innerH
 function parentLabel(p,d){if(!p)return'';if(d===1)return p.gender==='F'?'Mother':'Father';return `${ord(d)}-generation ancestor`}
 function childLabel(p,d){if(!p)return'';return d===1?(p.gender==='F'?'Daughter':'Son'):`${ord(d)}-generation descendant`}
 function svgText(x,y,text,size=13,weight='400'){return `<text x="${x}" y="${y}" font-family="Arial, sans-serif" font-size="${size}" font-weight="${weight}" text-anchor="middle">${esc(text)}</text>`}
-function nodeSvg(x,y,p,w=190,h=68,rel='',extra=''){if(!p)return'';const title=nm(p).slice(0,34),dates=[p.birth,p.death].filter(Boolean).join(' – '),g=String(p.gender||'').toUpperCase(),genderClass=g==='M'?'gender-male':g==='F'?'gender-female':'gender-unknown',blood=extra.includes('data-blood="1"'),fill=g==='M'?'#dcecff':g==='F'?'#ffe0ea':'#fff',stroke=blood?'#c1121f':g==='M'?'#2f5fa8':g==='F'?'#c85b7a':'#667085',sw=blood?4:2;return `<g class="person-node ${genderClass}${blood?' bloodline':''}" data-person-id="${esc(p.id)}" role="button" tabindex="0" aria-label="${esc("Open "+nm(p))}" style="cursor:pointer"><title>${esc(nm(p))}</title><rect x="${x-w/2}" y="${y-h/2}" width="${w}" height="${h}" rx="10" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/><text x="${x}" y="${y-15}" font-family="Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">${esc(title)}</text><text x="${x}" y="${y+3}" font-family="Arial, sans-serif" font-size="10" text-anchor="middle">${esc(dates||p.id)}</text><text x="${x}" y="${y+21}" font-family="Arial, sans-serif" font-size="10" text-anchor="middle">${esc(rel)}</text>${extra}</g>`}
+function ageAtDeath(p){
+  if(!p)return null;
+  const part=value=>{const raw=String(value||'').trim();if(!raw)return null;
+    let m=raw.match(/^(\d{1,2})[\s/-]+([A-Za-z]{3,9})[\s/-]+(\d{4})$/);
+    if(m){const months={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};const month=months[m[2].slice(0,3).toLowerCase()];if(month===undefined)return null;const d=new Date(Date.UTC(+m[3],month,+m[1]));return d.getUTCFullYear()===+m[3]&&d.getUTCMonth()===month&&d.getUTCDate()===+m[1]?d:null;}
+    m=raw.match(/^(\d{4})$/);if(m)return new Date(Date.UTC(+m[1],0,1));
+    m=raw.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);if(m){const d=new Date(Date.UTC(+m[1],+m[2]-1,+m[3]));return d.getUTCFullYear()===+m[1]&&d.getUTCMonth()===+m[2]-1&&d.getUTCDate()===+m[3]?d:null;}
+    const d=new Date(raw);return Number.isNaN(d.getTime())?null:new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));
+  };
+  if(!String(p.death||'').trim())return null;
+  const birth=part(p.birth),death=part(p.death);if(!birth||!death||death<birth)return null;
+  let age=death.getUTCFullYear()-birth.getUTCFullYear();
+  if(death.getUTCMonth()<birth.getUTCMonth()||(death.getUTCMonth()===birth.getUTCMonth()&&death.getUTCDate()<birth.getUTCDate()))age--;
+  return age>=0&&age<130?age:null;
+}
+function chartDates(p){const dates=[p?.birth,p?.death].filter(Boolean).join(' – ');const age=ageAtDeath(p);return dates+(age!==null?' • '+age+' at death':'')}
+function nodeSvg(x,y,p,w=190,h=68,rel='',extra=''){if(!p)return'';const title=nm(p).slice(0,34),dates=chartDates(p),g=String(p.gender||'').toUpperCase(),genderClass=g==='M'?'gender-male':g==='F'?'gender-female':'gender-unknown',blood=extra.includes('data-blood="1"'),fill=g==='M'?'#dcecff':g==='F'?'#ffe0ea':'#fff',stroke=blood?'#c1121f':g==='M'?'#2f5fa8':g==='F'?'#c85b7a':'#667085',sw=blood?4:2;return `<g class="person-node ${genderClass}${blood?' bloodline':''}" data-person-id="${esc(p.id)}" role="button" tabindex="0" aria-label="${esc("Open "+nm(p))}" style="cursor:pointer"><title>${esc(nm(p))}</title><rect x="${x-w/2}" y="${y-h/2}" width="${w}" height="${h}" rx="10" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/><text x="${x}" y="${y-15}" font-family="Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">${esc(title)}</text><text x="${x}" y="${y+3}" font-family="Arial, sans-serif" font-size="10" text-anchor="middle">${esc(dates||p.id)}</text><text x="${x}" y="${y+21}" font-family="Arial, sans-serif" font-size="10" text-anchor="middle">${esc(rel)}</text>${extra}</g>`}
 function uniqueIds(ids){return [...new Set(ids.filter(i=>person(i)))]}
 function buildTreeLevels(start,type,depth){
   const levels=[];
@@ -396,7 +412,7 @@ function fanSvg(start,depth){
   const root=person(start); if(!root)return'';
   const anc=ancestors(start,depth), maxDepth=Math.max(1,depth), W=1400,H=980,cx=W/2,cy=H-90,inner=92,ring=118;
   let s=`<svg xmlns="http://www.w3.org/2000/svg" class="tree-svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><rect width="100%" height="100%" fill="white"/>`;
-  s+=`<g class="person-node" data-person-id="${esc(root.id)}" role="button" tabindex="0" aria-label="${esc("Open "+nm(root))}" style="cursor:pointer"><circle cx="${cx}" cy="${cy}" r="${inner-8}" fill="white" stroke="#2f5fa8" stroke-width="3"/>${svgText(cx,cy-7,nm(root).slice(0,28),14,'700')}${svgText(cx,cy+13,[root.birth,root.death].filter(Boolean).join(' – '),10)}</g>`;
+  s+=`<g class="person-node" data-person-id="${esc(root.id)}" role="button" tabindex="0" aria-label="${esc("Open "+nm(root))}" style="cursor:pointer"><circle cx="${cx}" cy="${cy}" r="${inner-8}" fill="white" stroke="#2f5fa8" stroke-width="3"/>${svgText(cx,cy-7,nm(root).slice(0,28),14,'700')}${svgText(cx,cy+13,chartDates(root),10)}</g>`;
   for(let d=1;d<=maxDepth;d++){
     const xs=anc.filter(x=>x.d===d); if(!xs.length)continue;
     const r1=inner+(d-1)*ring,r2=inner+d*ring,total=Math.max(1,Math.pow(2,d)),half=Math.min(total,xs.length);
