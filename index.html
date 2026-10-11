@@ -759,8 +759,8 @@ function addFamily(box){
   row.innerHTML='<div class="family-person-picker"><input data-selected-person-id="" autocomplete="off" placeholder="Search archive by name or ID…" aria-label="'+(kind==='parent'?'Parent':'Child')+' name"><div class="family-matches matchbox hidden" role="listbox" aria-label="Matching people"></div><div class="family-match-status" aria-live="polite">Type at least 2 characters to search the archive.</div></div><button type="button" aria-label="Remove '+kind+'">Remove</button>';
   box.appendChild(row);wireFamilyRow(row);row.querySelector('input').focus();
 }
-editParents.addEventListener('click',e=>{if(e.target.tagName==='BUTTON')e.target.closest('.family-row')?.remove()});
-editChildren.addEventListener('click',e=>{if(e.target.tagName==='BUTTON')e.target.closest('.family-row')?.remove()});
+editParents.addEventListener('click',e=>{if(e.target.tagName==='BUTTON'&&e.target.textContent.trim()==='Remove')e.target.closest('.family-row')?.remove()});
+editChildren.addEventListener('click',e=>{if(e.target.tagName==='BUTTON'&&e.target.textContent.trim()==='Remove')e.target.closest('.family-row')?.remove()});
 addParent.onclick=()=>addFamily(editParents);
 addChild.onclick=()=>addFamily(editChildren);
 const gmailConnectBtn=document.getElementById('gmailConnectBtn'),gmailTestBtn=document.getElementById('gmailTestBtn'),gmailConnectStatus=document.getElementById('gmailConnectStatus');
