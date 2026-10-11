@@ -504,10 +504,12 @@ export default {
         const x=await request.json();
         const p=x?.person;
         const family=Array.isArray(x?.relationships)?x.relationships:[];
+        const relatedPeople=Array.isArray(x?.relatedPeople)?x.relatedPeople:[];
         const id=String(p?.["Person ID"]||p?.person_id||p?.id||"");
         if(!id) return json({error:"Person ID is required"},400,env,origin);
+        if(relatedPeople.length>100) return json({error:"A single save may create at most 100 related people"},400,env,origin);
 
-        const familyTypes=new Set(["parent","mother","father","child","son","daughter"]);
+        const familyTypes=new Set(["parent","mother","father","child","son","daughter","spouse","partner","husband","wife"]);
         const cleanFamily=family.map(r=>({
           type:String(r?.type||"").toLowerCase(),
           person1:String(r?.person1??r?.fromId??r?.from??r?.Person1??""),
@@ -530,6 +532,20 @@ export default {
               String(p["Relationship to Alan"]||""),String(p["Evidence Status"]||""),String(p["Source IDs"]||""),
               String(p.Notes||""),String(p.Places||""),JSON.stringify(p))
           ];
+          const relatedIds=new Set([id]);
+          for(const rp of relatedPeople){
+            const rid=String(rp?.["Person ID"]||rp?.person_id||rp?.id||"").trim();
+            const rname=String(rp?.Name||rp?.name||"").trim();
+            if(!rid||!rname||relatedIds.has(rid)) throw new Error("Every manually-created related person needs a unique ID and name");
+            relatedIds.add(rid);
+            writes.push(env.DB.prepare(`INSERT INTO people(
+              person_id,name,gender,birth,death,relationship_to_alan,evidence_status,source_ids,notes,places,json_extra
+            ) VALUES(?,?,?,?,?,?,?,?,?,?,?)
+            ON CONFLICT(person_id) DO NOTHING
+            `).bind(rid,rname,String(rp.Gender||rp.gender||""),String(rp.Birth||rp.birth||""),String(rp.Death||rp.death||""),
+              String(rp["Relationship to Alan"]||rp.relationshipToAlan||""),String(rp["Evidence Status"]||rp.evidence||""),
+              String(rp["Source IDs"]||rp.sources||""),String(rp.Notes||rp.notes||""),String(rp.Places||rp.places||""),JSON.stringify(rp)));
+          }
           for(const r of current.results||[]){
             const key=[String(r.type||"").toLowerCase(),String(r.person1||""),String(r.person2||"")].join("|");
             if(!desired.has(key)||existingKeys.has(key)){
