@@ -230,7 +230,18 @@ async function archivePage(env,table,offset,limit){
   throw new Error("Invalid archive table");
 }
 
+async function ensureRelationshipDetails(env){
+  const columns=await env.DB.prepare("PRAGMA table_info(relationships)").all();
+  const names=new Set((columns.results||[]).map(c=>String(c.name)));
+  for(const [name,sql] of [
+    ["relationship_status","ALTER TABLE relationships ADD COLUMN relationship_status TEXT NOT NULL DEFAULT 'Unknown'"],
+    ["relationship_date","ALTER TABLE relationships ADD COLUMN relationship_date TEXT NOT NULL DEFAULT ''"],
+    ["end_date","ALTER TABLE relationships ADD COLUMN end_date TEXT NOT NULL DEFAULT ''"],
+    ["relationship_place","ALTER TABLE relationships ADD COLUMN relationship_place TEXT NOT NULL DEFAULT ''"]
+  ]) if(!names.has(name)) await env.DB.prepare(sql).run();
+}
 async function archive(env){
+  await ensureRelationshipDetails(env);
   const people=await env.DB.prepare(
     "SELECT * FROM people"
   ).all();
@@ -509,16 +520,21 @@ export default {
         if(!id) return json({error:"Person ID is required"},400,env,origin);
         if(relatedPeople.length>100) return json({error:"A single save may create at most 100 related people"},400,env,origin);
 
+        await ensureRelationshipDetails(env);
         const familyTypes=new Set(["parent","mother","father","child","son","daughter","spouse","partner","husband","wife"]);
         const cleanFamily=family.map(r=>({
           type:String(r?.type||"").toLowerCase(),
           person1:String(r?.person1??r?.fromId??r?.from??r?.Person1??""),
-          person2:String(r?.person2??r?.toId??r?.to??r?.Person2??"")
+          person2:String(r?.person2??r?.toId??r?.to??r?.Person2??""),
+          relationship_status:String(r?.relationship_status||"Unknown").slice(0,40),
+          relationship_date:String(r?.relationship_date||"").slice(0,100),
+          end_date:String(r?.end_date||"").slice(0,100),
+          relationship_place:String(r?.relationship_place||"").slice(0,500)
         })).filter(r=>familyTypes.has(r.type)&&r.person1&&r.person2&&r.person1!==r.person2);
         const desired=new Map();
         for(const r of cleanFamily) desired.set([r.type,r.person1,r.person2].join("|"),r);
         try{
-          const current=await env.DB.prepare(`SELECT rowid AS row_id,type,person1,person2 FROM relationships
+          const current=await env.DB.prepare(`SELECT rowid AS row_id,type,person1,person2,relationship_status,relationship_date,end_date,relationship_place FROM relationships
             WHERE (person1=? OR person2=?) AND lower(type) IN ('parent','mother','father','child','son','daughter','spouse','partner','husband','wife')`).bind(id,id).all();
           const existingKeys=new Set(),writes=[
             env.DB.prepare(`INSERT INTO people(
@@ -550,10 +566,13 @@ export default {
             const key=[String(r.type||"").toLowerCase(),String(r.person1||""),String(r.person2||"")].join("|");
             if(!desired.has(key)||existingKeys.has(key)){
               writes.push(env.DB.prepare("DELETE FROM relationships WHERE rowid=?").bind(r.row_id));
-            }else existingKeys.add(key);
+            }else{
+              existingKeys.add(key);const next=desired.get(key);
+              writes.push(env.DB.prepare("UPDATE relationships SET relationship_status=?,relationship_date=?,end_date=?,relationship_place=? WHERE rowid=?").bind(next.relationship_status,next.relationship_date,next.end_date,next.relationship_place,r.row_id));
+            }
           }
           for(const [key,r] of desired) if(!existingKeys.has(key)){
-            writes.push(env.DB.prepare("INSERT INTO relationships(type,person1,person2) VALUES(?,?,?)").bind(r.type,r.person1,r.person2));
+            writes.push(env.DB.prepare("INSERT INTO relationships(type,person1,person2,relationship_status,relationship_date,end_date,relationship_place) VALUES(?,?,?,?,?,?,?)").bind(r.type,r.person1,r.person2,r.relationship_status,r.relationship_date,r.end_date,r.relationship_place));
           }
           await env.DB.batch(writes);
           return json({ok:true,personId:id,relationshipsAdded:cleanFamily.length-existingKeys.size},200,env,origin);
