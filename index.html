@@ -757,6 +757,7 @@ function renderFamilyInputs(){
 }
 function nextManualPersonId(){
   const nums=db.people.map(p=>{const m=String(p.id||'').match(/^@I(\\d+)@$/i);return m?Number(m[1]):0;});
+  document.querySelectorAll('.manual-person-id').forEach(el=>{const m=String(el.textContent||'').match(/^@I(\\d+)@$/i);if(m)nums.push(Number(m[1]));});
   return '@I'+(Math.max(0,...nums)+1)+'@';
 }
 function addFamily(box){
@@ -770,7 +771,7 @@ function addFamily(box){
   if(e.target.closest('.manual-person-toggle')){
     const row=e.target.closest('.family-row'),form=row.querySelector('.manual-person-form'),input=row.querySelector('input');
     form.classList.toggle('hidden');row.dataset.manual=form.classList.contains('hidden')?'':'1';
-    if(row.dataset.manual){input.value='';input.dataset.selectedPersonId='';row.querySelector('.manual-name').focus();}
+    if(row.dataset.manual){row.querySelector('.manual-person-id').textContent=nextManualPersonId();input.value='';input.dataset.selectedPersonId='';row.querySelector('.manual-name').focus();}
     return;
   }
   if(e.target.tagName==='BUTTON'&&e.target.textContent.trim()==='Remove')e.target.closest('.family-row')?.remove();
