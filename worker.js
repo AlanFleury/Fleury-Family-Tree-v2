@@ -519,7 +519,7 @@ export default {
         for(const r of cleanFamily) desired.set([r.type,r.person1,r.person2].join("|"),r);
         try{
           const current=await env.DB.prepare(`SELECT rowid AS row_id,type,person1,person2 FROM relationships
-            WHERE (person1=? OR person2=?) AND lower(type)='parent'`).bind(id,id).all();
+            WHERE (person1=? OR person2=?) AND lower(type) IN ('parent','mother','father','child','son','daughter','spouse','partner','husband','wife')`).bind(id,id).all();
           const existingKeys=new Set(),writes=[
             env.DB.prepare(`INSERT INTO people(
               person_id,name,gender,birth,death,relationship_to_alan,evidence_status,source_ids,notes,places,json_extra
