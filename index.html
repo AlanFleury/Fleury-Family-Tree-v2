@@ -747,9 +747,15 @@ function wireFamilyRow(row){
 }
 function renderFamilyInputs(){
   const i=selected.edit;if(!i)return;
-  const parents=[...(parentMap.get(i)||[])],children=[...(childMap.get(i)||[])];
+  // A corrupt/self-referencing archive relationship must never be presented as a relative.
+  // Exclude the edited person from every picker so it cannot block an otherwise valid save.
+  const parents=[...(parentMap.get(i)||[])].filter(id=>id&&id!==i);
+  const children=[...(childMap.get(i)||[])].filter(id=>id&&id!==i);
   const spouseTypes=new Set(['spouse','partner','husband','wife']);
-  const spouses=db.relationships.filter(r=>spouseTypes.has(lower(r.type))&&(r.a===i||r.b===i)).map(r=>({id:r.a===i?r.b:r.a,type:r.type}));
+  const spouses=db.relationships
+    .filter(r=>spouseTypes.has(lower(r.type))&&r.a!==r.b&&(r.a===i||r.b===i))
+    .map(r=>({id:r.a===i?r.b:r.a,type:r.type}))
+    .filter(x=>x.id&&x.id!==i);
   editParents.innerHTML=parents.map(x=>familyRow('parent',x,'parent')).join('')||'<div class="muted">None recorded</div>';
   editChildren.innerHTML=children.map(x=>familyRow('child',x,'parent')).join('')||'<div class="muted">None recorded</div>';
   editSpouses.innerHTML=spouses.map(x=>familyRow('spouse',x.id,x.type)).join('')||'<div class="muted">None recorded</div>';
@@ -826,7 +832,7 @@ document.getElementById('savePerson').addEventListener('click',async(event)=>{
           if(!q) throw new Error('One of the '+label+' rows is blank. Remove the blank row or choose a person.');
           if(!hit) throw new Error('"'+(input?.value||'')+'" has not been selected from the archive search results. Search again or use Create new person manually. No changes were saved.');
         }
-        if(hit.id===i) throw new Error('A person cannot be their own parent, child, or spouse / partner.');
+        if(hit.id===i) throw new Error('The '+label+' row points back to the person currently being edited ('+nm(person(i))+' • '+i+'). Remove that self-link and select a different person.');
         if(seen.has(hit.id)) throw new Error('The same person has been selected more than once as a '+label+'. Remove the duplicate row before saving.');
         seen.add(hit.id);
         if(kind==='spouse'){
