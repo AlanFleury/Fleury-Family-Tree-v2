@@ -212,7 +212,7 @@ async function archivePage(env,table,offset,limit){
 
   if(table==="relationships"){
     const result=await env.DB.prepare(
-      "SELECT type, person1, person2 FROM relationships ORDER BY rowid LIMIT ? OFFSET ?"
+      "SELECT type, person1, person2, relationship_status, relationship_date, end_date, relationship_place FROM relationships ORDER BY rowid LIMIT ? OFFSET ?"
     ).bind(safeLimit,safeOffset).all();
     return {relationships:result.results,offset:safeOffset,limit:safeLimit};
   }
@@ -246,7 +246,7 @@ async function archive(env){
     "SELECT * FROM people"
   ).all();
   const relationships=await env.DB.prepare(
-    "SELECT type, person1, person2 FROM relationships"
+    "SELECT type, person1, person2, relationship_status, relationship_date, end_date, relationship_place FROM relationships"
   ).all();
   const meta=await env.DB.prepare(
     "SELECT key,value FROM meta"
