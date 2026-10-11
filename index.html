@@ -721,7 +721,33 @@ function printView(id){document.querySelectorAll('.view').forEach(x=>x.classList
 function downloadBackup(){const people=allPeople(),rels=db.relationships;const backup={version:3,product:'Fleury Family Tree — Ultimate Edition',exported:new Date().toISOString(),counts:{people:people.length,relationships:rels.length},integrity:{peopleIdsUnique:new Set(people.map(p=>p.id)).size===people.length,relationshipsHaveIds:rels.every(r=>r.a&&r.b),relationshipEndpointsExist:rels.every(r=>person(r.a)&&person(r.b))},...db};download('fleury-family-tree-backup.json',JSON.stringify(backup,null,2),'application/json')}
 backupBtn.onclick=downloadBackup;resetBtn.onclick=async()=>{if(confirm('Reset this browser to the original workbook data? Local edits will be lost in this browser.')){try{const d=await openDB();await new Promise((res,rej)=>{const t=d.transaction(STORE,'readwrite');t.objectStore(STORE).delete('current');t.oncomplete=res;t.onerror=()=>rej(t.error)})}catch(e){}location.reload()}};importBtn.onclick=()=>importFile.click();importFile.onchange=async()=>{const f=importFile.files[0];if(!f)return;try{const o=JSON.parse(await f.text());if(!Array.isArray(o.people)||!Array.isArray(o.relationships))throw Error('Not a Fleury backup');db={people:o.people,relationships:o.relationships,meta:o.meta||{}};reindex();await persist();location.reload()}catch(e){alert('Restore failed: '+e.message)}};
 function loadEdit(i){const p=person(i);if(!p)return;editName.value=p.name;editGender.value=p.gender;editBirth.value=p.birth;editDeath.value=p.death;editBirthPlace.value=p.places;editDeathPlace.value='';editNotes.value=p.notes;editSources.value=p.sources;renderFamilyInputs()}
-function familyRow(kind,pid){return `<div class="family-row" data-id="${esc(pid)}"><span class="link" data-person="${esc(pid)}" title="Open person">${esc(nm(person(pid)))}</span><input value="${esc(nm(person(pid)))}"><button type="button">Remove</button></div>`}function renderFamilyInputs(){const i=selected.edit;if(!i)return;editParents.innerHTML=[...(parentMap.get(i)||[])].map(x=>familyRow('parent',x)).join('')||'<div class="muted">None recorded</div>';editChildren.innerHTML=[...(childMap.get(i)||[])].map(x=>familyRow('child',x)).join('')||'<div class="muted">None recorded</div>'}function addFamily(box){const row=document.createElement('div');row.className='family-row';row.dataset.id='';row.innerHTML='<input placeholder="Type exact full name…"><button type="button">Remove</button>';box.appendChild(row)}editParents.onclick=e=>{if(e.target.tagName==='BUTTON')e.target.parentElement.remove()};editChildren.onclick=e=>{if(e.target.tagName==='BUTTON')e.target.parentElement.remove()};addParent.onclick=()=>addFamily(editParents);addChild.onclick=()=>addFamily(editChildren);
+function familyRow(kind,pid){
+  const p=person(pid);
+  return `<div class="family-row" data-id="${esc(pid)}"><span class="link" data-person="${esc(pid)}" title="Open person">${esc(nm(p))}</span><input list="familyPersonOptions" data-person-id="${esc(pid)}" value="${esc(nm(p))}" aria-label="${kind==='parent'?'Parent':'Child'} name"><button type="button">Remove</button></div>`;
+}
+function renderFamilyInputs(){
+  const i=selected.edit;if(!i)return;
+  const parents=[...(parentMap.get(i)||[])],children=[...(childMap.get(i)||[])];
+  editParents.innerHTML=parents.map(x=>familyRow('parent',x)).join('')||'<div class="muted">None recorded</div>';
+  editChildren.innerHTML=children.map(x=>familyRow('child',x)).join('')||'<div class="muted">None recorded</div>';
+}
+function addFamily(box){
+  const kind=box===editParents?'parent':'child';
+  const row=document.createElement('div');row.className='family-row';row.dataset.id='';
+  row.innerHTML='<input list="familyPersonOptions" data-person-id="" placeholder="Search or type a person’s name…" aria-label="'+(kind==='parent'?'Parent':'Child')+' name"><button type="button">Remove</button>';
+  box.appendChild(row);
+  row.querySelector('input').focus();
+}
+function ensureFamilyPersonOptions(){
+  let list=document.getElementById('familyPersonOptions');
+  if(!list){list=document.createElement('datalist');list.id='familyPersonOptions';document.body.appendChild(list)}
+  list.innerHTML=allPeople().map(p=>'<option value="'+esc(nm(p))+'"></option>').join('');
+}
+ensureFamilyPersonOptions();
+editParents.addEventListener('click',e=>{if(e.target.tagName==='BUTTON')e.target.parentElement.remove()});
+editChildren.addEventListener('click',e=>{if(e.target.tagName==='BUTTON')e.target.parentElement.remove()});
+addParent.onclick=()=>addFamily(editParents);
+addChild.onclick=()=>addFamily(editChildren);
 const gmailConnectBtn=document.getElementById('gmailConnectBtn'),gmailTestBtn=document.getElementById('gmailTestBtn'),gmailConnectStatus=document.getElementById('gmailConnectStatus');
 gmailConnectBtn.onclick=async()=>{if(currentRole!=='admin'){gmailConnectStatus.textContent='Administrator access is required.';return}gmailConnectBtn.disabled=true;gmailConnectStatus.textContent='Opening secure Google authorization…';try{await window.archiveApi.startGmailOAuth()}catch(e){gmailConnectStatus.textContent=e.message||String(e);gmailConnectBtn.disabled=false}};gmailTestBtn.onclick=async()=>{if(currentRole!=='admin'){gmailConnectStatus.textContent='Administrator access is required.';return}gmailTestBtn.disabled=true;gmailConnectStatus.textContent='Sending test email…';try{const r=await window.archiveApi.testGmailNotification();gmailConnectStatus.textContent=r?.emailSent?'Test email sent successfully to alanfleury1@gmail.com.':(r?.error||'Gmail test failed.')}catch(e){gmailConnectStatus.textContent=e.message||String(e)}finally{gmailTestBtn.disabled=false}}
 const masterRestoreFile=document.getElementById('masterRestoreFile'),masterRestoreBtn=document.getElementById('masterRestoreBtn'),masterRestoreStatus=document.getElementById('masterRestoreStatus');
@@ -744,7 +770,19 @@ document.getElementById('savePerson').addEventListener('click',async(event)=>{
       Object.assign(p,{name:editName.value.trim(),gender:editGender.value.trim(),birth:editBirth.value.trim(),death:editDeath.value.trim(),places:editBirthPlace.value.trim(),notes:editNotes.value,sources:editSources.value.trim()});
     }
     db.relationships=db.relationships.filter(r=>!(r.type==='parent'&&(r.a===i||r.b===i)));
-    const addRows=(box,reverse)=>{for(const row of box.querySelectorAll('.family-row')){const input=row.querySelector('input');const q=(input?.value||'').trim().toLowerCase();const hit=allPeople().find(p=>lower(nm(p))===q);if(hit&&hit.id!==i)db.relationships.push({type:'parent',a:reverse?i:hit.id,b:reverse?hit.id:i})}};
+    const addRows=(box,reverse)=>{
+      for(const row of box.querySelectorAll('.family-row')){
+        const input=row.querySelector('input');
+        const q=(input?.value||'').trim().toLowerCase();
+        const selectedId=String(row.dataset.id||input?.dataset.personId||'').trim();
+        const hit=(selectedId&&person(selectedId))||allPeople().find(p=>lower(nm(p))===q);
+        if(!q) throw new Error('One of the parent/child rows is blank. Remove the blank row or choose a person.');
+        if(!hit) throw new Error('Could not find "'+(input?.value||'')+'" in the archive. Choose an existing person from the suggestions, or create that person first. No changes were saved.');
+        if(hit.id===i) throw new Error('A person cannot be their own parent or child.');
+        const a=reverse?i:hit.id,b=reverse?hit.id:i;
+        if(!db.relationships.some(r=>r.type==='parent'&&r.a===a&&r.b===b))db.relationships.push({type:'parent',a,b});
+      }
+    };
     addRows(document.getElementById('editParents'),false);
     addRows(document.getElementById('editChildren'),true);
     reindex();
