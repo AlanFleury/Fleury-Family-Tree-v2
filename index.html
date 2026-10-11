@@ -828,7 +828,7 @@ document.getElementById('savePerson').addEventListener('click',async(event)=>{
           const q=(input?.value||'').trim().toLowerCase();
           const selectedId=String(input?.dataset.selectedPersonId||'').trim();
           const selectedPerson=selectedId?person(selectedId):null;
-          hit=selectedPerson&&lower(nm(selectedPerson))===q?selectedPerson:null;
+          const normalizePersonName=value=>lower(String(value||'').trim().replace(/\\s+/g,' '));\n          hit=selectedPerson&&normalizePersonName(nm(selectedPerson))===normalizePersonName(q)?selectedPerson:null;
           if(!q) throw new Error('One of the '+label+' rows is blank. Remove the blank row or choose a person.');
           if(!hit) throw new Error('"'+(input?.value||'')+'" has not been selected from the archive search results. Search again or use Create new person manually. No changes were saved.');
         }
