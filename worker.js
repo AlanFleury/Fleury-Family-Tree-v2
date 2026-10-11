@@ -200,6 +200,7 @@ async function verifiedProfile(token){
 }
 
 async function archivePage(env,table,offset,limit){
+  await ensureRelationshipDetails(env);
   const safeOffset=Math.max(0,Number.isFinite(offset)?Math.floor(offset):0);
   const safeLimit=Math.min(5000,Math.max(1,Number.isFinite(limit)?Math.floor(limit):5000));
 
