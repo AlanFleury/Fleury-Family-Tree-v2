@@ -371,8 +371,17 @@ function buildTreeLevels(start,type,depth){
   const add=(ids,label)=>{const u=uniqueIds(ids);if(u.length)levels.push({ids:u,label})};
   const A=ancestors(start,depth),D=descendants(start,depth);
   const addWithSpouses=(ids,label)=>{
-    const base=uniqueIds(ids), all=[...base];
-    for(const id of base) for(const sp of spouseMap.get(id)||[]) if(person(sp)) all.push(sp);
+    // Keep each person beside their spouse/partner in the chart row.
+    // This is a visual ordering only; it does not change parentage or bloodline membership.
+    const base=uniqueIds(ids), baseSet=new Set(base), all=[], placed=new Set();
+    for(const id of base){
+      if(placed.has(id)) continue;
+      all.push(id); placed.add(id);
+      const spouses=[...(spouseMap.get(id)||[])].filter(sp=>person(sp)&&!placed.has(sp));
+      // Prefer spouses already represented in this generation, then include any other recorded spouse.
+      spouses.sort((a,b)=>Number(!baseSet.has(a))-Number(!baseSet.has(b)));
+      for(const sp of spouses){all.push(sp);placed.add(sp);}
+    }
     add(all,label);
   };
   if(type==='ancestors'||type==='pedigree'){
