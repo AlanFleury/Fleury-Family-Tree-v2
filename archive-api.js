@@ -115,6 +115,8 @@ async function api(path,options={}){
 
 async function getMyRole(){
   const result=await api('/api/me');
+  // Carry the server-approved family-tree person mapping into the signed-in session.
+  if(currentUser) currentUser.personId=String(result?.personId??result?.person_id??result?.personID??'').trim()||null;
   return result?.role||null;
 }
 
