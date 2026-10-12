@@ -325,7 +325,8 @@ export default {
       }
 
       if(url.pathname==="/api/gmail/test" && request.method==="POST"){
-        await auth(request,env);
+        const u=await auth(request,env);
+        if(u.role!=="admin") return json({error:"Admin access required"},403,env,origin);
         try{
           await sendGmailNotification(env,{to:"alanfleury1@gmail.com",subject:"Fleury Family Tree — Gmail test",text:"This is a test message confirming that Gmail API notifications are working for the Fleury Family Tree private archive.\n\nIf you received this message, Gmail access-request notifications are configured correctly."});
           return json({ok:true,emailSent:true},200,env,origin);
