@@ -938,7 +938,7 @@ document.getElementById('savePerson').addEventListener('click',async(event)=>{
         }
       }
     };
-    const originalChildIds=new Set((childMap.get(i)||[]).filter(id=>id&&id!==i));
+    const originalChildIds=new Set([...(childMap.get(i)||[])].filter(id=>id&&id!==i));
     const newlyLinkedChildIds=new Set();
     const autoLinkedParentEdges=[];
     addRows(document.getElementById('editParents'),'parent',false);
