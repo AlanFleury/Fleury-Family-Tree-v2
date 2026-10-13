@@ -680,6 +680,30 @@ function wireChartPan(container){
     suppressClick=false;event.preventDefault();event.stopPropagation();
     if(event.stopImmediatePropagation)event.stopImmediatePropagation();
   },true);
+  /* Mouse-wheel zoom enlarges the SVG itself, keeping horizontal and vertical scroll useful. */
+  viewport.addEventListener('wheel',event=>{
+    const svg=event.target.closest&&event.target.closest('svg');
+    if(!svg)return;
+    if(event.cancelable)event.preventDefault();
+    if(!svg.dataset.zoomBaseWidth||!svg.dataset.zoomBaseHeight){
+      const vb=svg.viewBox&&svg.viewBox.baseVal;
+      const attrW=parseFloat(svg.getAttribute('width')),attrH=parseFloat(svg.getAttribute('height'));
+      const rect=svg.getBoundingClientRect();
+      svg.dataset.zoomBaseWidth=String(vb&&vb.width>0?vb.width:(Number.isFinite(attrW)&&attrW>0?attrW:rect.width));
+      svg.dataset.zoomBaseHeight=String(vb&&vb.height>0?vb.height:(Number.isFinite(attrH)&&attrH>0?attrH:rect.height));
+      svg.dataset.zoomScale='1';
+    }
+    const oldScale=Number(svg.dataset.zoomScale)||1;
+    const nextScale=Math.max(.35,Math.min(4,oldScale*(event.deltaY<0?1.12:1/1.12)));
+    if(Math.abs(nextScale-oldScale)<.001)return;
+    const rect=svg.getBoundingClientRect(),x=event.clientX-rect.left,y=event.clientY-rect.top;
+    const contentX=viewport.scrollLeft+x,contentY=viewport.scrollTop+y;
+    svg.dataset.zoomScale=String(nextScale);
+    svg.style.width=(Number(svg.dataset.zoomBaseWidth)*nextScale)+'px';
+    svg.style.height=(Number(svg.dataset.zoomBaseHeight)*nextScale)+'px';
+    viewport.scrollLeft=contentX*(nextScale/oldScale)-x;
+    viewport.scrollTop=contentY*(nextScale/oldScale)-y;
+  },{passive:false});
 }
 function chart(){const s=selected.chart;if(!s){chartOutput.innerHTML='<p class="muted">Select a starting person first.</p>';return}const type=chartType.value,depth=Math.max(1,Math.min(30,Number(chartDepth.value)||1));let svg='';if(type==='fan')svg=fanSvg(s,depth);else if(type==='timeline')svg=timelineSvg(s,depth);else if(type==='surname')svg=surnameSvg(s);else if(type==='familygroup')svg=familyGroupSvg(s);else{const mapType=type==='ancestors'?'ancestors':type==='descendants'?'descendants':type==='hourglass'?'hourglass':type==='complete'?'complete':type==='bothsides'?'bothsides':type==='extendedfamily'?'extendedfamily':type==='bloodline'?'bloodline':type==='siblings'?'siblings':'family';svg=buildTreeSvg(s,mapType,depth)}renderChartOutput(chartOutput,svg,type==='bloodline'?'Direct ancestors and descendants are outlined in red. Spouse / partner links remain purple. Click any person box to open that person.':type==='bothsides'?'Both parental branches are shown together and meet at the selected person. Lines follow recorded parent-child relationships. Click any person box to open that person.':type==='extendedfamily'?'Both maternal and paternal branches are shown with recorded aunts, uncles, cousins and their connecting parent-child links. Missing or unrecorded relationships cannot be inferred.':'Every person box includes recorded birth/death places where available. Click any person box to open that person. Use Print chart for a clean printable version.')}
 function wall(){const s=selected.wall;if(!s){wallOutput.innerHTML='<p class="muted">Select a starting person first.</p>';return}setPrintPaper(wallPaper.value);const type=wallType.value,depth=Math.max(1,Math.min(30,Number(wallDepth.value)||1));let svg='';if(type==='fan')svg=fanSvg(s,depth);else if(type==='timeline')svg=timelineSvg(s,depth);else if(type==='surname')svg=surnameSvg(s);else if(type==='familygroup')svg=familyGroupSvg(s);else svg=buildTreeSvg(s,type,depth,true);renderChartOutput(wallOutput,svg,type==='bloodline'?'Direct ancestors and descendants are outlined in red. Spouse / partner links remain purple. This wall chart is vector-based; use Landscape and your largest available paper size.':'Wall chart is vector-based. For the best result choose Landscape and the largest paper available in your printer/PDF dialog.')}
