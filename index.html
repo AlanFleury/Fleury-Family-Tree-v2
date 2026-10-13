@@ -351,13 +351,13 @@ function relationshipLabel(a,b){
  if((spouseMap.get(a)||new Set()).has(b))return 'Spouse / partner';
  const aAnc=ancestors(a,30),bAnc=ancestors(b,30),aDist=new Map(aAnc.map(x=>[x.id,x.d])),bDist=new Map(bAnc.map(x=>[x.id,x.d]));
  // Direct ancestors and descendants get their own clear labels (grandmother, great-grandfather, etc.).
- if(bDist.has(a)){const d=bDist.get(a),g=pGender(a),base=g==='F'?'grandmother':g==='M'?'grandfather':'grandparent';return d===1?(g==='F'?'Mother':g==='M'?'Father':'Parent'):d===2?base:(d===3?'great-':('great-'.repeat(d-2)))+base}
- if(aDist.has(b)){const d=aDist.get(b),g=pGender(a),base=g==='F'?'granddaughter':g==='M'?'grandson':'grandchild';return d===1?(g==='F'?'Daughter':g==='M'?'Son':'Child'):d===2?base:(d===3?'great-':('great-'.repeat(d-2)))+base}
+ if(bDist.has(a)){const d=bDist.get(a),g=pGender(a),base=g==='F'?'grandmother':g==='M'?'grandfather':'grandparent';return d===1?(g==='F'?'Mother':g==='M'?'Father':'Parent'):d===2?base:(ord(d-2)+' '+base)}
+ if(aDist.has(b)){const d=aDist.get(b),g=pGender(a),base=g==='F'?'granddaughter':g==='M'?'grandson':'grandchild';return d===1?(g==='F'?'Daughter':g==='M'?'Son':'Child'):d===2?base:(ord(d-2)+' '+base)}
  // Closest shared recorded ancestor distinguishes siblings, aunts/uncles, nieces/nephews and cousins.
  for(const y of bAnc){if(!aDist.has(y.id))continue;const da=aDist.get(y.id),db=y.d;
   if(da===1&&db===1)return 'Sibling';
-  if(da===1&&db>=2){const g=pGender(a),base=g==='F'?'aunt':g==='M'?'uncle':'aunt/uncle';return 'great-'.repeat(Math.max(0,db-2))+base}
-  if(db===1&&da>=2){const g=pGender(a),base=g==='F'?'niece':g==='M'?'nephew':'niece/nephew';return 'great-'.repeat(Math.max(0,da-2))+base}
+  if(da===1&&db>=2){const g=pGender(a),base=g==='F'?'aunt':g==='M'?'uncle':'aunt/uncle';return db===2?base:(ord(db-2)+' '+base)}
+  if(db===1&&da>=2){const g=pGender(a),base=g==='F'?'niece':g==='M'?'nephew':'niece/nephew';return da===2?base:(ord(da-2)+' '+base)}
   const c=Math.min(da,db)-1,rem=Math.abs(da-db);
   return `${ord(Math.max(1,c))} cousin${rem?(rem===1?' 1 time removed':` ${rem} times removed`):''}`
  }
