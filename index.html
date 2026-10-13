@@ -354,8 +354,10 @@ function relationshipLabel(a,b){
  // Direct ancestors and descendants get their own clear labels (grandmother, great-grandfather, etc.).
  if(bDist.has(a)){const d=bDist.get(a),g=pGender(a),base=g==='F'?'grandmother':g==='M'?'grandfather':'grandparent';return d===1?(g==='F'?'Mother':g==='M'?'Father':'Parent'):d===2?base:(ord(d-1)+' '+base)}
  if(aDist.has(b)){const d=aDist.get(b),g=pGender(a),base=g==='F'?'granddaughter':g==='M'?'grandson':'grandchild';return d===1?(g==='F'?'Daughter':g==='M'?'Son':'Child'):d===2?base:(ord(d-1)+' '+base)}
- // Closest shared recorded ancestor distinguishes siblings, aunts/uncles, nieces/nephews and cousins.
- for(const y of bAnc){if(!aDist.has(y.id))continue;const da=aDist.get(y.id),db=y.d;
+ // Use the nearest common ancestor so cousin degree/removal stays consistent across descendants.
+ const common=bAnc.filter(y=>aDist.has(y.id)).map(y=>({id:y.id,da:aDist.get(y.id),db:y.d})).sort((x,y)=>(x.da+x.db)-(y.da+y.db)||Math.max(x.da,x.db)-Math.max(y.da,y.db));
+ if(common.length){
+  const {da,db}=common[0];
   if(da===1&&db===1)return 'Sibling';
   if(da===1&&db>=2){const g=pGender(a),base=g==='F'?'aunt':g==='M'?'uncle':'aunt/uncle';return db===2?base:(ord(db-1)+' '+base)}
   if(db===1&&da>=2){const g=pGender(a),base=g==='F'?'niece':g==='M'?'nephew':'niece/nephew';return da===2?base:(ord(da-1)+' '+base)}
