@@ -372,8 +372,10 @@ function resolveAlanPerson(){
  return scored[0].p;
 }
 function resolveViewpointPerson(){
- const mappedId=String(currentUser?.personId??currentUser?.person_id??'').trim();
- return (mappedId&&person(mappedId))||resolveAlanPerson();
+ const mappedId=String(currentUser?.personId??currentUser?.person_id??currentUser?.['Person ID']??'').trim();
+ // When signed in, use only that account's explicitly mapped Person ID. Do not silently show Alan's relationship for another user.
+ if(currentUser)return (mappedId&&person(mappedId))||null;
+ return resolveAlanPerson();
 }
 function bloodlinePathToAlan(personId,targetId=null){
  const alan=targetId?person(targetId):resolveViewpointPerson();if(!alan)return {alan:null,path:null};
@@ -419,25 +421,31 @@ function chartAgeLabel(p){
     const raw=String(value||'').trim().replace(/^[~<>?]+\s*/,'');if(!raw)return null;
     const months={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
     let m=raw.match(/^(\d{1,2})[\s/-]+([A-Za-z]{3,9})[\s/-]+(\d{4})$/i);
-    if(m){const month=months[m[2].slice(0,3).toLowerCase()],day=+m[1],year=+m[3];if(month===undefined)return null;const d=new Date(Date.UTC(year,month,day));return d.getUTCFullYear()===year&&d.getUTCMonth()===month&&d.getUTCDate()===day?d:null;}
+    if(m){const month=months[m[2].slice(0,3).toLowerCase()],day=+m[1],year=+m[3];if(month===undefined)return null;const d=new Date(Date.UTC(year,month,day));return d.getUTCFullYear()===year&&d.getUTCMonth()===month&&d.getUTCDate()===day?{date:d,precision:'day'}:null;}
     m=raw.match(/^([A-Za-z]{3,9})\s+(\d{4})$/i);
-    if(m&&months[m[1].slice(0,3).toLowerCase()]!==undefined)return new Date(Date.UTC(+m[2],months[m[1].slice(0,3).toLowerCase()],1));
+    if(m&&months[m[1].slice(0,3).toLowerCase()]!==undefined)return {date:new Date(Date.UTC(+m[2],months[m[1].slice(0,3).toLowerCase()],1)),precision:'month'};
     m=raw.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
-    if(m){const day=+m[1],month=+m[2]-1,year=+m[3],d=new Date(Date.UTC(year,month,day));return d.getUTCFullYear()===year&&d.getUTCMonth()===month&&d.getUTCDate()===day?d:null;}
-    m=raw.match(/^(\d{4})$/);if(m)return new Date(Date.UTC(+m[1],0,1));
+    if(m){const day=+m[1],month=+m[2]-1,year=+m[3],d=new Date(Date.UTC(year,month,day));return d.getUTCFullYear()===year&&d.getUTCMonth()===month&&d.getUTCDate()===day?{date:d,precision:'day'}:null;}
+    m=raw.match(/^(\d{4})$/);if(m)return {date:new Date(Date.UTC(+m[1],0,1)),precision:'year'};
     m=raw.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
-    if(m){const year=+m[1],month=+m[2]-1,day=+m[3],d=new Date(Date.UTC(year,month,day));return d.getUTCFullYear()===year&&d.getUTCMonth()===month&&d.getUTCDate()===day?d:null;}
-    const d=new Date(raw);return Number.isNaN(d.getTime())?null:new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));
+    if(m){const year=+m[1],month=+m[2]-1,day=+m[3],d=new Date(Date.UTC(year,month,day));return d.getUTCFullYear()===year&&d.getUTCMonth()===month&&d.getUTCDate()===day?{date:d,precision:'day'}:null;}
+    const d=new Date(raw);return Number.isNaN(d.getTime())?null:{date:new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())),precision:'day'};
   };
   const birth=parseAgeDate(p.birth);if(!birth)return '';
-  const deceased=!!String(p.death||'').trim(),end=deceased?parseAgeDate(p.death):new Date(Date.UTC(new Date().getUTCFullYear(),new Date().getUTCMonth(),new Date().getUTCDate()));
-  if(!end||end<birth)return '';
-  let years=end.getUTCFullYear()-birth.getUTCFullYear();
-  let months=end.getUTCMonth()-birth.getUTCMonth();
-  let days=end.getUTCDate()-birth.getUTCDate();
-  if(days<0){months--;const previousMonth=new Date(Date.UTC(end.getUTCFullYear(),end.getUTCMonth(),0));days+=previousMonth.getUTCDate();}
-  if(months<0){years--;months+=12;}
+  const deceased=!!String(p.death||'').trim(),end=deceased?parseAgeDate(p.death):{date:new Date(Date.UTC(new Date().getUTCFullYear(),new Date().getUTCMonth(),new Date().getUTCDate())),precision:'day'};
+  if(!end||end.date<birth.date)return '';
+  let years=end.date.getUTCFullYear()-birth.date.getUTCFullYear();
   if(years<0||years>=130)return '';
+  // Never invent months or days when either recorded date is only a year or month.
+  if(birth.precision!=='day'||end.precision!=='day'){
+    const label='about '+years+' year'+(years===1?'':'s')+(deceased?' at death':'');
+    return label;
+  }
+  let months=end.date.getUTCMonth()-birth.date.getUTCMonth();
+  let days=end.date.getUTCDate()-birth.date.getUTCDate();
+  if(days<0){months--;const previousMonth=new Date(Date.UTC(end.date.getUTCFullYear(),end.date.getUTCMonth(),0));days+=previousMonth.getUTCDate();}
+  if(months<0){years--;months+=12;}
+  if(years<0)return '';
   return years+' years, '+months+' months, '+days+' days'+(deceased?' at death':'');
 }
 function wrapSvgName(name,maxChars){const words=String(name||'').trim().split(/\s+/).filter(Boolean),lines=[];let line='';for(const word of words){if(!line){line=word;continue}if((line+' '+word).length<=maxChars)line+=' '+word;else{lines.push(line);line=word}}if(line)lines.push(line);return lines.length?lines:[''];}
