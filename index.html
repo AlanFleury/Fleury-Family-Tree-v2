@@ -344,7 +344,25 @@ function parentsChildren(){return {pa:parentMap,ch:childMap}}
 function ancestors(start,max=6){const out=[];let cur=new Set([start]),seen=new Set([start]);for(let d=1;d<=max;d++){const next=new Set();for(const x of cur)for(const p of parentMap.get(x)||[])if(!seen.has(p)){seen.add(p);next.add(p);out.push({id:p,d})}cur=next;if(!cur.size)break}return out}
 function descendants(start,max=6){const out=[];let cur=new Set([start]),seen=new Set([start]);for(let d=1;d<=max;d++){const next=new Set();for(const x of cur)for(const c of childMap.get(x)||[])if(!seen.has(c)){seen.add(c);next.add(c);out.push({id:c,d})}cur=next;if(!cur.size)break}return out}
 function shortestPath(a,b){if(!a||!b)return null;const q=[a],prev=new Map([[a,null]]);while(q.length){const x=q.shift();if(x===b)break;const ns=new Set([...parentMap.get(x)||[],...childMap.get(x)||[],...spouseMap.get(x)||[]]);for(const y of ns)if(!prev.has(y)){prev.set(y,x);q.push(y)}}if(!prev.has(b))return null;const path=[];for(let x=b;x!==null;x=prev.get(x))path.push(x);return path.reverse()}
-function relationshipLabel(a,b){if(a===b)return 'Same person';if((parentMap.get(b)||new Set()).has(a))return pGender(a)==='F'?'Mother':'Father';if((parentMap.get(a)||new Set()).has(b))return pGender(a)==='F'?'Daughter':'Son';if((spouseMap.get(a)||new Set()).has(b))return 'Spouse / partner';const p=ancestors(a,30),q=ancestors(b,30),am=new Map(p.map(x=>[x.id,x.d]));for(const y of q){if(am.has(y.id)){const da=am.get(y.id),db=y.d;if(da===1&&db===1)return 'Sibling';if(da===1)return `${pGender(a)==='F'?'Aunt':pGender(a)==='M'?'Uncle':'Aunt/uncle'} (${ord(db-1)} generation)`;if(db===1)return `${pGender(a)==='F'?'Niece':pGender(a)==='M'?'Nephew':'Niece/nephew'} (${ord(da-1)} generation)`;const c=Math.min(da,db)-1,rem=Math.abs(da-db);return `${ord(Math.max(1,c))} cousin${rem?(rem===1?' 1 time removed':` ${rem} times removed`):''}`}}return 'No blood relationship found in recorded parent links'}
+function relationshipLabel(a,b){
+ if(a===b)return 'Same person';
+ if((parentMap.get(b)||new Set()).has(a))return pGender(a)==='F'?'Mother':pGender(a)==='M'?'Father':'Parent';
+ if((parentMap.get(a)||new Set()).has(b))return pGender(a)==='F'?'Daughter':pGender(a)==='M'?'Son':'Child';
+ if((spouseMap.get(a)||new Set()).has(b))return 'Spouse / partner';
+ const aAnc=ancestors(a,30),bAnc=ancestors(b,30),aDist=new Map(aAnc.map(x=>[x.id,x.d])),bDist=new Map(bAnc.map(x=>[x.id,x.d]));
+ // Direct ancestors and descendants get their own clear labels (grandmother, great-grandfather, etc.).
+ if(bDist.has(a)){const d=bDist.get(a),g=pGender(a),base=g==='F'?'grandmother':g==='M'?'grandfather':'grandparent';return d===1?(g==='F'?'Mother':g==='M'?'Father':'Parent'):d===2?base:(d===3?'great-':('great-'.repeat(d-2)))+base}
+ if(aDist.has(b)){const d=aDist.get(b),g=pGender(a),base=g==='F'?'granddaughter':g==='M'?'grandson':'grandchild';return d===1?(g==='F'?'Daughter':g==='M'?'Son':'Child'):d===2?base:(d===3?'great-':('great-'.repeat(d-2)))+base}
+ // Closest shared recorded ancestor distinguishes siblings, aunts/uncles, nieces/nephews and cousins.
+ for(const y of bAnc){if(!aDist.has(y.id))continue;const da=aDist.get(y.id),db=y.d;
+  if(da===1&&db===1)return 'Sibling';
+  if(da===1&&db>=2){const g=pGender(a),base=g==='F'?'aunt':g==='M'?'uncle':'aunt/uncle';return (db===2?'great-'.repeat(1):'great-'.repeat(db-1))+base}
+  if(db===1&&da>=2){const g=pGender(a),base=g==='F'?'niece':g==='M'?'nephew':'niece/nephew';return (da===2?'great-'.repeat(1):'great-'.repeat(da-1))+base}
+  const c=Math.min(da,db)-1,rem=Math.abs(da-db);
+  return `${ord(Math.max(1,c))} cousin${rem?(rem===1?' 1 time removed':` ${rem} times removed`):''}`
+ }
+ return 'No blood relationship found in recorded parent links'
+}
 function pGender(i){return person(i)?.gender||''} function ord(n){const x=n%100;return `${n}${x>=11&&x<=13?'th':n%10===1?'st':n%10===2?'nd':n%10===3?'rd':'th'}`}
 function resolveAlanPerson(){
  const norm=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
