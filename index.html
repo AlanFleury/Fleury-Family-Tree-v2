@@ -360,7 +360,7 @@ function relationshipLabel(a,b){
   if(da===1&&db>=2){const g=pGender(a),base=g==='F'?'aunt':g==='M'?'uncle':'aunt/uncle';return db===2?base:(ord(db-1)+' '+base)}
   if(db===1&&da>=2){const g=pGender(a),base=g==='F'?'niece':g==='M'?'nephew':'niece/nephew';return da===2?base:(ord(da-1)+' '+base)}
   const c=Math.min(da,db)-1,rem=Math.abs(da-db);
-  return `${ord(Math.max(1,c))} cousin${rem?(rem===1?' 1 time removed':` ${rem} times removed`):''}`
+  return `${ord(Math.max(1,c))} cousin${rem?(rem===1?' once removed':rem===2?' twice removed':` ${rem} times removed`):''}`
  }
  return 'No blood relationship found in recorded parent links'
 }
