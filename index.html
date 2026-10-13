@@ -532,13 +532,15 @@ function buildTreeLevels(start,type,depth){
     }
     for(let g=-depth;g<=0;g++)addWithSpouses([...generation].filter(([,level])=>level===g).map(([id])=>id),'');
   } else if(type==='complete'){
-    // Complete lineage view: every ancestor, all children sharing the starting person's parent(s),
-    // and every descendant of the selected person. Existing relationships and archive data are untouched.
+    // Complete lineage view: ancestors above the selected person, then the selected person,
+    // their siblings, and each recorded descendant generation below. Keep the starting person
+    // on its own row so the downward branch is clear on mobile and desktop.
     for(let d=depth;d>=1;d--)addWithSpouses(A.filter(x=>x.d===d).map(x=>x.id),'Ancestors');
+    addWithSpouses([start],'Starting person');
     const pars=[...(parentMap.get(start)||[])];
-    const sib=new Set(); for(const pa of pars)for(const c of childMap.get(pa)||[])sib.add(c);
-    addWithSpouses([...sib],'Children of the same parent(s)');
-    for(let d=1;d<=depth;d++)addWithSpouses(D.filter(x=>x.d===d).map(x=>x.id),'Descendants');
+    const sib=new Set(); for(const pa of pars)for(const c of childMap.get(pa)||[])if(c!==start)sib.add(c);
+    addWithSpouses([...sib],'Siblings');
+    for(let d=1;d<=depth;d++)addWithSpouses(D.filter(x=>x.d===d).map(x=>x.id),d===1?'Children':d===2?'Grandchildren':`Descendants — generation ${d}`);
   } else if(type==='siblings'){
     const pars=[...(parentMap.get(start)||[])];
     const sib=new Set(); for(const pa of pars)for(const c of childMap.get(pa)||[])if(c!==start)sib.add(c);
