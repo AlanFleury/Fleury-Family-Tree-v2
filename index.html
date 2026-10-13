@@ -356,8 +356,8 @@ function relationshipLabel(a,b){
  // Closest shared recorded ancestor distinguishes siblings, aunts/uncles, nieces/nephews and cousins.
  for(const y of bAnc){if(!aDist.has(y.id))continue;const da=aDist.get(y.id),db=y.d;
   if(da===1&&db===1)return 'Sibling';
-  if(da===1&&db>=2){const g=pGender(a),base=g==='F'?'aunt':g==='M'?'uncle':'aunt/uncle';return (db===2?'great-'.repeat(1):'great-'.repeat(db-1))+base}
-  if(db===1&&da>=2){const g=pGender(a),base=g==='F'?'niece':g==='M'?'nephew':'niece/nephew';return (da===2?'great-'.repeat(1):'great-'.repeat(da-1))+base}
+  if(da===1&&db>=2){const g=pGender(a),base=g==='F'?'aunt':g==='M'?'uncle':'aunt/uncle';return 'great-'.repeat(Math.max(0,db-2))+base}
+  if(db===1&&da>=2){const g=pGender(a),base=g==='F'?'niece':g==='M'?'nephew':'niece/nephew';return 'great-'.repeat(Math.max(0,da-2))+base}
   const c=Math.min(da,db)-1,rem=Math.abs(da-db);
   return `${ord(Math.max(1,c))} cousin${rem?(rem===1?' 1 time removed':` ${rem} times removed`):''}`
  }
