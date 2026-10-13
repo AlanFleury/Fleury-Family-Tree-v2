@@ -550,10 +550,10 @@ function buildTreeLevels(start,type,depth){
 }
 function buildTreeSvg(start,type,depth,wall=false){
   const p=person(start);if(!p)return'';const levels=buildTreeLevels(start,type,depth);if(!levels.length)return'';
-  const boxW=wall?270:225,boxH=150,gapX=wall?112:96,gapY=wall?180:164,step=boxW+gapX,maxN=Math.max(...levels.map(x=>x.ids.length),1),W=Math.max(wall?1500:1150,maxN*step+180),bandH=boxH+gapY,H=Math.max(wall?620:480,levels.length*bandH+145);
+  const boxW=wall?270:225,boxH=150,gapX=wall?112:96,gapY=wall?180:164,step=boxW+gapX,maxN=Math.max(...levels.map(x=>x.ids.length),1),W=Math.max(wall?1500:1150,maxN*step+180),bandH=boxH+gapY,H=Math.max(wall?700:560,levels.length*bandH+205);
   let s=`<svg xmlns="http://www.w3.org/2000/svg" class="tree-svg family-card-chart" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><rect width="100%" height="100%" fill="#fbf4e4"/>`;s+=svgText(W/2,30,nm(p),22,'700');s+=svgText(W/2,52,'Structured family chart • click any person • 💍 = marriage / partner',11);
   const pos=new Map();
-  levels.forEach((lv,li)=>{const y=88+li*bandH;const total=lv.ids.length*step,x0=(W-total)/2+step/2;lv.ids.forEach((pid,i)=>pos.set(pid,{x:x0+i*step,y,li,label:lv.label}))});
+  levels.forEach((lv,li)=>{const y=145+li*bandH;const total=lv.ids.length*step,x0=(W-total)/2+step/2;lv.ids.forEach((pid,i)=>pos.set(pid,{x:x0+i*step,y,li,label:lv.label}))});
   const bloodIds=new Set([start,...ancestors(start,depth).map(x=>x.id),...descendants(start,depth).map(x=>x.id)]);
   s+=`<g class="chart-connectors" fill="none" stroke="#c1121f" stroke-width="3.5" opacity=".98">`;
   for(const [pid,z] of pos)for(const cid of childMap.get(pid)||[]){if(!pos.has(cid))continue;const q=pos.get(cid),mid=(z.y+q.y)/2;s+=`<path d="M${z.x} ${z.y+boxH/2} V${mid} H${q.x} V${q.y-boxH/2}" stroke-linecap="round"/>`}s+='</g><g class="marriage-connectors" fill="none" stroke="#7b4ea3" stroke-width="2">';
@@ -604,10 +604,10 @@ function familyGroupSvg(start){
   const p=person(start);if(!p)return'';
   const pars=uniqueIds([...(parentMap.get(start)||[])]),kids=uniqueIds([...(childMap.get(start)||[])]),sps=uniqueIds([...(spouseMap.get(start)||[])]);
   const groups=[['PARENTS',pars],['PRINCIPAL FAMILY',[start,...sps]],['CHILDREN',kids]];
-  const boxW=270,boxH=150,gap=100,rowH=210,W=Math.max(1500,Math.max(...groups.map(g=>Math.max(1,g[1].length)))*(boxW+gap)+180),H=groups.length*rowH+150;
+  const boxW=270,boxH=150,gap=100,rowH=210,W=Math.max(1500,Math.max(...groups.map(g=>Math.max(1,g[1].length)))*(boxW+gap)+180),H=groups.length*rowH+205;
   let s=`<svg xmlns="http://www.w3.org/2000/svg" class="tree-svg family-card-chart" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><rect width="100%" height="100%" fill="white"/>${svgText(W/2,32,'Family group: '+nm(p),22,'700')}${svgText(W/2,53,'Family-card layout • no connector lines • click any person',11)}`;
   groups.forEach((g,ri)=>{
-    const y=95+ri*rowH,bandY=y-28,bandHeight=rowH-12;
+    const y=145+ri*rowH,bandY=y-28,bandHeight=rowH-12;
     s+=`<rect x="18" y="${bandY}" width="${W-36}" height="${bandHeight}" rx="12" fill="none" stroke="none"/>`;
     s+=svgText(38,bandY+20,g[0],12,'700');
     const ids=g[1],step=boxW+gap,total=ids.length*step,x0=(W-total)/2+step/2;
