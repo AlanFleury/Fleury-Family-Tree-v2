@@ -18,6 +18,11 @@ async function init(){
   auth0Client=await window.auth0.createAuth0Client({
     domain:c.AUTH0_DOMAIN,
     clientId:c.AUTH0_CLIENT_ID,
+    // Keep the Auth0 token cache across browser restarts so approved users
+    // do not have to sign in again every time they reopen the archive link.
+    // This stores authentication tokens in this browser only; it does not
+    // grant archive access without the server-side /api/me role check below.
+    cacheLocation:'localstorage',
     authorizationParams:{
       audience:c.AUTH0_AUDIENCE,
       redirect_uri:location.origin+location.pathname
