@@ -776,6 +776,88 @@ function branchIds(start,depth=30){if(!start)return new Set();const ids=new Set(
 function comparePeople(){const a=selected.compareA,b=selected.compareB;if(!a||!b){compareOutput.innerHTML='<div class="notice">Select both people first.</div>';return}const pa=person(a),pb=person(b),path=shortestPath(a,b)||[];const aa=new Map(ancestors(a,30).map(x=>[x.id,x.d])),ab=new Map(ancestors(b,30).map(x=>[x.id,x.d]));const common=[...aa.keys()].filter(id=>ab.has(id)).sort((x,y)=>(aa.get(x)+ab.get(x))-(aa.get(y)+ab.get(y))).slice(0,100);const placesA=new Set(String(pa.places||'').split(/[;|]+/).map(x=>lower(x.trim())).filter(Boolean));const sharedPlaces=[...new Set(String(pb.places||'').split(/[;|]+/).map(x=>x.trim()).filter(Boolean))].filter(x=>placesA.has(lower(x)));const ya=year(pa.birth),yb=year(pb.birth);compareOutput.innerHTML=`<div class="grid"><div class="card"><b>Calculated relationship</b><h2>${esc(relationshipLabel(a,b))}</h2></div><div class="card"><b>Shortest connection</b><p>${path.length?path.map(link).join(' → '):'No connection found'}</p></div><div class="card"><b>Common ancestors</b><p>${common.length?common.map(link).join(', '):'None found within 30 generations'}</p></div><div class="card"><b>Shared recorded places</b><p>${sharedPlaces.length?sharedPlaces.map(esc).join(', '):'None recorded'}</p></div><div class="card"><b>Birth-year difference</b><p>${ya&&yb?Math.abs(ya-yb)+' years':'Not calculable from recorded dates'}</p></div></div>`}
 function timelineTool(){const s=selected.toolTimeline;if(!s){toolTimelineOutput.innerHTML='<div class="notice">Select a starting person.</div>';return}const depth=Math.max(1,Math.min(30,Number(toolTimelineDepth.value)||4));const ids=branchIds(s,depth);const arr=[...ids].map(person).filter(Boolean).map(p=>({p,y:year(p.birth)})).filter(x=>x.y).sort((a,b)=>a.y-b.y||nm(a.p).localeCompare(nm(b.p)));toolTimelineOutput.innerHTML=arr.length?`<div class="small muted">${arr.length.toLocaleString()} people with usable birth years</div>`+arr.map(x=>`<div class="timeline-card"><div class="year">${x.y}</div><div><b>${link(x.p.id)}</b><div class="small muted">${esc([x.p.birth,x.p.death].filter(Boolean).join(' – '))} ${x.p.places?'• '+esc(x.p.places):''}</div></div></div>`).join(''):'<p class="muted">No usable birth years found in this branch.</p>'}
 function matrixTool(){const s=selected.matrix;if(!s){matrixOutput.innerHTML='<div class="notice">Select a person.</div>';return}const p=person(s),rows=[];for(const id of parentMap.get(s)||[])rows.push(['Parent',link(id),relationshipLabel(id,s)]);for(const id of spouseMap.get(s)||[])rows.push(['Spouse / partner',link(id),relationshipLabel(s,id)]);for(const id of childMap.get(s)||[])rows.push(['Child',link(id),relationshipLabel(s,id)]);const sib=new Set();for(const pa of parentMap.get(s)||[])for(const id of childMap.get(pa)||[])if(id!==s)sib.add(id);for(const id of sib)rows.push(['Sibling',link(id),relationshipLabel(s,id)]);matrixOutput.innerHTML=`<h3>${link(s,nm(p))}</h3>${rows.length?table(['Role','Person','Relationship'],rows):'<p class="muted">No immediate family relationships recorded.</p>'}`}
+
+// GEDCOM import: parse standard INDI/FAM records into a reviewable, additive import.
+let pendingGedcomImport=null;
+function parseGedcom(text){
+ const records=[];let current=null;
+ for(const raw of String(text||'').replace(/^\\uFEFF/,'').split(/\\r?\\n/)){
+  const m=raw.match(/^\\s*(\\d+)\\s+(?:(@[^@]+@)\\s+)?([A-Z0-9_]+)(?:\\s+(.*))?$/i);if(!m)continue;
+  const level=Number(m[1]),xref=m[2]||'',tag=m[3].toUpperCase(),value=m[4]||'';
+  if(level===0){if(current)records.push(current);current={xref,tag,value,fields:[],raw:[]};}
+  else if(current){current.fields.push({level,tag,value});current.raw.push(raw);}
+ }
+ if(current)records.push(current);
+ const indi=new Map(),families=[];
+ for(const r of records){
+  if(r.tag==='INDI'){
+   const get=tag=>r.fields.filter(f=>f.tag===tag);
+   const name=get('NAME').map(x=>x.value.replace(/\\//g,'').trim()).filter(Boolean).join(' ');
+   const sex=get('SEX')[0]?.value||'';
+   const event=(tag)=>{const i=r.fields.findIndex(f=>f.level===1&&f.tag===tag);if(i<0)return {date:'',place:''};let date='',place='';for(let j=i+1;j<r.fields.length&&r.fields[j].level>1;j++){if(r.fields[j].tag==='DATE')date=r.fields[j].value;if(r.fields[j].tag==='PLAC')place=r.fields[j].value;}return {date,place};};
+   const birth=event('BIRT'),death=event('DEAT');
+   indi.set(r.xref,{xref:r.xref,name:name||'Unnamed GEDCOM person',gender:sex==='M'?'M':sex==='F'?'F':'',birth:birth.date,death:death.date,birthPlace:birth.place,deathPlace:death.place,notes:get('NOTE').map(x=>x.value).join(' '),sources:get('SOUR').map(x=>x.value).join('; ')});
+  }else if(r.tag==='FAM'){
+   const f={husb:'',wife:'',children:[]};for(const x of r.fields){if(x.tag==='HUSB')f.husb=x.value;if(x.tag==='WIFE')f.wife=x.value;if(x.tag==='CHIL')f.children.push(x.value);}families.push(f);
+  }
+ }
+ if(!indi.size)throw new Error('No individual (INDI) records were found. Check that this is a valid GEDCOM file.');
+ const relationships=[];
+ for(const f of families){
+  for(const child of f.children){if(f.husb&&indi.has(f.husb)&&indi.has(child))relationships.push({type:'parent',a:f.husb,b:child});if(f.wife&&indi.has(f.wife)&&indi.has(child))relationships.push({type:'parent',a:f.wife,b:child});}
+  if(f.husb&&f.wife&&indi.has(f.husb)&&indi.has(f.wife))relationships.push({type:'spouse',a:f.husb,b:f.wife,status:'Unknown'});
+ }
+ return {people:[...indi.values()],relationships};
+}
+async function previewGedcomImport(){
+ const file=document.getElementById('gedcomImportFile').files?.[0],status=document.getElementById('gedcomImportStatus'),preview=document.getElementById('gedcomImportPreview'),button=document.getElementById('gedcomImportBtn');
+ pendingGedcomImport=null;button.disabled=true;preview.innerHTML='';
+ if(!file){status.textContent='Choose a .ged file first.';return}
+ try{
+  const parsed=parseGedcom(await file.text());
+  const existingNames=new Set(allPeople().map(p=>lower(nm(p)).trim()));
+  const duplicateNames=parsed.people.filter(p=>existingNames.has(lower(p.name).trim())).length;
+  pendingGedcomImport={...parsed,fileName:file.name};
+  status.textContent='File checked. Review the summary before importing.';
+  preview.innerHTML='<div class="grid"><div class="card"><b>People found</b><h3>'+parsed.people.length.toLocaleString()+'</h3></div><div class="card"><b>Family links found</b><h3>'+parsed.relationships.length.toLocaleString()+'</h3></div><div class="card"><b>Names already in archive</b><h3>'+duplicateNames.toLocaleString()+'</h3><p class="small muted">These will be skipped by exact name match.</p></div></div><p class="small muted">File: '+esc(file.name)+'. Review the counts and keep a backup before importing.</p>';
+  button.disabled=false;
+ }catch(e){status.textContent='Could not read GEDCOM: '+(e.message||e);button.disabled=true}
+}
+async function importGedcom(){
+ const data=pendingGedcomImport,status=document.getElementById('gedcomImportStatus'),button=document.getElementById('gedcomImportBtn');
+ if(!data){status.textContent='Check a GEDCOM file first.';return}
+ if(!currentUser||!currentRole||currentRole==='viewer'){status.textContent='Sign in with an editor or administrator account to import into the private archive.';return}
+ if(!confirm('Import '+data.people.length+' people and '+data.relationships.length+' family links from '+data.fileName+'? Existing records will not be deleted. Exact-name matches will be skipped. Export a backup first.'))return;
+ button.disabled=true;
+ try{
+  const existingByName=new Map(allPeople().map(p=>[lower(nm(p)).trim(),p.id]));
+  const idMap=new Map(),toAdd=[];
+  for(const p of data.people){
+   const existing=existingByName.get(lower(p.name).trim());
+   if(existing){idMap.set(p.xref,existing);continue}
+   let id='GED-'+String(p.xref||'').replace(/[^A-Za-z0-9_-]/g,'').replace(/^@|@$/g,'');
+   if(!id||person(id)||toAdd.some(x=>x.id===id))id='GED-'+Date.now().toString(36)+'-'+(toAdd.length+1);
+   idMap.set(p.xref,id);toAdd.push({...p,id});
+  }
+  const edges=data.relationships.map(r=>({type:r.type,a:idMap.get(r.a),b:idMap.get(r.b),status:r.status||'Unknown'})).filter(r=>r.a&&r.b&&r.a!==r.b);
+  let done=0;
+  for(const p of toAdd){
+   const family=edges.filter(r=>r.a===p.id||r.b===p.id).map(r=>({type:r.type,person1:r.a,person2:r.b,relationship_status:r.status||'Unknown',relationship_date:'',end_date:'',relationship_place:''}));
+   const payload={'Person ID':p.id,Name:p.name,Gender:p.gender,Birth:p.birth,Death:p.death,Places:[p.birthPlace,p.deathPlace].filter(Boolean).join(' | '),Notes:p.notes,'Source IDs':p.sources,'Relationship to Alan':'','Evidence Status':''};
+   const result=await window.archiveApi.savePerson(payload,family,[]);
+   if(!result?.ok)throw new Error('The archive did not confirm saving '+p.name+'. Imported '+done+' people before stopping; check the archive before retrying.');
+   done++;status.textContent='Importing… '+done+' of '+toAdd.length+' people saved.';
+  }
+  // Ensure links between existing people and newly added people are saved from each endpoint.
+  for(const edge of edges.filter(r=>!toAdd.some(p=>p.id===r.a)&&!toAdd.some(p=>p.id===r.b))){
+   if(db.relationships.some(r=>r.type===edge.type&&((r.a===edge.a&&r.b===edge.b)||(r.a===edge.b&&r.b===edge.a))))continue;
+  }
+  await loadOnlineArchive();await persist();
+  status.textContent='Import complete. Added '+done+' people; '+(data.people.length-done)+' records matched existing names and were skipped. Review family links and export a fresh backup.';
+  pendingGedcomImport=null;document.getElementById('gedcomImportPreview').innerHTML='';
+ }catch(e){status.textContent='Import stopped: '+(e.message||e)+' Check the archive before trying again.';console.error(e)}
+ finally{button.disabled=false}
+}
 function makeGedcom(ids){const people=[...ids].map(person).filter(Boolean),set=new Set(people.map(p=>p.id));const fams=[];const seen=new Set();const spousePairs=[];for(const a of people){for(const b of spouseMap.get(a.id)||[]){if(!set.has(b))continue;const key=[a.id,b].sort().join('|');if(seen.has(key))continue;seen.add(key);spousePairs.push([a.id,b])}}for(const [a,b] of spousePairs){const children=[...(childMap.get(a)||[])].filter(c=>set.has(c)&&(parentMap.get(b)||new Set()).has(c));fams.push({a,b,children})}for(const a of people){const children=[...(childMap.get(a.id)||[])].filter(c=>set.has(c));if(children.length&&!fams.some(f=>f.a===a.id||f.b===a.id&&f.children.some(c=>children.includes(c))))fams.push({a:a.id,b:null,children})}const lines=['0 HEAD','1 SOUR FLEURY FAMILY TREE','1 GEDC','2 VERS 5.5.1','1 CHAR UTF-8'];for(const p of people){lines.push(`0 ${p.id} INDI`);const parts=nm(p).trim().split(/\s+/);const last=parts.pop()||'';const first=parts.join(' ');lines.push(`1 NAME ${first} /${last}/`);if(p.gender)lines.push(`1 SEX ${p.gender==='M'?'M':p.gender==='F'?'F':'U'}`);if(p.birth){lines.push('1 BIRT',`2 DATE ${String(p.birth).replace(/\s+/g,' ')}`);if(p.places)lines.push(`2 PLAC ${p.places}`)}if(p.death){lines.push('1 DEAT',`2 DATE ${String(p.death).replace(/\s+/g,' ')}`)}if(p.notes)lines.push(`1 NOTE ${String(p.notes).replace(/\n/g,' / ')} `);if(p.sources)lines.push(`1 SOUR ${String(p.sources).replace(/\n/g,' / ')}`)}fams.forEach((f,i)=>{const fid=`@F${i+1}@`;lines.push(`0 ${fid} FAM`);const a=person(f.a),b=f.b?person(f.b):null;if(a&&a.gender==='M')lines.push(`1 HUSB ${a.id}`);else if(a)lines.push(`1 WIFE ${a.id}`);if(b&&b.gender==='M')lines.push(`1 HUSB ${b.id}`);else if(b)lines.push(`1 WIFE ${b.id}`);for(const c of f.children)lines.push(`1 CHIL ${c}`)});lines.push('0 TRLR');return lines.join('\r\n')+'\r\n'}
 function exportGedcom(selectedOnly=false){const id=selectedOnly?(selected.toolTimeline||selected.matrix||selected.compareA||selected.detail):null;if(selectedOnly&&!id){alert('Select a person in Research & Tools first.');return}const ids=selectedOnly?branchIds(id,30):new Set(allPeople().map(p=>p.id));download(selectedOnly?'fleury-selected-branch.ged':'fleury-family-tree.ged',makeGedcom(ids),'text/plain')}
 function exportBranchJSON(){const id=selected.toolTimeline||selected.matrix||selected.compareA||selected.detail;if(!id){alert('Select a person in Research & Tools first.');return}const ids=branchIds(id,30);download('fleury-selected-branch.json',JSON.stringify({version:2,root:id,people:[...ids].map(person).filter(Boolean),relationships:db.relationships.filter(r=>ids.has(r.a)&&ids.has(r.b))},null,2),'application/json')}
@@ -963,7 +1045,7 @@ quickExplore.onchange=()=>{
   exploreResults.innerHTML='<div class="panel"><h2>'+esc(title)+link(id,nm(root))+'</h2><p class="muted">'+items.length.toLocaleString()+' recorded people across '+grouped.size+' generation levels.</p>'+(groups||'<p>No recorded connections found.</p>')+'</div>';
 };
 document.addEventListener('keydown',e=>{if(e.key==='/'&&!e.ctrlKey&&!e.metaKey&&!['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)){e.preventDefault();goTab('explore');globalSearch.focus()}if(e.key==='Escape'&&document.activeElement===globalSearch){globalSearch.value='';exploreResults.innerHTML=''}});
-peopleSearch.oninput=()=>{page=0;renderPeople()};peopleGender.onchange=()=>{page=0;renderPeople()};peopleDecade.onchange=()=>{page=0;renderPeople()};peopleSort.onchange=()=>{page=0;renderPeople()};if(document.getElementById('peopleEvidence'))document.getElementById('peopleEvidence').onchange=()=>{page=0;renderPeople()};if(document.getElementById('peopleLinks'))document.getElementById('peopleLinks').onchange=()=>{page=0;renderPeople()};findRel.onclick=relFinder;reportBtn.onclick=report;csvReport.onclick=csvExport;htmlReport.onclick=htmlExport;printReport.onclick=()=>printView('reports');chartBtn.onclick=chart;bloodlineChartBtn.onclick=()=>{chartType.value='bloodline';chart()};printChart.onclick=()=>{setPrintPaper('A4');printView('charts')};downloadJpeg.onclick=()=>exportChartRaster('jpeg',false);downloadPng.onclick=()=>exportChartRaster('png',false);downloadSvg.onclick=()=>download('fleury-family-chart.svg',lastSvg,'image/svg+xml');downloadPdf.onclick=()=>exportChartPdf(false);wallBtn.onclick=wall;bloodlineWallBtn.onclick=()=>{wallType.value='bloodline';wall()};printWall.onclick=()=>{setPrintPaper(wallPaper.value);printView('wallcharts')};wallPaper.onchange=()=>{if(selected.wall)wall()};downloadWallJpeg.onclick=()=>exportChartRaster('jpeg',true);downloadWallPng.onclick=()=>exportChartRaster('png',true);downloadWallSvg.onclick=()=>download('fleury-wall-chart.svg',lastSvg,'image/svg+xml');downloadWallPdf.onclick=()=>exportChartPdf(true);placeSearch.oninput=placesExplore;placeMode.onchange=placesExplore;compareBtn.onclick=comparePeople;compareSwap.onclick=()=>{const a=selected.compareA,b=selected.compareB;selected.compareA=b;selected.compareB=a;compareA.value=b?nm(person(b)):'';compareB.value=a?nm(person(a)):''};timelineBtn.onclick=timelineTool;matrixBtn.onclick=matrixTool;addResearchBtn.onclick=()=>{const id=selected.toolTimeline||selected.matrix||selected.compareA||selected.detail;if(!id){alert('Select a person first.');return}const o=researchLoad();o.items=o.items||[];const old=o.items.find(x=>x.id===id);const note=researchNote.value.trim();if(old)old.note=note||old.note||'';else o.items.push({id,note,added:new Date().toISOString()});researchNote.value='';researchSave(o)};clearResearchBtn.onclick=()=>{if(confirm('Clear the private research list?')){localStorage.removeItem('fleuryResearchV1');renderResearch()}};gedcomBtn.onclick=()=>exportGedcom(false);branchGedcomBtn.onclick=()=>exportGedcom(true);branchJsonBtn.onclick=exportBranchJSON;branchCsvBtn.onclick=exportBranchCSV;refreshHealth.onclick=renderToolHealth;openQuality.onclick=()=>goTab('quality');accessRequestBtn.onclick=submitAccessRequest;
+peopleSearch.oninput=()=>{page=0;renderPeople()};peopleGender.onchange=()=>{page=0;renderPeople()};peopleDecade.onchange=()=>{page=0;renderPeople()};peopleSort.onchange=()=>{page=0;renderPeople()};if(document.getElementById('peopleEvidence'))document.getElementById('peopleEvidence').onchange=()=>{page=0;renderPeople()};if(document.getElementById('peopleLinks'))document.getElementById('peopleLinks').onchange=()=>{page=0;renderPeople()};document.getElementById('gedcomPreviewBtn').onclick=previewGedcomImport;document.getElementById('gedcomImportBtn').onclick=importGedcom;findRel.onclick=relFinder;reportBtn.onclick=report;csvReport.onclick=csvExport;htmlReport.onclick=htmlExport;printReport.onclick=()=>printView('reports');chartBtn.onclick=chart;bloodlineChartBtn.onclick=()=>{chartType.value='bloodline';chart()};printChart.onclick=()=>{setPrintPaper('A4');printView('charts')};downloadJpeg.onclick=()=>exportChartRaster('jpeg',false);downloadPng.onclick=()=>exportChartRaster('png',false);downloadSvg.onclick=()=>download('fleury-family-chart.svg',lastSvg,'image/svg+xml');downloadPdf.onclick=()=>exportChartPdf(false);wallBtn.onclick=wall;bloodlineWallBtn.onclick=()=>{wallType.value='bloodline';wall()};printWall.onclick=()=>{setPrintPaper(wallPaper.value);printView('wallcharts')};wallPaper.onchange=()=>{if(selected.wall)wall()};downloadWallJpeg.onclick=()=>exportChartRaster('jpeg',true);downloadWallPng.onclick=()=>exportChartRaster('png',true);downloadWallSvg.onclick=()=>download('fleury-wall-chart.svg',lastSvg,'image/svg+xml');downloadWallPdf.onclick=()=>exportChartPdf(true);placeSearch.oninput=placesExplore;placeMode.onchange=placesExplore;compareBtn.onclick=comparePeople;compareSwap.onclick=()=>{const a=selected.compareA,b=selected.compareB;selected.compareA=b;selected.compareB=a;compareA.value=b?nm(person(b)):'';compareB.value=a?nm(person(a)):''};timelineBtn.onclick=timelineTool;matrixBtn.onclick=matrixTool;addResearchBtn.onclick=()=>{const id=selected.toolTimeline||selected.matrix||selected.compareA||selected.detail;if(!id){alert('Select a person first.');return}const o=researchLoad();o.items=o.items||[];const old=o.items.find(x=>x.id===id);const note=researchNote.value.trim();if(old)old.note=note||old.note||'';else o.items.push({id,note,added:new Date().toISOString()});researchNote.value='';researchSave(o)};clearResearchBtn.onclick=()=>{if(confirm('Clear the private research list?')){localStorage.removeItem('fleuryResearchV1');renderResearch()}};gedcomBtn.onclick=()=>exportGedcom(false);branchGedcomBtn.onclick=()=>exportGedcom(true);branchJsonBtn.onclick=exportBranchJSON;branchCsvBtn.onclick=exportBranchCSV;refreshHealth.onclick=renderToolHealth;openQuality.onclick=()=>goTab('quality');accessRequestBtn.onclick=submitAccessRequest;
 function printView(id){document.querySelectorAll('.view').forEach(x=>x.classList.remove('printing'));document.getElementById(id).classList.add('printing');window.print();setTimeout(()=>document.getElementById(id).classList.remove('printing'),500)}
 function downloadEmergencyHtmlBackup(){
  const people=allPeople(),relationships=db.relationships;
