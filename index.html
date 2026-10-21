@@ -476,19 +476,19 @@ function nodeSvg(x,y,p,w=190,h=150,rel='',extra=''){
 }
 function uniqueIds(ids){return [...new Set(ids.filter(i=>person(i)))]}
 function birthDateForAgeOrder(p){
-  const raw=String(p?.birth||'').trim().replace(/^[~<>?]+\\s*/,'');if(!raw)return null;
+  const raw=String(p?.birth||'').trim().replace(/^[~<>?]+\s*/,'');if(!raw)return null;
   const months={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
-  let m=raw.match(/^(\\d{1,2})[\\s/-]+([A-Za-z]{3,9})[\\s/-]+(\\d{4})$/i);
+  let m=raw.match(/^(\d{1,2})[\s/-]+([A-Za-z]{3,9})[\s/-]+(\d{4})$/i);
   if(m&&months[m[2].slice(0,3).toLowerCase()]!==undefined)return new Date(Date.UTC(+m[3],months[m[2].slice(0,3).toLowerCase()],+m[1]));
-  m=raw.match(/^([A-Za-z]{3,9})\\s+(\\d{1,2}),?\\s+(\\d{4})$/i);
+  m=raw.match(/^([A-Za-z]{3,9})\s+(\d{1,2}),?\s+(\d{4})$/i);
   if(m&&months[m[1].slice(0,3).toLowerCase()]!==undefined)return new Date(Date.UTC(+m[3],months[m[1].slice(0,3).toLowerCase()],+m[2]));
-  m=raw.match(/^([A-Za-z]{3,9})\\s+(\\d{4})$/i);
+  m=raw.match(/^([A-Za-z]{3,9})\s+(\d{4})$/i);
   if(m&&months[m[1].slice(0,3).toLowerCase()]!==undefined)return new Date(Date.UTC(+m[2],months[m[1].slice(0,3).toLowerCase()],1));
-  m=raw.match(/^(\\d{1,2})[./-](\\d{1,2})[./-](\\d{4})$/);
+  m=raw.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
   if(m)return new Date(Date.UTC(+m[3],+m[2]-1,+m[1]));
-  m=raw.match(/^(\\d{4})[-/](\\d{1,2})[-/](\\d{1,2})$/);
+  m=raw.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
   if(m)return new Date(Date.UTC(+m[1],+m[2]-1,+m[3]));
-  m=raw.match(/^(\\d{4})$/);if(m)return new Date(Date.UTC(+m[1],0,1));
+  m=raw.match(/^(\d{4})$/);if(m)return new Date(Date.UTC(+m[1],0,1));
   const d=new Date(raw);return Number.isNaN(d.getTime())?null:new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));
 }
 function sortPeopleOldestFirst(ids){
