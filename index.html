@@ -521,6 +521,16 @@ function sortPeopleOldestFirst(ids){
     return nm(pa).localeCompare(nm(pb),undefined,{sensitivity:'base'})||String(a).localeCompare(String(b));
   });
 }
+function sortPeopleKeepingCouples(ids){
+  const base=sortPeopleOldestFirst(ids),baseSet=new Set(base),out=[],placed=new Set();
+  for(const id of base){
+    if(placed.has(id))continue;
+    out.push(id);placed.add(id);
+    const partners=sortPeopleOldestFirst([...(spouseMap.get(id)||[])].filter(sp=>person(sp)&&baseSet.has(sp)&&!placed.has(sp)));
+    for(const partner of partners){out.push(partner);placed.add(partner);}
+  }
+  return out;
+}
 function buildTreeLevels(start,type,depth){
   const levels=[];
   const add=(ids,label)=>{const u=sortPeopleOldestFirst(ids);if(u.length)levels.push({ids:u,label})};
@@ -528,7 +538,7 @@ function buildTreeLevels(start,type,depth){
   const addWithSpouses=(ids,label)=>{
     // Keep each person beside their spouse/partner in the chart row.
     // This is a visual ordering only; it does not change parentage or bloodline membership.
-    const base=uniqueIds(ids), baseSet=new Set(base), all=[], placed=new Set();
+    const base=sortPeopleOldestFirst(ids), baseSet=new Set(base), all=[], placed=new Set();
     for(const id of base){
       if(placed.has(id)) continue;
       all.push(id); placed.add(id);
@@ -537,7 +547,7 @@ function buildTreeLevels(start,type,depth){
       spouses.sort((a,b)=>Number(!baseSet.has(a))-Number(!baseSet.has(b)));
       for(const sp of spouses){all.push(sp);placed.add(sp);}
     }
-    add(all,label);
+    const ordered=uniqueIds(all);if(ordered.length)levels.push({ids:ordered,label});
   };
   if(type==='ancestors'||type==='pedigree'){
     for(let d=depth;d>=1;d--)addWithSpouses(A.filter(x=>x.d===d).map(x=>x.id),'');
@@ -652,8 +662,8 @@ function timelineSvg(start,depth){
 function surnameSvg(start){const p=person(start),surname=nm(p).trim().split(/\s+/).pop().toLowerCase();const arr=allPeople().filter(x=>nm(x).trim().split(/\s+/).pop().toLowerCase()===surname).sort((a,b)=>nm(a).localeCompare(nm(b)));const W=1500,H=Math.max(520,Math.ceil(arr.length/5)*175+120);let s=`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" class="tree-svg"><rect width="100%" height="100%" fill="white"/>${svgText(W/2,35,'Surname / family cluster: '+surname,22,'700')}`;arr.forEach((x,i)=>{const col=i%5,row=Math.floor(i/5),xx=170+col*290,yy=115+row*175;s+=nodeSvg(xx,yy,x,260,150,'Family name')});return s+'</svg>'}
 function familyGroupSvg(start){
   const p=person(start);if(!p)return'';
-  const pars=sortPeopleOldestFirst([...(parentMap.get(start)||[])]),kids=sortPeopleOldestFirst([...(childMap.get(start)||[])]),sps=sortPeopleOldestFirst([...(spouseMap.get(start)||[])]);
-  const groups=[['PARENTS',pars],['PRINCIPAL FAMILY',sortPeopleOldestFirst([start,...sps])],['CHILDREN',kids]];
+  const pars=sortPeopleKeepingCouples([...(parentMap.get(start)||[])]),kids=sortPeopleKeepingCouples([...(childMap.get(start)||[])]),sps=sortPeopleOldestFirst([...(spouseMap.get(start)||[])]);
+  const groups=[['PARENTS',pars],['PRINCIPAL FAMILY',sortPeopleKeepingCouples([start,...sps])],['CHILDREN',kids]];
   const boxW=270,boxH=150,gap=100,rowH=210,W=Math.max(1500,Math.max(...groups.map(g=>Math.max(1,g[1].length)))*(boxW+gap)+180),H=groups.length*rowH+205;
   let s=`<svg xmlns="http://www.w3.org/2000/svg" class="tree-svg family-card-chart" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><rect width="100%" height="100%" fill="white"/>${svgText(W/2,32,'Family group: '+nm(p),22,'700')}${svgText(W/2,53,'Family-card layout • no connector lines • click any person',11)}`;
   groups.forEach((g,ri)=>{
