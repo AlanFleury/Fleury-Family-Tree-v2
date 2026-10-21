@@ -535,10 +535,10 @@ function buildTreeLevels(start,type,depth){
   const levels=[];
   const add=(ids,label)=>{const u=sortPeopleOldestFirst(ids);if(u.length)levels.push({ids:u,label})};
   const A=ancestors(start,depth),D=descendants(start,depth);
-  const addWithSpouses=(ids,label)=>{
+  const addWithSpouses=(ids,label,preserveOrder=false)=>{
     // Keep each person beside their spouse/partner in the chart row.
     // This is a visual ordering only; it does not change parentage or bloodline membership.
-    const base=sortPeopleOldestFirst(ids), baseSet=new Set(base), all=[], placed=new Set();
+    const base=preserveOrder?uniqueIds(ids):sortPeopleOldestFirst(ids), baseSet=new Set(base), all=[], placed=new Set();
     for(const id of base){
       if(placed.has(id)) continue;
       all.push(id); placed.add(id);
@@ -549,16 +549,50 @@ function buildTreeLevels(start,type,depth){
     }
     const ordered=uniqueIds(all);if(ordered.length)levels.push({ids:ordered,label});
   };
+  const childrenInFamilyOrder=(ids,parentRowIds)=>{
+    const wanted=new Set(uniqueIds(ids)),rowIndex=new Map(uniqueIds(parentRowIds).map((id,i)=>[id,i]));
+    const familyKey=childId=>{
+      const pars=sortPeopleOldestFirst([...(parentMap.get(childId)||[])]);
+      if(!pars.length)return 'unknown:'+childId;
+      return pars.join('|');
+    };
+    const families=new Map();
+    for(const childId of sortPeopleOldestFirst([...wanted])){
+      const key=familyKey(childId);
+      if(!families.has(key))families.set(key,{ids:[],parents:(parentMap.get(childId)||new Set())});
+      families.get(key).ids.push(childId);
+    }
+    const ordered=[...families.values()].sort((a,b)=>{
+      const rank=family=>Math.min(...[...family.parents].map(id=>rowIndex.has(id)?rowIndex.get(id):Number.MAX_SAFE_INTEGER));
+      const ra=rank(a),rb=rank(b);
+      if(ra!==rb)return ra-rb;
+      const da=birthDateForAgeOrder(person(a.ids[0])),db=birthDateForAgeOrder(person(b.ids[0]));
+      if(da&&db&&da.getTime()!==db.getTime())return da-db;
+      if(da&&!db)return -1;if(!da&&db)return 1;
+      return nm(person(a.ids[0])).localeCompare(nm(person(b.ids[0])));
+    });
+    return ordered.flatMap(family=>sortPeopleOldestFirst(family.ids));
+  };
   if(type==='ancestors'||type==='pedigree'){
     for(let d=depth;d>=1;d--)addWithSpouses(A.filter(x=>x.d===d).map(x=>x.id),'');
     addWithSpouses([start],'Starting person / spouse');
   } else if(type==='descendants'||type==='descendant'){
     addWithSpouses([start],'');
-    for(let d=1;d<=depth;d++)addWithSpouses(D.filter(x=>x.d===d).map(x=>x.id),'');
+    let previousRow=levels[levels.length-1]?.ids||[start];
+    for(let d=1;d<=depth;d++){
+      const generation=childrenInFamilyOrder(D.filter(x=>x.d===d).map(x=>x.id),previousRow);
+      addWithSpouses(generation,'',true);
+      previousRow=levels[levels.length-1]?.ids||generation;
+    }
   } else if(type==='hourglass'||type==='bloodline'){
     for(let d=depth;d>=1;d--)addWithSpouses(A.filter(x=>x.d===d).map(x=>x.id),'');
     addWithSpouses([start],'');
-    for(let d=1;d<=depth;d++)addWithSpouses(D.filter(x=>x.d===d).map(x=>x.id),'');
+    let previousRow=levels[levels.length-1]?.ids||[start];
+    for(let d=1;d<=depth;d++){
+      const generation=childrenInFamilyOrder(D.filter(x=>x.d===d).map(x=>x.id),previousRow);
+      addWithSpouses(generation,'',true);
+      previousRow=levels[levels.length-1]?.ids||generation;
+    }
   } else if(type==='bothsides'){
     // Combined parental ancestry: include ancestors from both parent branches and connect them through the selected person.
     // Parent-child connectors use the actual relationship maps, so the chart never guesses a paternal/maternal link.
@@ -596,7 +630,12 @@ function buildTreeLevels(start,type,depth){
     const pars=[...(parentMap.get(start)||[])];
     const sib=new Set(); for(const pa of pars)for(const c of childMap.get(pa)||[])if(c!==start)sib.add(c);
     addWithSpouses([...sib],'Siblings');
-    for(let d=1;d<=depth;d++)addWithSpouses(D.filter(x=>x.d===d).map(x=>x.id),d===1?'Children':d===2?'Grandchildren':`Descendants — generation ${d}`);
+    let previousRow=levels[levels.length-1]?.ids||[start];
+    for(let d=1;d<=depth;d++){
+      const generation=childrenInFamilyOrder(D.filter(x=>x.d===d).map(x=>x.id),previousRow);
+      addWithSpouses(generation,d===1?'Children':d===2?'Grandchildren':`Descendants — generation ${d}`,true);
+      previousRow=levels[levels.length-1]?.ids||generation;
+    }
   } else if(type==='siblings'){
     const pars=[...(parentMap.get(start)||[])];
     const sib=new Set(); for(const pa of pars)for(const c of childMap.get(pa)||[])if(c!==start)sib.add(c);
