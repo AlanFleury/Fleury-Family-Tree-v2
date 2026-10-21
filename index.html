@@ -372,6 +372,9 @@ function relationshipLabel(a,b){
  if((parentMap.get(b)||new Set()).has(a))return pGender(a)==='F'?'Mother':pGender(a)==='M'?'Father':'Parent';
  if((parentMap.get(a)||new Set()).has(b))return pGender(a)==='F'?'Daughter':pGender(a)==='M'?'Son':'Child';
  if((spouseMap.get(a)||new Set()).has(b))return 'Spouse / partner';
+ // Step-parent labels are inferred only from recorded spouse and parent links.
+ for(const parentId of parentMap.get(a)||[])if((spouseMap.get(parentId)||new Set()).has(b))return pGender(b)==='F'?'Stepmother':pGender(b)==='M'?'Stepfather':'Step-parent';
+ for(const parentId of parentMap.get(b)||[])if((spouseMap.get(parentId)||new Set()).has(a))return pGender(a)==='F'?'Stepmother':pGender(a)==='M'?'Stepfather':'Step-parent';
  // A child's spouse is a son- or daughter-in-law.
  for(const childId of childMap.get(a)||[])if((spouseMap.get(childId)||new Set()).has(b))return pGender(b)==='F'?'Daughter-in-law':pGender(b)==='M'?'Son-in-law':'Child-in-law';
  // In-law labels are calculated from recorded spouse, parent and sibling links.
@@ -385,6 +388,7 @@ function relationshipLabel(a,b){
    return out;
  };
  for(const spouseId of aSpouses)if(siblingsOf(spouseId).has(b))return pGender(b)==='F'?'Sister-in-law':pGender(b)==='M'?'Brother-in-law':'Sibling-in-law';
+ for(const spouseId of aSpouses)if(siblingsOf(b).has(spouseId))return pGender(b)==='F'?'Aunt-in-law':pGender(b)==='M'?'Uncle-in-law':'Aunt/uncle-in-law';
  if([...siblingsOf(a)].some(siblingId=>(spouseMap.get(siblingId)||new Set()).has(b)))return pGender(b)==='F'?'Sister-in-law':pGender(b)==='M'?'Brother-in-law':'Sibling-in-law';
  const aAnc=ancestors(a,30),bAnc=ancestors(b,30),aDist=new Map(aAnc.map(x=>[x.id,x.d])),bDist=new Map(bAnc.map(x=>[x.id,x.d]));
  // Direct ancestors and descendants get their own clear labels (grandmother, great-grandfather, etc.).
@@ -394,9 +398,9 @@ function relationshipLabel(a,b){
  const common=bAnc.filter(y=>aDist.has(y.id)).map(y=>({id:y.id,da:aDist.get(y.id),db:y.d})).sort((x,y)=>(x.da+x.db)-(y.da+y.db)||Math.max(x.da,x.db)-Math.max(y.da,y.db));
  if(common.length){
   const {da,db}=common[0];
-  if(da===1&&db===1)return 'Sibling';
-  if(da===1&&db>=2){const g=pGender(a),base=g==='F'?'aunt':g==='M'?'uncle':'aunt/uncle';return db===2?base:(ord(db-1)+' '+base)}
-  if(db===1&&da>=2){const g=pGender(a),base=g==='F'?'niece':g==='M'?'nephew':'niece/nephew';return da===2?base:(ord(da-1)+' '+base)}
+  if(da===1&&db===1){const shared=[...(parentMap.get(a)||[])].filter(parentId=>(parentMap.get(b)||new Set()).has(parentId)).length;if(shared===1)return pGender(a)==='F'?'Half-sister':pGender(a)==='M'?'Half-brother':'Half-sibling';return 'Sibling';}
+  if(da===1&&db>=2){const g=pGender(a),base=g==='F'?'aunt':g==='M'?'uncle':'aunt/uncle';return db===2?base:(db===3?'great-'+base:(ord(db-2)+' great-'+base))}
+  if(db===1&&da>=2){const g=pGender(a),base=g==='F'?'niece':g==='M'?'nephew':'niece/nephew';return da===2?base:(da===3?'great-'+base:(ord(da-2)+' great-'+base))}
   const c=Math.min(da,db)-1,rem=Math.abs(da-db);
   return `${ord(Math.max(1,c))} cousin${rem?(rem===1?' once removed':rem===2?' twice removed':` ${rem} times removed`):''}`
  }
