@@ -317,6 +317,28 @@ function openDB(){return new Promise((res,rej)=>{try{const q=indexedDB.open(DBNA
 async function loadPersisted(){try{const d=await openDB();return await new Promise((res,rej)=>{const t=d.transaction(STORE,'readonly');const q=t.objectStore(STORE).get('current');q.onsuccess=()=>res(q.result||null);q.onerror=()=>rej(q.error)})}catch(e){return null}}
 async function persist(){const status=document.getElementById('localSaveStatus');try{const d=await openDB();await new Promise((res,rej)=>{const t=d.transaction(STORE,'readwrite');t.objectStore(STORE).put({people:db.people,relationships:db.relationships,meta:db.meta},'current');t.oncomplete=res;t.onerror=()=>rej(t.error);t.onabort=()=>rej(t.error||new Error('The local save transaction was aborted.'))});if(status){status.textContent='Offline copy saved';status.title='The current archive was saved in this browser for offline browsing.';status.classList.remove('bad');status.classList.add('ok')}return true}catch(e){console.warn(e);if(status){status.textContent='Offline copy failed — download Backup';status.title='The browser could not save the local archive: '+(e?.message||e);status.classList.remove('ok');status.classList.add('bad')}return false}}
 let ancestorMemo=new Map(),cachedChartViewerKey=null,cachedChartViewer=null;
+function setRelationshipFinderSignedInPerson(){
+  if(!currentUser||!Array.isArray(db.people)||!db.people.length)return false;
+  const norm=value=>String(value||'').trim().replace(/\\s+/g,' ').toLocaleLowerCase();
+  const candidates=[
+    currentUser.app_metadata?.person_id,
+    currentUser.user_metadata?.person_id,
+    currentUser.person_id,
+    currentUser.personId
+  ].filter(Boolean).map(String);
+  let match=candidates.map(person).find(Boolean);
+  if(!match){
+    const names=[currentUser.name,currentUser.nickname,[currentUser.given_name,currentUser.family_name].filter(Boolean).join(' ')]
+      .map(norm).filter(Boolean);
+    match=allPeople().find(p=>names.includes(norm(p.name)));
+  }
+  if(!match)return false;
+  selected.b=match.id;
+  relB.value=nm(match);
+  relB.dataset.selectedPersonId=match.id;
+  relOutput.innerHTML='';
+  return true;
+}
 function reindex(){ancestorMemo.clear();cachedChartViewerKey=null;cachedChartViewer=null;pmap=new Map(db.people.filter(valid).map(p=>[p.id,p]));parentMap=new Map();childMap=new Map();spouseMap=new Map();relByPerson=new Map();for(const r of db.relationships){const a=r.a,b=r.b;if(!a||!b)continue;(relByPerson.get(a)||relByPerson.set(a,[]).get(a)).push(r);(relByPerson.get(b)||relByPerson.set(b,[]).get(b)).push(r);if(r.type==='parent'){(parentMap.get(b)||parentMap.set(b,new Set()).get(b)).add(a);(childMap.get(a)||childMap.set(a,new Set()).get(a)).add(b)}if(['spouse','partner','husband','wife'].includes(r.type)){(spouseMap.get(a)||spouseMap.set(a,new Set()).get(a)).add(b);(spouseMap.get(b)||spouseMap.set(b,new Set()).get(b)).add(a)}}}
 function allPeople(){return [...pmap.values()]}
 function searchablePersonText(p){try{return lower([p.name,p.id,p.birth,p.death,p.places,p.sources,p.notes,p.relationshipToAlan,p.evidence,...Object.entries(p||{}).filter(([k])=>/alias|alternate|maiden|surname|former.?name|aka/i.test(k)).map(([,v])=>typeof v==='string'||typeof v==='number'?String(v):Array.isArray(v)?v.join(' '):'')].join(' '))}catch(e){return lower([p?.name,p?.id,p?.birth,p?.death,p?.places,p?.sources,p?.notes].join(' '))}}
@@ -1374,7 +1396,7 @@ async function loadOnlineArchive(){
       relationships:remote.relationships.map(r=>({type:String(r.type||''),a:String(r.person1??r.a??''),b:String(r.person2??r.b??''),status:String(r.relationship_status||r.status||'Unknown'),relationshipDate:String(r.relationship_date||''),endDate:String(r.end_date||''),place:String(r.relationship_place||r.place||'')})),
       meta:remote.meta||{}
     };
-    reindex(); renderStats(); renderPeople(); populateReports(); renderHelp(); quality();
+    reindex(); setRelationshipFinderSignedInPerson(); renderStats(); renderPeople(); populateReports(); renderHelp(); quality();
     await persist();
     authStatus.textContent='Online archive loaded and saved for offline browsing.';
     return true;
