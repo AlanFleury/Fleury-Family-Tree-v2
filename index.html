@@ -522,11 +522,11 @@ function sortPeopleOldestFirst(ids){
   });
 }
 function sortPeopleKeepingCouples(ids){
-  const base=sortPeopleOldestFirst(ids),baseSet=new Set(base),out=[],placed=new Set();
+  const base=sortPeopleOldestFirst(ids),out=[],placed=new Set();
   for(const id of base){
     if(placed.has(id))continue;
     out.push(id);placed.add(id);
-    const partners=sortPeopleOldestFirst([...(spouseMap.get(id)||[])].filter(sp=>person(sp)&&baseSet.has(sp)&&!placed.has(sp)));
+    const partners=sortPeopleOldestFirst([...(spouseMap.get(id)||[])].filter(sp=>person(sp)&&!placed.has(sp)));
     for(const partner of partners){out.push(partner);placed.add(partner);}
   }
   return out;
