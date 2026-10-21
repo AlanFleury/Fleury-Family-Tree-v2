@@ -475,9 +475,33 @@ function nodeSvg(x,y,p,w=190,h=150,rel='',extra=''){
  return `<g class="person-node ${genderClass}${blood?' bloodline':''}" data-person-id="${esc(p.id)}" role="button" tabindex="0" aria-label="${esc("Open "+fullName)}" style="cursor:pointer"><title>${esc(fullName+(age?" — "+age:"")+(placeTitle?" — "+placeTitle:"")+(viewer?" — Relationship to signed-in person: "+relation:" — Relationship unavailable: an administrator must link this account to a Person ID in Admin → User Management"))}</title><rect x="${x-w/2}" y="${y-h/2}" width="${w}" height="${h}" rx="10" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/><text x="${x}" y="${nameY}" font-family="Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">${nameSvg}</text><text x="${x}" y="${y+2}" font-family="Arial, sans-serif" font-size="10" text-anchor="middle">${esc(dates||p.id)}</text>${age?`<text x="${x}" y="${y+15}" font-family="Arial, sans-serif" font-size="10" font-weight="700" fill="#8b1e1e" text-anchor="middle">${esc(age)}</text>`:""}<text x="${x}" y="${y+28}" font-family="Arial, sans-serif" font-size="10" text-anchor="middle">${esc(rel)}</text><text x="${x}" y="${y+41}" font-family="Arial, sans-serif" font-size="9" font-weight="700" fill="#344054" text-anchor="middle">${esc("To you: "+compactRelation)}</text>${birthPlace?`<text x="${x}" y="${y+56}" font-family="Arial, sans-serif" font-size="9" text-anchor="middle">${esc("Born: "+birthPlace)}</text>`:""}${deathPlace?`<text x="${x}" y="${y+68}" font-family="Arial, sans-serif" font-size="9" text-anchor="middle">${esc("Died: "+deathPlace)}</text>`:""}${extra}</g>`
 }
 function uniqueIds(ids){return [...new Set(ids.filter(i=>person(i)))]}
+function birthDateForAgeOrder(p){
+  const raw=String(p?.birth||'').trim().replace(/^[~<>?]+\\s*/,'');if(!raw)return null;
+  const months={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+  let m=raw.match(/^(\\d{1,2})[\\s/-]+([A-Za-z]{3,9})[\\s/-]+(\\d{4})$/i);
+  if(m&&months[m[2].slice(0,3).toLowerCase()]!==undefined)return new Date(Date.UTC(+m[3],months[m[2].slice(0,3).toLowerCase()],+m[1]));
+  m=raw.match(/^([A-Za-z]{3,9})\\s+(\\d{1,2}),?\\s+(\\d{4})$/i);
+  if(m&&months[m[1].slice(0,3).toLowerCase()]!==undefined)return new Date(Date.UTC(+m[3],months[m[1].slice(0,3).toLowerCase()],+m[2]));
+  m=raw.match(/^([A-Za-z]{3,9})\\s+(\\d{4})$/i);
+  if(m&&months[m[1].slice(0,3).toLowerCase()]!==undefined)return new Date(Date.UTC(+m[2],months[m[1].slice(0,3).toLowerCase()],1));
+  m=raw.match(/^(\\d{1,2})[./-](\\d{1,2})[./-](\\d{4})$/);
+  if(m)return new Date(Date.UTC(+m[3],+m[2]-1,+m[1]));
+  m=raw.match(/^(\\d{4})[-/](\\d{1,2})[-/](\\d{1,2})$/);
+  if(m)return new Date(Date.UTC(+m[1],+m[2]-1,+m[3]));
+  m=raw.match(/^(\\d{4})$/);if(m)return new Date(Date.UTC(+m[1],0,1));
+  const d=new Date(raw);return Number.isNaN(d.getTime())?null:new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));
+}
+function sortPeopleOldestFirst(ids){
+  return uniqueIds(ids).sort((a,b)=>{
+    const pa=person(a),pb=person(b),da=birthDateForAgeOrder(pa),db=birthDateForAgeOrder(pb);
+    if(da&&db&&da.getTime()!==db.getTime())return da-db;
+    if(da&&!db)return -1;if(!da&&db)return 1;
+    return nm(pa).localeCompare(nm(pb),undefined,{sensitivity:'base'})||String(a).localeCompare(String(b));
+  });
+}
 function buildTreeLevels(start,type,depth){
   const levels=[];
-  const add=(ids,label)=>{const u=uniqueIds(ids);if(u.length)levels.push({ids:u,label})};
+  const add=(ids,label)=>{const u=sortPeopleOldestFirst(ids);if(u.length)levels.push({ids:u,label})};
   const A=ancestors(start,depth),D=descendants(start,depth);
   const addWithSpouses=(ids,label)=>{
     // Keep each person beside their spouse/partner in the chart row.
@@ -606,8 +630,8 @@ function timelineSvg(start,depth){
 function surnameSvg(start){const p=person(start),surname=nm(p).trim().split(/\s+/).pop().toLowerCase();const arr=allPeople().filter(x=>nm(x).trim().split(/\s+/).pop().toLowerCase()===surname).sort((a,b)=>nm(a).localeCompare(nm(b)));const W=1500,H=Math.max(520,Math.ceil(arr.length/5)*175+120);let s=`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" class="tree-svg"><rect width="100%" height="100%" fill="white"/>${svgText(W/2,35,'Surname / family cluster: '+surname,22,'700')}`;arr.forEach((x,i)=>{const col=i%5,row=Math.floor(i/5),xx=170+col*290,yy=115+row*175;s+=nodeSvg(xx,yy,x,260,150,'Family name')});return s+'</svg>'}
 function familyGroupSvg(start){
   const p=person(start);if(!p)return'';
-  const pars=uniqueIds([...(parentMap.get(start)||[])]),kids=uniqueIds([...(childMap.get(start)||[])]),sps=uniqueIds([...(spouseMap.get(start)||[])]);
-  const groups=[['PARENTS',pars],['PRINCIPAL FAMILY',[start,...sps]],['CHILDREN',kids]];
+  const pars=sortPeopleOldestFirst([...(parentMap.get(start)||[])]),kids=sortPeopleOldestFirst([...(childMap.get(start)||[])]),sps=sortPeopleOldestFirst([...(spouseMap.get(start)||[])]);
+  const groups=[['PARENTS',pars],['PRINCIPAL FAMILY',sortPeopleOldestFirst([start,...sps])],['CHILDREN',kids]];
   const boxW=270,boxH=150,gap=100,rowH=210,W=Math.max(1500,Math.max(...groups.map(g=>Math.max(1,g[1].length)))*(boxW+gap)+180),H=groups.length*rowH+205;
   let s=`<svg xmlns="http://www.w3.org/2000/svg" class="tree-svg family-card-chart" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><rect width="100%" height="100%" fill="white"/>${svgText(W/2,32,'Family group: '+nm(p),22,'700')}${svgText(W/2,53,'Family-card layout • no connector lines • click any person',11)}`;
   groups.forEach((g,ri)=>{
