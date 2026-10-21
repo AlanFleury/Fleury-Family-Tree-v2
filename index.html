@@ -406,7 +406,7 @@ function relationshipLabel(a,b){
  }
  return 'No blood relationship found in recorded parent links'
 }
-function pGender(i){return person(i)?.gender||''} function ord(n){const x=n%100;return `${n}${x>=11&&x<=13?'th':n%10===1?'st':n%10===2?'nd':n%10===3?'rd':'th'}`}
+function pGender(i){const g=String(person(i)?.gender||'').trim().toUpperCase();return g==='F'||g.startsWith('FEMALE')?'F':g==='M'||g.startsWith('MALE')?'M':g} function ord(n){const x=n%100;return `${n}${x>=11&&x<=13?'th':n%10===1?'st':n%10===2?'nd':n%10===3?'rd':'th'}`}
 function resolveAlanPerson(){
  const norm=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
  const matches=allPeople().filter(p=>norm(p.name)==='alan fleury'&&String(p.gender||'').toUpperCase()==='M'&&/1969/.test(String(p.birth||'')));
