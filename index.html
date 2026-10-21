@@ -319,7 +319,7 @@ async function persist(){const status=document.getElementById('localSaveStatus')
 let ancestorMemo=new Map(),cachedChartViewerKey=null,cachedChartViewer=null;
 function setRelationshipFinderSignedInPerson(){
   if(!currentUser||!Array.isArray(db.people)||!db.people.length)return false;
-  const norm=value=>String(value||'').trim().replace(/\\s+/g,' ').toLocaleLowerCase();
+  const norm=value=>String(value||'').trim().replace(/\s+/g,' ').toLocaleLowerCase();
   const candidates=[
     currentUser.app_metadata?.person_id,
     currentUser.user_metadata?.person_id,
