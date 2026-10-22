@@ -675,16 +675,22 @@ function buildTreeSvg(start,type,depth,wall=false){
   const pos=new Map();
   levels.forEach((lv,li)=>{const y=145+li*bandH;const total=lv.ids.length*step,x0=(W-total)/2+step/2;lv.ids.forEach((pid,i)=>pos.set(pid,{x:x0+i*step,y,li,label:lv.label}))});
   const bloodIds=new Set([start,...ancestors(start,depth).map(x=>x.id),...descendants(start,depth).map(x=>x.id)]);
-  s+=`<g class="chart-connectors" fill="none" stroke="#c1121f" stroke-width="3" opacity=".92">`;
-  // Draw each recorded parent-child link separately. This avoids long shared
-  // horizontal bars that can make neighbouring family branches look like one family.
-  for(const [pid,z] of pos)for(const cid of childMap.get(pid)||[]){
-    if(!pos.has(cid))continue;
-    const q=pos.get(cid);
-    if(q.li<=z.li)continue;
-    const x1=z.x,y1=z.y+boxH/2,x2=q.x,y2=q.y-boxH/2;
-    const bend=Math.max(28,Math.abs(y2-y1)*.48);
-    s+=`<path d="M${x1} ${y1} C${x1} ${y1+bend}, ${x2} ${y2-bend}, ${x2} ${y2}" stroke-linecap="round"/>`;
+  s+=`<g class="chart-connectors" fill="none" stroke="#c1121f" stroke-width="2.6" opacity=".9">`;
+  // Connect each child once, from the midpoint of their recorded parents.
+  // Drawing one link per parent created duplicate crossing lines through the chart.
+  const drawnChildren=new Set();
+  for(const [childId,q] of pos){
+    if(q.li===0)continue;
+    const visibleParents=[...(parentMap.get(childId)||[])].filter(parentId=>pos.has(parentId)&&pos.get(parentId).li<q.li);
+    if(!visibleParents.length)continue;
+    if(drawnChildren.has(childId))continue;
+    drawnChildren.add(childId);
+    const parents=visibleParents.map(id=>pos.get(id));
+    const sourceX=parents.reduce((sum,z)=>sum+z.x,0)/parents.length;
+    const sourceY=Math.max(...parents.map(z=>z.y+boxH/2));
+    const targetX=q.x,targetY=q.y-boxH/2;
+    const midY=sourceY+(targetY-sourceY)*.52;
+    s+=`<path d="M${sourceX} ${sourceY} V${midY} H${targetX} V${targetY}" stroke-linecap="round" stroke-linejoin="round"/>`;
   }
   s+='</g><g class="marriage-connectors" fill="none" stroke="#7b4ea3" stroke-width="2">';
   levels.forEach((lv,li)=>lv.ids.forEach(pid=>{const z=pos.get(pid),pp=person(pid),blood=bloodIds.has(pid);s+=nodeSvg(z.x,z.y,pp,boxW,boxH,'',blood?' data-blood="1"':'')}));
