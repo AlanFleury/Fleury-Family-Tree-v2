@@ -245,6 +245,10 @@ a,.link{overflow-wrap:anywhere}
 .person-link:focus-visible,.person-node:focus-visible{outline:3px solid #1d70d6;outline-offset:3px}
 .person-node{cursor:pointer;touch-action:manipulation}
 .person-node text,.person-node path,.person-node rect,.person-node circle{pointer-events:auto}
+/* Consistent high-contrast black text across every SVG chart card and label. */
+.tree-svg text{fill:#111111!important;stroke:none!important;paint-order:normal!important}
+.tree-svg .person-node text{fill:#111111!important;stroke:none!important}
+
 /* Force readable black text in every person card, overriding legacy theme styles. */
 .tree-svg .person-node text{fill:#111111!important;color:#111111!important;stroke:none!important;paint-order:normal!important}
 .tree-svg .person-node text[fill="#7b4ea3"]{fill:#111111!important}
@@ -692,14 +696,19 @@ function buildTreeSvg(start,type,depth,wall=false){
     if(!familyGroups.has(key))familyGroups.set(key,{parents,children:[]});
     familyGroups.get(key).children.push({id:childId,...childPos});
   }
+  let familyBusIndex=0;
   for(const group of familyGroups.values()){
     group.children.sort((a,b)=>a.x-b.x);
     const parentPos=group.parents.map(id=>pos.get(id));
     const sourceX=parentPos.reduce((sum,z)=>sum+z.x,0)/parentPos.length;
     const sourceY=Math.max(...parentPos.map(z=>z.y+boxH/2));
     const targetY=Math.min(...group.children.map(z=>z.y-boxH/2));
-    const busY=sourceY+Math.max(26,(targetY-sourceY)*.48);
-    // A single vertical stem belongs to this parent group only.
+    // Give each distinct parent group its own horizontal bus height. Without this,
+    // separate families whose parents share a generation can look like one joined family.
+    const available=Math.max(28,targetY-sourceY-12);
+    const desired=26+(familyBusIndex++%4)*17;
+    const busY=sourceY+Math.min(desired,available);
+    // Each parent group gets an independent, straight orthogonal connector.
     s+=`<path d="M${sourceX} ${sourceY} V${busY}"/>`;
     if(group.children.length===1){
       const child=group.children[0];
