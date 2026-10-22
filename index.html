@@ -245,6 +245,11 @@ a,.link{overflow-wrap:anywhere}
 .person-link:focus-visible,.person-node:focus-visible{outline:3px solid #1d70d6;outline-offset:3px}
 .person-node{cursor:pointer;touch-action:manipulation}
 .person-node text,.person-node path,.person-node rect,.person-node circle{pointer-events:auto}
+/* Force readable black text in every person card, overriding legacy theme styles. */
+.tree-svg .person-node text{fill:#111111!important;color:#111111!important;stroke:none!important;paint-order:normal!important}
+.tree-svg .person-node text[fill="#7b4ea3"]{fill:#111111!important}
+.tree-svg .person-node text[stroke="white"]{stroke:none!important}
+
 @media(max-width:900px){
   .person-link,.link[data-person]{min-height:38px;padding:6px 3px;align-items:center}
   .person-node{cursor:pointer}
