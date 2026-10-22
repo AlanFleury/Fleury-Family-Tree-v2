@@ -372,24 +372,27 @@ function relationshipLabel(a,b){
  if((parentMap.get(b)||new Set()).has(a))return pGender(a)==='F'?'Mother':pGender(a)==='M'?'Father':'Parent';
  if((parentMap.get(a)||new Set()).has(b))return pGender(a)==='F'?'Daughter':pGender(a)==='M'?'Son':'Child';
  if((spouseMap.get(a)||new Set()).has(b))return 'Spouse / partner';
- // Step-parent labels are inferred only from recorded spouse and parent links.
- for(const parentId of parentMap.get(a)||[])if((spouseMap.get(parentId)||new Set()).has(b))return pGender(b)==='F'?'Stepmother':pGender(b)==='M'?'Stepfather':'Step-parent';
- for(const parentId of parentMap.get(b)||[])if((spouseMap.get(parentId)||new Set()).has(a))return pGender(a)==='F'?'Stepmother':pGender(a)==='M'?'Stepfather':'Step-parent';
- // A child's spouse is a son- or daughter-in-law.
- for(const childId of childMap.get(a)||[])if((spouseMap.get(childId)||new Set()).has(b))return pGender(b)==='F'?'Daughter-in-law':pGender(b)==='M'?'Son-in-law':'Child-in-law';
- // In-law labels are calculated from recorded spouse, parent and sibling links.
+ // Step-family and in-law labels describe person a's relationship to person b.
  const aSpouses=spouseMap.get(a)||new Set(),bSpouses=spouseMap.get(b)||new Set();
- for(const spouseId of aSpouses){
-   if((parentMap.get(spouseId)||new Set()).has(b))return pGender(b)==='F'?'Mother-in-law':pGender(b)==='M'?'Father-in-law':'Parent-in-law';
- }
- const siblingsOf=id=>{
-   const out=new Set();
-   for(const parentId of parentMap.get(id)||[])for(const childId of childMap.get(parentId)||[])if(childId!==id)out.add(childId);
-   return out;
- };
- for(const spouseId of aSpouses)if(siblingsOf(spouseId).has(b))return pGender(b)==='F'?'Sister-in-law':pGender(b)==='M'?'Brother-in-law':'Sibling-in-law';
- for(const spouseId of aSpouses)if(siblingsOf(b).has(spouseId))return pGender(b)==='F'?'Aunt-in-law':pGender(b)==='M'?'Uncle-in-law':'Aunt/uncle-in-law';
- if([...siblingsOf(a)].some(siblingId=>(spouseMap.get(siblingId)||new Set()).has(b)))return pGender(b)==='F'?'Sister-in-law':pGender(b)==='M'?'Brother-in-law':'Sibling-in-law';
+ const gendered=(id,female,male,neutral)=>pGender(id)==='F'?female:pGender(id)==='M'?male:neutral;
+ // Child's spouse: a is the son/daughter-in-law of b, or b is the son/daughter-in-law of a.
+ for(const childId of childMap.get(b)||[])if((spouseMap.get(childId)||new Set()).has(a))return gendered(a,'Daughter-in-law','Son-in-law','Child-in-law');
+ for(const childId of childMap.get(a)||[])if((spouseMap.get(childId)||new Set()).has(b))return gendered(b,'Daughter-in-law','Son-in-law','Child-in-law');
+ // Parent-in-law / step-parent, in either direction.
+ for(const spouseId of aSpouses)if((parentMap.get(spouseId)||new Set()).has(b))return gendered(a,'Daughter-in-law','Son-in-law','Child-in-law');
+ for(const spouseId of bSpouses)if((parentMap.get(spouseId)||new Set()).has(a))return gendered(b,'Daughter-in-law','Son-in-law','Child-in-law');
+ for(const parentId of parentMap.get(b)||[])if((spouseMap.get(parentId)||new Set()).has(a))return gendered(a,'Stepmother','Stepfather','Step-parent');
+ for(const parentId of parentMap.get(a)||[])if((spouseMap.get(parentId)||new Set()).has(b))return gendered(b,'Stepmother','Stepfather','Step-parent');
+ const siblingsOf=id=>{const out=new Set();for(const parentId of parentMap.get(id)||[])for(const childId of childMap.get(parentId)||[])if(childId!==id)out.add(childId);return out};
+ // Spouse of a sibling: determine the gender of the person being described, whichever side is selected first.
+ if([...siblingsOf(b)].some(siblingId=>(spouseMap.get(siblingId)||new Set()).has(a)))return gendered(a,'Sister-in-law','Brother-in-law','Sibling-in-law');
+ if([...siblingsOf(a)].some(siblingId=>(spouseMap.get(siblingId)||new Set()).has(b)))return gendered(b,'Sister-in-law','Brother-in-law','Sibling-in-law');
+ // Sibling of a spouse, in either direction.
+ if([...aSpouses].some(spouseId=>siblingsOf(spouseId).has(b)))return gendered(a,'Sister-in-law','Brother-in-law','Sibling-in-law');
+ if([...bSpouses].some(spouseId=>siblingsOf(spouseId).has(a)))return gendered(b,'Sister-in-law','Brother-in-law','Sibling-in-law');
+ // Aunt/uncle by marriage: sibling of a spouse.
+ if([...aSpouses].some(spouseId=>[...(parentMap.get(spouseId)||[])].some(parentId=>(childMap.get(parentId)||new Set()).has(b))))return gendered(a,'Niece-in-law','Nephew-in-law','Relative-in-law');
+ if([...bSpouses].some(spouseId=>[...(parentMap.get(spouseId)||[])].some(parentId=>(childMap.get(parentId)||new Set()).has(a))))return gendered(b,'Niece-in-law','Nephew-in-law','Relative-in-law');
  const aAnc=ancestors(a,30),bAnc=ancestors(b,30),aDist=new Map(aAnc.map(x=>[x.id,x.d])),bDist=new Map(bAnc.map(x=>[x.id,x.d]));
  // Direct ancestors and descendants get their own clear labels (grandmother, great-grandfather, etc.).
  if(bDist.has(a)){const d=bDist.get(a),g=pGender(a),base=g==='F'?'grandmother':g==='M'?'grandfather':'grandparent';return d===1?(g==='F'?'Mother':g==='M'?'Father':'Parent'):d===2?base:(ord(d-1)+' '+base)}
