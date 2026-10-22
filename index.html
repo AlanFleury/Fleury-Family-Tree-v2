@@ -515,7 +515,7 @@ function wrapSvgName(name,maxChars){const words=String(name||'').trim().split(/\
 function nodeSvg(x,y,p,w=190,h=150,rel='',extra=''){
  if(!p)return'';
  const fullName=nm(p),nameLines=wrapSvgName(fullName,Math.max(12,Math.floor(w/7.2))),nameY=y-h/2+21,nameSvg=nameLines.map((line,i)=>`<tspan x="${x}" dy="${i===0?0:13}">${esc(line)}</tspan>`).join(''),dates=chartDates(p),age=chartAgeLabel(p),viewer=chartViewpointPerson(),relation=viewer?relationshipLabel(p.id,viewer.id):'Account not linked',compactRelation=relation==='No blood relationship found in recorded parent links'?'No recorded blood link':relation,places=chartPlaceParts(p),birthPlace=chartPlaceText(places.birth,Math.max(18,Math.floor(w/6.3))),deathPlace=chartPlaceText(places.death,Math.max(18,Math.floor(w/6.3))),g=String(p.gender||'').toUpperCase(),genderClass=g==='M'?'gender-male':g==='F'?'gender-female':'gender-unknown',blood=extra.includes('data-blood="1"'),fill=g==='M'?'#dcecff':g==='F'?'#ffe0ea':'#fff',stroke=blood?'#c1121f':g==='M'?'#2f5fa8':g==='F'?'#c85b7a':'#667085',sw=blood?4:2,placeTitle=[places.birth?'Born: '+places.birth:'',places.death?'Died: '+places.death:''].filter(Boolean).join(' • ');
- return `<g class="person-node ${genderClass}${blood?' bloodline':''}" data-person-id="${esc(p.id)}" role="button" tabindex="0" aria-label="${esc("Open "+fullName)}" style="cursor:pointer"><title>${esc(fullName+(age?" — "+age:"")+(placeTitle?" — "+placeTitle:"")+(viewer?" — Relationship to signed-in person: "+relation:" — Relationship unavailable: an administrator must link this account to a Person ID in Admin → User Management"))}</title><rect x="${x-w/2}" y="${y-h/2}" width="${w}" height="${h}" rx="10" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/><text x="${x}" y="${nameY}" font-family="Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">${nameSvg}</text><text x="${x}" y="${y+2}" font-family="Arial, sans-serif" font-size="10" text-anchor="middle">${esc(dates||p.id)}</text>${age?`<text x="${x}" y="${y+15}" font-family="Arial, sans-serif" font-size="10" font-weight="700" fill="#8b1e1e" text-anchor="middle">${esc(age)}</text>`:""}<text x="${x}" y="${y+28}" font-family="Arial, sans-serif" font-size="10" text-anchor="middle">${esc(rel)}</text><text x="${x}" y="${y+41}" font-family="Arial, sans-serif" font-size="9" font-weight="700" fill="#344054" text-anchor="middle">${esc("To you: "+compactRelation)}</text>${birthPlace?`<text x="${x}" y="${y+56}" font-family="Arial, sans-serif" font-size="9" text-anchor="middle">${esc("Born: "+birthPlace)}</text>`:""}${deathPlace?`<text x="${x}" y="${y+68}" font-family="Arial, sans-serif" font-size="9" text-anchor="middle">${esc("Died: "+deathPlace)}</text>`:""}${extra}</g>`
+ return `<g class="person-node ${genderClass}${blood?' bloodline':''}" data-person-id="${esc(p.id)}" role="button" tabindex="0" aria-label="${esc("Open "+fullName)}" style="cursor:pointer"><title>${esc(fullName+(age?" — "+age:"")+(placeTitle?" — "+placeTitle:"")+(viewer?" — Relationship to signed-in person: "+relation:" — Relationship unavailable: an administrator must link this account to a Person ID in Admin → User Management"))}</title><rect x="${x-w/2}" y="${y-h/2}" width="${w}" height="${h}" rx="10" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/><text x="${x}" y="${nameY}" font-family="Arial, sans-serif" font-size="15" font-weight="700" text-anchor="middle">${nameSvg}</text><text x="${x}" y="${y+2}" font-family="Arial, sans-serif" font-size="12" text-anchor="middle">${esc(dates||p.id)}</text>${age?`<text x="${x}" y="${y+15}" font-family="Arial, sans-serif" font-size="11" font-weight="700" fill="#8b1e1e" text-anchor="middle">${esc(age)}</text>`:""}<text x="${x}" y="${y+28}" font-family="Arial, sans-serif" font-size="11" text-anchor="middle">${esc(rel)}</text><text x="${x}" y="${y+41}" font-family="Arial, sans-serif" font-size="10" font-weight="700" fill="#344054" text-anchor="middle">${esc("To you: "+compactRelation)}</text>${birthPlace?`<text x="${x}" y="${y+56}" font-family="Arial, sans-serif" font-size="10" text-anchor="middle">${esc("Born: "+birthPlace)}</text>`:""}${deathPlace?`<text x="${x}" y="${y+68}" font-family="Arial, sans-serif" font-size="10" text-anchor="middle">${esc("Died: "+deathPlace)}</text>`:""}${extra}</g>`
 }
 function uniqueIds(ids){return [...new Set(ids.filter(i=>person(i)))]}
 function birthDateForAgeOrder(p){
@@ -670,27 +670,40 @@ function buildTreeLevels(start,type,depth){
 }
 function buildTreeSvg(start,type,depth,wall=false){
   const p=person(start);if(!p)return'';const levels=buildTreeLevels(start,type,depth);if(!levels.length)return'';
-  const boxW=wall?270:225,boxH=150,gapX=wall?112:96,gapY=wall?180:164,step=boxW+gapX,maxN=Math.max(...levels.map(x=>x.ids.length),1),W=Math.max(wall?1500:1150,maxN*step+180),bandH=boxH+gapY,H=Math.max(wall?700:560,levels.length*bandH+205);
+  const boxW=wall?310:285,boxH=174,gapX=wall?72:58,gapY=wall?190:178,step=boxW+gapX,maxN=Math.max(...levels.map(x=>x.ids.length),1),W=Math.max(wall?1500:1150,maxN*step+180),bandH=boxH+gapY,H=Math.max(wall?700:560,levels.length*bandH+205);
   let s=`<svg xmlns="http://www.w3.org/2000/svg" class="tree-svg family-card-chart" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><rect width="100%" height="100%" fill="#fbf4e4"/>`;s+=svgText(W/2,30,nm(p),22,'700');s+=svgText(W/2,52,'Structured family chart • click any person • 💍 = marriage / partner',11);
   const pos=new Map();
   levels.forEach((lv,li)=>{const y=145+li*bandH;const total=lv.ids.length*step,x0=(W-total)/2+step/2;lv.ids.forEach((pid,i)=>pos.set(pid,{x:x0+i*step,y,li,label:lv.label}))});
   const bloodIds=new Set([start,...ancestors(start,depth).map(x=>x.id),...descendants(start,depth).map(x=>x.id)]);
-  s+=`<g class="chart-connectors" fill="none" stroke="#c1121f" stroke-width="2.6" opacity=".9">`;
-  // Connect each child once, from the midpoint of their recorded parents.
-  // Drawing one link per parent created duplicate crossing lines through the chart.
-  const drawnChildren=new Set();
-  for(const [childId,q] of pos){
-    if(q.li===0)continue;
-    const visibleParents=[...(parentMap.get(childId)||[])].filter(parentId=>pos.has(parentId)&&pos.get(parentId).li<q.li);
-    if(!visibleParents.length)continue;
-    if(drawnChildren.has(childId))continue;
-    drawnChildren.add(childId);
-    const parents=visibleParents.map(id=>pos.get(id));
-    const sourceX=parents.reduce((sum,z)=>sum+z.x,0)/parents.length;
-    const sourceY=Math.max(...parents.map(z=>z.y+boxH/2));
-    const targetX=q.x,targetY=q.y-boxH/2;
-    const midY=sourceY+(targetY-sourceY)*.52;
-    s+=`<path d="M${sourceX} ${sourceY} V${midY} H${targetX} V${targetY}" stroke-linecap="round" stroke-linejoin="round"/>`;
+  s+=`<g class="chart-connectors" fill="none" stroke="#c1121f" stroke-width="2.5" opacity=".95" stroke-linecap="round" stroke-linejoin="round">`;
+  // Straight, orthogonal family connectors. Group children by their exact recorded
+  // parent set so a horizontal sibling bar never runs across a neighbouring family.
+  const familyGroups=new Map();
+  for(const [childId,childPos] of pos){
+    if(childPos.li===0)continue;
+    const parents=[...(parentMap.get(childId)||[])].filter(parentId=>pos.has(parentId)&&pos.get(parentId).li<childPos.li).sort();
+    if(!parents.length)continue;
+    const key=parents.join('|');
+    if(!familyGroups.has(key))familyGroups.set(key,{parents,children:[]});
+    familyGroups.get(key).children.push({id:childId,...childPos});
+  }
+  for(const group of familyGroups.values()){
+    group.children.sort((a,b)=>a.x-b.x);
+    const parentPos=group.parents.map(id=>pos.get(id));
+    const sourceX=parentPos.reduce((sum,z)=>sum+z.x,0)/parentPos.length;
+    const sourceY=Math.max(...parentPos.map(z=>z.y+boxH/2));
+    const targetY=Math.min(...group.children.map(z=>z.y-boxH/2));
+    const busY=sourceY+Math.max(26,(targetY-sourceY)*.48);
+    // A single vertical stem belongs to this parent group only.
+    s+=`<path d="M${sourceX} ${sourceY} V${busY}"/>`;
+    if(group.children.length===1){
+      const child=group.children[0];
+      s+=`<path d="M${sourceX} ${busY} H${child.x} V${child.y-boxH/2}"/>`;
+    }else{
+      const left=group.children[0].x,right=group.children[group.children.length-1].x;
+      s+=`<path d="M${sourceX} ${busY} H${left} M${left} ${busY} H${right}"/>`;
+      for(const child of group.children)s+=`<path d="M${child.x} ${busY} V${child.y-boxH/2}"/>`;
+    }
   }
   s+='</g><g class="marriage-connectors" fill="none" stroke="#7b4ea3" stroke-width="2">';
   levels.forEach((lv,li)=>lv.ids.forEach(pid=>{const z=pos.get(pid),pp=person(pid),blood=bloodIds.has(pid);s+=nodeSvg(z.x,z.y,pp,boxW,boxH,'',blood?' data-blood="1"':'')}));
