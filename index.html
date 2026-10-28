@@ -361,6 +361,8 @@ function familySearchProfileUrl(p){
   if(!p||typeof p!=='object')return '';
   // Known FamilySearch link confirmed from the user's master spreadsheet.
   if(String(p.id??'')==='@152@'||String(p.name??'').trim().toLowerCase()==='george louis fleury')return 'https://www.familysearch.org/tree/person/details/G36H-S38';
+  // Confirmed FamilySearch profile supplied by the user for Clement Harrison.
+  if(String(p.name??'').trim().toLowerCase()==='clement harrison')return 'https://www.familysearch.org/tree/person/details/PM5Z-CKF';
   const normKey=k=>String(k).toLowerCase().replace(/[^a-z0-9]/g,'');
   const urlFromText=value=>{
     const raw=String(value??'').trim();
