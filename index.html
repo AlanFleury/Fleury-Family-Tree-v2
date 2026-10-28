@@ -364,7 +364,7 @@ function familySearchProfileUrl(p){
   const normKey=k=>String(k).toLowerCase().replace(/[^a-z0-9]/g,'');
   const urlFromText=value=>{
     const raw=String(value??'').trim();
-    const urlMatch=raw.match(/(?:https?:\/\/)?(?:www\.)?familysearch\.org\/tree\/person\/details\/([A-Za-z0-9-]+)/i);
+    const urlMatch=raw.match(/(?:https?:\/\/)?(?:www\.)?familysearch\.org\/(?:en\/)?tree\/person\/(?:details\/)?([A-Za-z0-9-]+)/i);
     return urlMatch?'https://www.familysearch.org/tree/person/details/'+encodeURIComponent(urlMatch[1]):'';
   };
   const records=[p,...(p.archiveFields&&typeof p.archiveFields==='object'?[p.archiveFields]:[])];
@@ -409,7 +409,7 @@ function openFamilySearchForPerson(personId){
     const entered=window.prompt('No FamilySearch ID was recognised for this person. Enter their FamilySearch person ID (or paste their FamilySearch profile link):');
     if(!entered)return;
     const raw=entered.trim();
-    const urlMatch=raw.match(/(?:https?:\/\/)?(?:www\.)?familysearch\.org\/tree\/person\/details\/([A-Za-z0-9-]+)/i);
+    const urlMatch=raw.match(/(?:https?:\/\/)?(?:www\.)?familysearch\.org\/(?:en\/)?tree\/person\/(?:details\/)?([A-Za-z0-9-]+)/i);
     const id=urlMatch?urlMatch[1]:raw;
     if(!/^[A-Za-z0-9-]{4,30}$/.test(id)){
       alert('That does not look like a valid FamilySearch ID or profile link. No changes have been made.');
