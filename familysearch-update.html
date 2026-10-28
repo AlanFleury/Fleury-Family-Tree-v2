@@ -26,12 +26,17 @@ $('check').onclick=checkAuth;
 $('file').onchange=async()=>{
  rows=[]; updates=[];live=null;$('apply').disabled=true;$('preview').disabled=true;
  const f=$('file').files[0];if(!f){say('fileStatus','No spreadsheet selected.');return}
- try{const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});const sn=wb.SheetNames.find(n=>/familysearch|return|missing|people/i.test(n))||wb.SheetNames[0];const data=XLSX.utils.sheet_to_json(wb.Sheets[sn],{defval:'',raw:false});
- const cleanHeader=h=>String(h||'').replace(/\s*\([^)]*\)\s*/g,' ').replace(/\s+/g,' ').trim().toLowerCase();
- const columns=Object.fromEntries(Object.keys(data[0]||{}).map(h=>[cleanHeader(h),h]));
- const cell=(r,...names)=>{for(const n of names){const h=columns[cleanHeader(n)];if(h!==undefined&&r[h]!==undefined&&r[h]!==null&&String(r[h]).trim()!=='')return String(r[h]).trim()}return ''};
- rows=data.map(r=>({personId:cell(r,'Database Person ID','Person ID'),name:cell(r,'Person Name','Name'),fsid:cell(r,'FamilySearch ID','FamilySearch Profile ID').toUpperCase(),url:cell(r,'FamilySearch Profile URL')})).filter(r=>r.fsid);
- say('fileStatus','Read '+data.length+' spreadsheet rows; found '+rows.length+' rows with a FamilySearch ID. Sheet: '+sn+'.','ok');refreshButtons();}
+ try{const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});const sn=wb.SheetNames.find(n=>/familysearch|return|missing|people/i.test(n))||wb.SheetNames[0];const matrix=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:'',raw:false});
+ const cleanHeader=h=>String(h||'').replace(/\([^)]*\)/g,' ').replace(/[^a-z0-9]+/gi,' ').trim().toLowerCase();
+ const headerIndex=matrix.findIndex(row=>row.some(v=>cleanHeader(v).includes('familysearch id'))&&row.some(v=>cleanHeader(v).includes('person id')));
+ if(headerIndex<0)throw Error('Could not find the header row containing Person ID and FamilySearch ID. Please choose the completed return-template workbook.');
+ const headers=matrix[headerIndex].map(cleanHeader);
+ const col=(...terms)=>headers.findIndex(h=>terms.some(t=>h===cleanHeader(t)||h.includes(cleanHeader(t))));
+ const personCol=col('Database Person ID','Person ID'),nameCol=col('Person Name','Name'),fsCol=col('FamilySearch ID','FamilySearch Profile ID'),urlCol=col('FamilySearch Profile URL');
+ if(fsCol<0)throw Error('Could not find the FamilySearch ID column. Header detected: '+matrix[headerIndex].join(' | '));
+ const data=matrix.slice(headerIndex+1).filter(row=>row.some(v=>String(v??'').trim()!==''));
+ rows=data.map(row=>({personId:String(personCol<0?'':row[personCol]??'').trim(),name:String(nameCol<0?'':row[nameCol]??'').trim(),fsid:String(row[fsCol]??'').trim().toUpperCase(),url:String(urlCol<0?'':row[urlCol]??'').trim()})).filter(r=>r.fsid);
+ say('fileStatus','Read '+data.length+' spreadsheet rows; found '+rows.length+' rows with a FamilySearch ID. Sheet: '+sn+'. Header row: '+(headerIndex+1)+'.','ok');refreshButtons();}
  catch(e){say('fileStatus','Could not read spreadsheet: '+(e.message||e),'bad')}
 };
 function refreshButtons(){$('preview').disabled=!(adminOK&&rows.length);$('apply').disabled=!(adminOK&&updates.length);}
