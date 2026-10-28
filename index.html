@@ -496,7 +496,7 @@ function resolveViewpointPerson(){
  const mappedId=String(currentUser?.personId??currentUser?.person_id??currentUser?.['Person ID']??currentUser?.user_metadata?.person_id??currentUser?.app_metadata?.person_id??'').trim();
  if(mappedId&&person(mappedId))return person(mappedId);
  if(currentUser){
-  const norm=value=>String(value||'').trim().replace(/\\s+/g,' ').toLocaleLowerCase();
+  const norm=value=>String(value||'').trim().replace(/\s+/g,' ').toLocaleLowerCase();
   const meta=currentUser.user_metadata||{};
   const names=[currentUser.name,currentUser.full_name,currentUser.nickname,currentUser.given_name&&currentUser.family_name?[currentUser.given_name,currentUser.family_name].join(' '):'',meta.full_name,meta.name,meta.nickname,meta.given_name&&meta.family_name?[meta.given_name,meta.family_name].join(' '):''].map(norm).filter(Boolean);
   const matches=allPeople().filter(p=>names.includes(norm(p.name)));
