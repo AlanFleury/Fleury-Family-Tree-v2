@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FamilySearch ID Update — Fleury Family Archive</title>
+<style>
+body{font:16px Arial,sans-serif;max-width:900px;margin:24px auto;padding:0 16px;color:#182230;background:#f4f6f9}h1{font-size:25px}.panel{background:white;border:1px solid #d7dde7;border-radius:10px;padding:18px;margin:16px 0}button{padding:10px 14px;border:1px solid #c5ccd8;border-radius:7px;background:#fff;cursor:pointer;margin:5px 5px 5px 0}button.primary{background:#2f5fa8;color:white;border-color:#2f5fa8}button:disabled{opacity:.5}input{margin:10px 0;max-width:100%}.status{white-space:pre-wrap;line-height:1.5}.warn{color:#8a4b00}.ok{color:#087443}.bad{color:#b42318}li{margin:6px 0}
+</style></head><body>
+<h1>FamilySearch ID Update</h1>
+<p>This tool updates only the FamilySearch source IDs on existing people. It does not restore or replace the family tree.</p>
+<div class="panel"><h2>Step 1 — Sign in</h2><p>Use the same approved administrator account you use for the family tree.</p><button id="login" class="primary">Sign in to the private archive</button> <button id="check">Check sign-in and administrator access</button><div id="authStatus" class="status">Not checked yet.</div></div>
+<div class="panel"><h2>Step 2 — Choose the completed spreadsheet</h2><p>Select the FamilySearch ID return-template spreadsheet you filled in. The tool reads the person ID and FamilySearch ID columns; it does not change the spreadsheet.</p><input type="file" id="file" accept=".xlsx,.xls"><div id="fileStatus" class="status">No spreadsheet selected.</div></div>
+<div class="panel"><h2>Step 3 — Preview, then save</h2><p>The preview checks person IDs and avoids assigning a FamilySearch ID already used by another person. The disputed duplicate ID <b>P6CV-15C</b> is excluded.</p><button id="preview" disabled>Preview changes</button><button id="apply" class="primary" disabled>Save confirmed IDs to live archive</button><div id="previewStatus" class="status">Sign in and select the spreadsheet first.</div></div>
+<div class="panel"><h2>Results</h2><div id="result" class="status">No changes have been made.</div></div>
+<p><a href="./">Return to the family tree</a></p>
+<script src="./config.js"></script><script src="https://cdn.auth0.com/js/auth0-spa-js/2.1/auth0-spa-js.production.js"></script><script src="./archive-api.js"></script><script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script>
+let adminOK=false, rows=[], live=null, updates=[];
+const $=id=>document.getElementById(id);
+function say(id,msg,cls=''){ $(id).className='status '+cls; $(id).textContent=msg; }
+async function checkAuth(){
+ adminOK=false; say('authStatus','Checking sign-in and administrator access…');
+ try{await window.archiveApi.initAuth();const role=await window.archiveApi.getMyRole();if(String(role).toLowerCase()!=='admin'){say('authStatus','Your account role is "'+(role||'not approved')+'". This tool requires administrator access. No data changed.','bad');return false;}adminOK=true;say('authStatus','Signed in. Administrator access confirmed.','ok');refreshButtons();return true;}
+ catch(e){say('authStatus','Could not confirm administrator access: '+(e.message||e),'bad');return false;}
+}
+$('login').onclick=async()=>{try{await window.archiveApi.signInWithEmail()}catch(e){say('authStatus',e.message||String(e),'bad')}};
+$('check').onclick=checkAuth;
+$('file').onchange=async()=>{
+ rows=[]; updates=[];live=null;$('apply').disabled=true;$('preview').disabled=true;
+ const f=$('file').files[0];if(!f){say('fileStatus','No spreadsheet selected.');return}
+ try{const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});const sn=wb.SheetNames.find(n=>/familysearch|return|missing|people/i.test(n))||wb.SheetNames[0];const data=XLSX.utils.sheet_to_json(wb.Sheets[sn],{defval:'',raw:false});
+ rows=data.map(r=>({personId:String(r['Database Person ID']||r['Person ID']||'').trim(),name:String(r['Person Name']||r['Name']||'').trim(),fsid:String(r['FamilySearch ID']||r['FamilySearch Profile ID']||'').trim().toUpperCase(),url:String(r['FamilySearch Profile URL']||'').trim()})).filter(r=>r.fsid);
+ say('fileStatus','Read '+data.length+' spreadsheet rows; found '+rows.length+' rows with a FamilySearch ID. Sheet: '+sn+'.','ok');refreshButtons();}
+ catch(e){say('fileStatus','Could not read spreadsheet: '+(e.message||e),'bad')}
+};
+function refreshButtons(){$('preview').disabled=!(adminOK&&rows.length);$('apply').disabled=!(adminOK&&updates.length);}
+$('preview').onclick=async()=>{
+ $('preview').disabled=true;$('apply').disabled=true;updates=[];say('previewStatus','Loading current live archive and checking matches…');
+ try{
+  if(!adminOK&&!await checkAuth())return;
+  live=await window.archiveApi.loadDatabase();
+  if(!Array.isArray(live.people)||!Array.isArray(live.relationships))throw Error('Live archive did not return valid people and relationships.');
+  const norm=x=>String(x??'').trim().replace(/^@|@$/g,'').toUpperCase();
+  const peopleById=new Map(live.people.map(p=>[norm(p['Person ID']||p.person_id||p.id),p]));
+  const assigned=new Map();
+  for(const p of live.people){const src=String(p.sources||p['Source IDs']||p.source_ids||'');const m=src.match(/FamilySearch\s+([A-Z0-9-]{4,30})/ig)||[];for(const x of m){const id=x.replace(/FamilySearch\s+/i,'').toUpperCase();if(!assigned.has(id))assigned.set(id,[]);assigned.get(id).push(norm(p['Person ID']||p.person_id||p.id));}}
+  const seen=new Set(),skip=[],proposed=[];
+  for(const r of rows){
+   if(!r.personId||!r.fsid){skip.push(r.name+': missing database person ID or FamilySearch ID');continue}
+   if(r.fsid==='P6CV-15C'){skip.push(r.name+': disputed duplicate ID P6CV-15C held for review');continue}
+   const key=norm(r.personId),p=peopleById.get(key);if(!p){skip.push(r.name+': database person ID '+r.personId+' not found in live archive');continue}
+   if(seen.has(key)){skip.push(r.name+': duplicate spreadsheet row for '+r.personId);continue}seen.add(key);
+   const existing=String(p.sources||p['Source IDs']||p.source_ids||'');
+   if(new RegExp('FamilySearch\\s+'+r.fsid.replace(/[.*+?^${}()|[\\]\\\\]/g,'\\$&')+'(?![A-Z0-9-])','i').test(existing)){skip.push(r.name+': this ID already appears on the person');continue}
+   const owners=assigned.get(r.fsid)||[];
+   if(owners.some(owner=>owner!==key)){skip.push(r.name+': FamilySearch ID '+r.fsid+' already appears on another live record ('+owners.join(', ')+')');continue}
+   const url='https://www.familysearch.org/en/tree/person/details/'+r.fsid;
+   proposed.push({r,p,key,existing,url});
+  }
+  updates=proposed;
+  let msg='Live archive loaded: '+live.people.length.toLocaleString()+' people and '+live.relationships.length.toLocaleString()+' relationships.\n\nReady to add: '+updates.length+' IDs.\n';
+  msg+=updates.slice(0,40).map(x=>'• '+(x.r.name||x.p.Name||x.p.name)+' — '+x.r.fsid).join('\n');
+  if(updates.length>40)msg+='\n… and '+(updates.length-40)+' more.';
+  msg+='\n\nSkipped for safety: '+skip.length+'.\n'+skip.slice(0,25).map(x=>'• '+x).join('\n');
+  if(skip.length>25)msg+='\n… and '+(skip.length-25)+' more.';
+  say('previewStatus',msg,updates.length?'ok':'warn');
+  say('result','Preview only. No changes have been made.','warn');
+  $('apply').disabled=!updates.length;$('preview').disabled=false;
+ }catch(e){say('previewStatus','Preview failed: '+(e.message||e),'bad');$('preview').disabled=false}
+};
+$('apply').onclick=async()=>{
+ if(!adminOK||!live||!updates.length)return;
+ if(!confirm('Save '+updates.length+' FamilySearch IDs to the LIVE archive? Only source IDs will be changed. The disputed P6CV-15C records are excluded.'))return;
+ $('apply').disabled=true;$('preview').disabled=true;let done=0,failed=[];
+ say('result','Saving 0 of '+updates.length+'…');
+ const norm=x=>String(x??'').trim().replace(/^@|@$/g,'').toUpperCase();
+ try{
+  for(const x of updates){
+   try{
+    const p=x.p;
+    const sources=(x.existing?x.existing.trim().replace(/[;\s]*$/,'')+'; ':'')+'FamilySearch '+x.r.fsid;
+    const payload={...p,'Person ID':String(p['Person ID']||p.person_id||p.id),Name:String(p.Name||p.name||x.r.name),'Source IDs':sources,sources};
+    const rels=live.relationships.filter(r=>norm(r.person1||r.a||r.person1_id)===x.key||norm(r.person2||r.b||r.person2_id)===x.key).map(r=>({...r,person1:String(r.person1||r.a||r.person1_id||''),person2:String(r.person2||r.b||r.person2_id||'')}));
+    const result=await window.archiveApi.savePerson(payload,rels,[]);
+    if(!result||!result.ok)throw Error('Archive did not confirm save');
+    done++;say('result','Saved '+done+' of '+updates.length+' IDs. Current: '+(x.r.name||x.p.Name||x.p.name));
+   }catch(e){failed.push((x.r.name||x.p.Name||x.p.name)+' ('+x.r.fsid+'): '+(e.message||e));}
+  }
+  let msg='Finished. Confirmed saves: '+done+' of '+updates.length+'.\n';
+  if(failed.length)msg+='\nCould not confirm '+failed.length+' saves:\n'+failed.join('\n');
+  msg+='\n\nPlease return to the family tree and refresh it. Open one or two updated profiles and check that the FamilySearch button opens the expected profile.';
+  say('result',msg,failed.length?'warn':'ok');
+ }catch(e){say('result','Stopped with error: '+(e.message||e)+'. Saved before stopping: '+done+'. Please check the live archive before retrying.','bad')}
+ $('preview').disabled=false;$('apply').disabled=true;
+};
+checkAuth().catch(()=>{});
+</script></body></html>
