@@ -368,9 +368,14 @@ function familySearchProfileUrl(p){
     return urlMatch?'https://www.familysearch.org/tree/person/details/'+encodeURIComponent(urlMatch[1]):'';
   };
   const records=[p,...(p.archiveFields&&typeof p.archiveFields==='object'?[p.archiveFields]:[])];
-  const sourceText=String(p.sources??p['Source IDs']??p.sourceIds??'');
+  // Source fields can exist alongside an empty display-only "sources" value.
+  // Check every likely source-ID field rather than letting an empty p.sources hide it.
+  const sourceText=[
+    p.sources,p['Source IDs'],p.sourceIds,p.source_ids,p.sourceIDs,
+    p['Source ID'],p.sourceId,p.source_id,p.jsonExtra
+  ].filter(v=>v!==undefined&&v!==null).map(v=>typeof v==='string'?v:JSON.stringify(v)).join(' | ');
   const sourceMatch=sourceText.match(/FamilySearch\s+([A-Za-z0-9-]{4,30})/i);
-  if(sourceMatch)return 'https://www.familysearch.org/tree/person/details/'+encodeURIComponent(sourceMatch[1]);
+  if(sourceMatch)return 'https://www.familysearch.org/en/tree/person/details/'+encodeURIComponent(sourceMatch[1]);
   // Some archive exports keep less-common fields inside JSON Extra.
   if(typeof p.jsonExtra==='string'&&p.jsonExtra.trim()){
     try{const extra=JSON.parse(p.jsonExtra);if(extra&&typeof extra==='object')records.push(extra)}catch(e){}
