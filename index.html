@@ -367,7 +367,7 @@ function familySearchProfileUrl(p){
   };
   const records=[p,...(p.archiveFields&&typeof p.archiveFields==='object'?[p.archiveFields]:[])];
   const sourceText=String(p.sources??p['Source IDs']??p.sourceIds??'');
-  const sourceMatch=sourceText.match(/FamilySearch\\s+([A-Za-z0-9-]{4,30})/i);
+  const sourceMatch=sourceText.match(/FamilySearch\s+([A-Za-z0-9-]{4,30})/i);
   if(sourceMatch)return 'https://www.familysearch.org/tree/person/details/'+encodeURIComponent(sourceMatch[1]);
   // Some archive exports keep less-common fields inside JSON Extra.
   if(typeof p.jsonExtra==='string'&&p.jsonExtra.trim()){
