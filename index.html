@@ -337,7 +337,8 @@ function setRelationshipFinderSignedInPerson(){
   ].filter(Boolean).map(String);
   let match=candidates.map(person).find(Boolean);
   if(!match){
-    const names=[currentUser.name,currentUser.nickname,[currentUser.given_name,currentUser.family_name].filter(Boolean).join(' ')]
+    const meta=currentUser.user_metadata||{};
+    const names=[currentUser.name,currentUser.full_name,currentUser.nickname,[currentUser.given_name,currentUser.family_name].filter(Boolean).join(' '),meta.full_name,meta.name,meta.nickname,[meta.given_name,meta.family_name].filter(Boolean).join(' ')]
       .map(norm).filter(Boolean);
     match=allPeople().find(p=>names.includes(norm(p.name)));
   }
@@ -492,14 +493,18 @@ function resolveAlanPerson(){
  return scored[0].p;
 }
 function resolveViewpointPerson(){
- const mappedId=String(currentUser?.personId??currentUser?.person_id??currentUser?.['Person ID']??'').trim();
- // Prefer the administrator-approved mapping for every account.
+ const mappedId=String(currentUser?.personId??currentUser?.person_id??currentUser?.['Person ID']??currentUser?.user_metadata?.person_id??currentUser?.app_metadata?.person_id??'').trim();
  if(mappedId&&person(mappedId))return person(mappedId);
- // The archive owner's account can safely fall back to Alan's uniquely verified record.
- // Never show Alan's relationships for another signed-in person.
- const email=String(currentUser?.email||'').trim().toLowerCase();
- if(currentUser&&email==='alanfleury1@gmail.com')return resolveAlanPerson();
- if(currentUser)return null;
+ if(currentUser){
+  const norm=value=>String(value||'').trim().replace(/\\s+/g,' ').toLocaleLowerCase();
+  const meta=currentUser.user_metadata||{};
+  const names=[currentUser.name,currentUser.full_name,currentUser.nickname,currentUser.given_name&&currentUser.family_name?[currentUser.given_name,currentUser.family_name].join(' '):'',meta.full_name,meta.name,meta.nickname,meta.given_name&&meta.family_name?[meta.given_name,meta.family_name].join(' '):''].map(norm).filter(Boolean);
+  const matches=allPeople().filter(p=>names.includes(norm(p.name)));
+  if(matches.length===1)return matches[0];
+  const email=String(currentUser.email||'').trim().toLowerCase();
+  if(email==='alanfleury1@gmail.com')return resolveAlanPerson();
+  return null;
+ }
  return resolveAlanPerson();
 }
 function chartViewpointPerson(){const key=[String(currentUser?.email||'').toLowerCase(),String(currentUser?.personId??currentUser?.person_id??currentUser?.['Person ID']??''),pmap.size,db.relationships.length].join('|');if(key!==cachedChartViewerKey){cachedChartViewerKey=key;cachedChartViewer=resolveViewpointPerson()}return cachedChartViewer}
