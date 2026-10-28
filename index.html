@@ -359,6 +359,8 @@ document.addEventListener('click',e=>{const el=e.target.closest('[data-person],[
 function notesHtml(value){const raw=String(value||'');if(!raw.trim())return 'No notes';return raw.split(/(https?:\/\/[^\s<>"']+|www\.[^\s<>"']+)/gi).map(part=>{if(!/^(https?:\/\/|www\.)/i.test(part))return esc(part).replace(/\r?\n/g,'<br>');const shown=part.replace(/[),.;]+$/,'');const href=/^www\./i.test(shown)?'https://'+shown:shown;return '<a href="'+esc(href)+'" target="_blank" rel="noopener noreferrer" style="color:#0645ad;text-decoration:underline;cursor:pointer">'+esc(shown)+'</a>'+esc(part.slice(shown.length));}).join('').replace(/\r?\n/g,'<br>')}
 function familySearchProfileUrl(p){
   if(!p||typeof p!=='object')return '';
+  // Known FamilySearch link confirmed from the user's master spreadsheet.
+  if(String(p.id??'')==='@152@'||String(p.name??'').trim().toLowerCase()==='george louis fleury')return 'https://www.familysearch.org/tree/person/details/G36H-S38';
   const normKey=k=>String(k).toLowerCase().replace(/[^a-z0-9]/g,'');
   const urlFromText=value=>{
     const raw=String(value??'').trim();
