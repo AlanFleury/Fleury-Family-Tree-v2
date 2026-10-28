@@ -360,19 +360,34 @@ function notesHtml(value){const raw=String(value||'');if(!raw.trim())return 'No 
 function familySearchProfileUrl(p){
   if(!p||typeof p!=='object')return '';
   const normKey=k=>String(k).toLowerCase().replace(/[^a-z0-9]/g,'');
-  const keys=Object.keys(p);
-  const preferred=keys.filter(k=>/(familysearch|fsid)/i.test(normKey(k)));
-  const candidates=[...preferred,...['familySearchId','familysearch_id','FamilySearch ID','FamilySearchID','fsid','FS ID'].filter(k=>Object.prototype.hasOwnProperty.call(p,k))];
-  for(const key of [...new Set(candidates)]){
-    const value=p[key];
+  const urlFromText=value=>{
+    const raw=String(value??'').trim();
+    const urlMatch=raw.match(/(?:https?:\/\/)?(?:www\.)?familysearch\.org\/tree\/person\/details\/([A-Za-z0-9-]+)/i);
+    return urlMatch?'https://www.familysearch.org/tree/person/details/'+encodeURIComponent(urlMatch[1]):'';
+  };
+  const records=[p];
+  // Some archive exports keep less-common fields inside JSON Extra.
+  if(typeof p.jsonExtra==='string'&&p.jsonExtra.trim()){
+    try{const extra=JSON.parse(p.jsonExtra);if(extra&&typeof extra==='object')records.push(extra)}catch(e){}
+  }else if(p.jsonExtra&&typeof p.jsonExtra==='object')records.push(p.jsonExtra);
+  // First check explicit FamilySearch fields, wherever the archive stored them.
+  for(const record of records){
+    for(const [key,value] of Object.entries(record)){
+      if(!/(familysearch|fsid)/i.test(normKey(key))||value==null)continue;
+      const raw=typeof value==='string'||typeof value==='number'?String(value).trim():'';
+      if(!raw)continue;
+      const fromUrl=urlFromText(raw);if(fromUrl)return fromUrl;
+      if(/^[A-Za-z0-9]{4}-[A-Za-z0-9]{3,5}$/.test(raw))
+        return 'https://www.familysearch.org/tree/person/details/'+encodeURIComponent(raw);
+    }
+  }
+  // Also recognise a FamilySearch URL or explicitly labelled ID in Sources/Notes.
+  for(const value of [p.sources,p.notes,...records.slice(1).flatMap(r=>Object.values(r))]){
     if(value==null)continue;
-    let raw=typeof value==='string'||typeof value==='number'?String(value).trim():'';
-    if(!raw)continue;
-    const urlMatch=raw.match(/familysearch\.org\/tree\/person\/details\/([A-Za-z0-9-]+)/i);
-    if(urlMatch)return 'https://www.familysearch.org/tree/person/details/'+encodeURIComponent(urlMatch[1]);
-    if(/^https?:\/\//i.test(raw))continue;
-    if(/^[A-Za-z0-9]{4}-[A-Za-z0-9]{3,5}$/.test(raw)||/^[A-Za-z0-9-]{4,20}$/.test(raw))
-      return 'https://www.familysearch.org/tree/person/details/'+encodeURIComponent(raw);
+    const raw=typeof value==='string'?value:String(value);
+    const fromUrl=urlFromText(raw);if(fromUrl)return fromUrl;
+    const idMatch=raw.match(/family\s*search(?:\s*(?:person)?\s*id)?\s*[:=#-]\s*([A-Za-z0-9]{4}-[A-Za-z0-9]{3,5})/i);
+    if(idMatch)return 'https://www.familysearch.org/tree/person/details/'+encodeURIComponent(idMatch[1]);
   }
   return '';
 }
