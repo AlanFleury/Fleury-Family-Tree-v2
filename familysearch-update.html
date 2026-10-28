@@ -27,7 +27,10 @@ $('file').onchange=async()=>{
  rows=[]; updates=[];live=null;$('apply').disabled=true;$('preview').disabled=true;
  const f=$('file').files[0];if(!f){say('fileStatus','No spreadsheet selected.');return}
  try{const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});const sn=wb.SheetNames.find(n=>/familysearch|return|missing|people/i.test(n))||wb.SheetNames[0];const data=XLSX.utils.sheet_to_json(wb.Sheets[sn],{defval:'',raw:false});
- rows=data.map(r=>({personId:String(r['Database Person ID']||r['Person ID']||'').trim(),name:String(r['Person Name']||r['Name']||'').trim(),fsid:String(r['FamilySearch ID']||r['FamilySearch Profile ID']||'').trim().toUpperCase(),url:String(r['FamilySearch Profile URL']||'').trim()})).filter(r=>r.fsid);
+ const cleanHeader=h=>String(h||'').replace(/\\s*\\([^)]*\\)\\s*/g,' ').replace(/\\s+/g,' ').trim().toLowerCase();
+ const columns=Object.fromEntries(Object.keys(data[0]||{}).map(h=>[cleanHeader(h),h]));
+ const cell=(r,...names)=>{for(const n of names){const h=columns[cleanHeader(n)];if(h!==undefined&&r[h]!==undefined&&r[h]!==null&&String(r[h]).trim()!=='')return String(r[h]).trim()}return ''};
+ rows=data.map(r=>({personId:cell(r,'Database Person ID','Person ID'),name:cell(r,'Person Name','Name'),fsid:cell(r,'FamilySearch ID','FamilySearch Profile ID').toUpperCase(),url:cell(r,'FamilySearch Profile URL')})).filter(r=>r.fsid);
  say('fileStatus','Read '+data.length+' spreadsheet rows; found '+rows.length+' rows with a FamilySearch ID. Sheet: '+sn+'.','ok');refreshButtons();}
  catch(e){say('fileStatus','Could not read spreadsheet: '+(e.message||e),'bad')}
 };
