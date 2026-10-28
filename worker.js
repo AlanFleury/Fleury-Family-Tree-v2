@@ -92,8 +92,8 @@ async function auth(request,env){
     "SELECT role, person_id AS personId, email FROM users WHERE auth_sub=?"
   ).bind(sub).first();
 
-  // One-time bootstrap for the archive owner. The email is accepted only
-  // when Auth0's /userinfo endpoint confirms the authenticated identity.
+  // Recover an approved user's mapping if Auth0 issued a new subject ID.
+  // Only trust the email returned by Auth0 /userinfo when email_verified is true.
   if(!row){
     const userinfoResponse=await fetch(`https://${AUTH0_DOMAIN}/userinfo`,{
       headers:{Authorization:`Bearer ${token}`}
@@ -104,16 +104,18 @@ async function auth(request,env){
       const email=String(profile?.email||"").trim().toLowerCase();
       const verified=profile?.email_verified===true;
 
-      if(verified && email==="alanfleury1@gmail.com"){
+      if(verified && email){
         const existing=await env.DB.prepare(
-          "SELECT auth_sub FROM users WHERE lower(email)=lower(?)"
+          "SELECT email, role FROM users WHERE lower(email)=lower(?)"
         ).bind(email).first();
 
         if(existing){
+          // Keep the user's saved role and person_id; update only the Auth0 subject.
           await env.DB.prepare(
-            "UPDATE users SET auth_sub=?, role='admin' WHERE lower(email)=lower(?)"
+            "UPDATE users SET auth_sub=? WHERE lower(email)=lower(?)"
           ).bind(sub,email).run();
-        }else{
+        }else if(email==="alanfleury1@gmail.com"){
+          // One-time bootstrap for the archive owner only.
           await env.DB.prepare(
             "INSERT INTO users(auth_sub,email,role) VALUES(?,?,?)"
           ).bind(sub,email,"admin").run();
