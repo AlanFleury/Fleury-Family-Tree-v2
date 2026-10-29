@@ -488,8 +488,13 @@ function resolveViewpointPerson(){
   const mapped=person(candidates[0]);
   return mapped||null;
  }
- // A signed-in user without an approved Person ID must not inherit Alan's viewpoint.
- if(currentUser)return null;
+ // The archive owner may use the uniquely identified Alan record if no explicit
+ // Person ID has been assigned. Other signed-in users must have their own mapping.
+ if(currentUser){
+  const email=String(currentUser.email||'').trim().toLowerCase();
+  if(email==='alanfleury1@gmail.com')return resolveAlanPerson();
+  return null;
+ }
  return resolveAlanPerson();
 }
 function chartViewpointPerson(){const key=[String(currentUser?.email||'').toLowerCase(),String(currentUser?.personId??currentUser?.person_id??currentUser?.['Person ID']??''),pmap.size,db.relationships.length].join('|');if(key!==cachedChartViewerKey){cachedChartViewerKey=key;cachedChartViewer=resolveViewpointPerson()}return cachedChartViewer}
