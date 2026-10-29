@@ -168,9 +168,15 @@ function base64Url(value){
   for(const byte of bytes) binary+=String.fromCharCode(byte);
   return btoa(binary).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
 }
+function encodeMimeHeader(value){
+  const bytes=new TextEncoder().encode(value);
+  let binary="";
+  for(const byte of bytes) binary+=String.fromCharCode(byte);
+  return "=?UTF-8?B?"+btoa(binary)+"?=";
+}
 async function sendGmailNotification(env,{to,subject,text}){
   const token=await gmailAccessToken(env);
-  const raw=["From: Alan Fleury <alanfleury1@gmail.com>","To: "+to,"Subject: "+subject,"Content-Type: text/plain; charset=UTF-8","MIME-Version: 1.0","",text].join("\r\n");
+  const raw=["From: Alan Fleury <alanfleury1@gmail.com>","To: "+to,"Subject: "+encodeMimeHeader(subject),"Content-Type: text/plain; charset=UTF-8","MIME-Version: 1.0","",text].join("\r\n");
   const response=await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send",{method:"POST",headers:{Authorization:"Bearer "+token,"Content-Type":"application/json"},body:JSON.stringify({raw:base64Url(raw)})});
   if(!response.ok) throw new Error("Gmail send failed: "+(await response.text()).slice(0,500));
 }
