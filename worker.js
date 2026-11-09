@@ -518,6 +518,35 @@ export default {
         }
       }
 
+      if(url.pathname==="/api/archive/repair-missing-details" && request.method==="POST"){
+        if(u.role!=="admin") return json({error:"Admin access required"},403,env,origin);
+        const body=await request.json();
+        const updates=Array.isArray(body?.updates)?body.updates:[];
+        if(!updates.length||updates.length>200) return json({error:"Supply between 1 and 200 targeted person updates"},400,env,origin);
+        const allowed={Gender:"gender",Birth:"birth",Death:"death",Places:"places",Notes:"notes"};
+        let matched=0,changedPeople=0,changedFields=0,missing=[];
+        for(const item of updates){
+          const id=String(item?.id||"");
+          if(!id||!item?.fields||typeof item.fields!=="object") continue;
+          const current=await env.DB.prepare("SELECT person_id,gender,birth,death,places,notes FROM people WHERE person_id=?").bind(id).first();
+          if(!current){missing.push(id);continue}
+          matched++;
+          const sets=[],values=[];
+          for(const [label,column] of Object.entries(allowed)){
+            const value=item.fields[label];
+            if(value==null||String(value).trim()==="") continue;
+            const old=String(current[column]??"").trim().toLowerCase();
+            if(old!==""&&old!=="unknown") continue;
+            sets.push(column+"=?");values.push(String(value));
+          }
+          if(sets.length){
+            await env.DB.prepare("UPDATE people SET "+sets.join(",")+" WHERE person_id=?").bind(...values,id).run();
+            changedPeople++;changedFields+=sets.length;
+          }
+        }
+        return json({ok:true,requested:updates.length,matched,changedPeople,changedFields,missing},200,env,origin);
+      }
+
       if(url.pathname==="/api/person" && request.method==="PUT"){
         if(!["admin","editor"].includes(u.role))
           return json({error:"Editor or admin access required"},403,env,origin);
