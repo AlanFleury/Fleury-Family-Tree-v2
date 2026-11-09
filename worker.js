@@ -554,9 +554,10 @@ export default {
               name=excluded.name,gender=excluded.gender,birth=excluded.birth,death=excluded.death,
               relationship_to_alan=excluded.relationship_to_alan,evidence_status=excluded.evidence_status,
               source_ids=excluded.source_ids,notes=excluded.notes,places=excluded.places,json_extra=excluded.json_extra
-            `).bind(id,String(p.Name||""),String(p.Gender||""),String(p.Birth||""),String(p.Death||""),
-              String(p["Relationship to Alan"]||""),String(p["Evidence Status"]||""),String(p["Source IDs"]||""),
-              String(p.Notes||""),String(p.Places||""),JSON.stringify(p))
+            `).bind(id,String(p.Name??p.name??""),String(p.Gender??p.gender??""),String(p.Birth??p.birth??""),String(p.Death??p.death??""),
+              String(p["Relationship to Alan"]??p.relationship_to_alan??""),String(p["Evidence Status"]??p.evidence_status??""),
+              String(p["Source IDs"]??p.source_ids??p.sources??""),String(p.Notes??p.notes??""),
+              String(p.Places??p.places??""),JSON.stringify(p))
           ];
           const relatedIds=new Set([id]);
           for(const rp of relatedPeople){
