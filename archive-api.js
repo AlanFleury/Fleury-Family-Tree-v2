@@ -36,7 +36,7 @@ async function init(){
     history.replaceState({},document.title,location.pathname);
     // If sign-in began on a utility page, resume that exact page (including its recovery fragment).
     let returnTo=null;
-    try{ returnTo=sessionStorage.getItem('fleury_auth_return_to'); sessionStorage.removeItem('fleury_auth_return_to'); }catch(e){}
+    try{ returnTo=localStorage.getItem('fleury_auth_return_to'); localStorage.removeItem('fleury_auth_return_to'); }catch(e){}
     if(returnTo){
       try{
         const target=new URL(returnTo,location.origin);
@@ -64,7 +64,7 @@ async function signInWithEmail(){
   const c=cfg();
   if(!auth0Client) await init();
   // Preserve the utility page URL while using the main site's approved callback.
-  try{ sessionStorage.setItem('fleury_auth_return_to',location.href); }catch(e){}
+  try{ localStorage.setItem('fleury_auth_return_to',location.href); }catch(e){}
   await auth0Client.loginWithRedirect({
     authorizationParams:{
       audience:c.AUTH0_AUDIENCE,
