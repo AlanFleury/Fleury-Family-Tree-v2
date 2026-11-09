@@ -195,6 +195,11 @@ async function mergePeople(person,duplicateId){
   return api('/api/person/merge',{method:'POST',body:JSON.stringify({person,duplicateId:dropId})});
 }
 
+async function repairMissingDetails(updates){
+  if(!Array.isArray(updates)||!updates.length) throw new Error('At least one targeted update is required.');
+  return api('/api/archive/repair-missing-details',{method:'POST',body:JSON.stringify({updates})});
+}
+
 async function startGmailOAuth(){const data=await api('/api/gmail/start');if(!data?.url)throw new Error('Gmail OAuth setup URL was not returned.');location.href=data.url;}
 async function testGmailNotification(){return api('/api/gmail/test',{method:'POST',body:JSON.stringify({})});}
 
@@ -244,7 +249,7 @@ async function restoreArchiveFromWorkbook(data,onProgress){
 }
 
 window.archiveApi={
-  initAuth,signInWithEmail,signOutUser,getMyRole,startGmailOAuth,testGmailNotification,restoreArchiveFromWorkbook,
+  initAuth,signInWithEmail,signOutUser,getMyRole,repairMissingDetails,startGmailOAuth,testGmailNotification,restoreArchiveFromWorkbook,
   loadDatabase,saveDatabase,savePerson,deletePerson,mergePeople,requestAccess,listAccessRequests,reviewAccessRequest,
   listUsers,updateUser,savePersonMapping
 };
