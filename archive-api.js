@@ -25,13 +25,27 @@ async function init(){
     cacheLocation:'localstorage',
     authorizationParams:{
       audience:c.AUTH0_AUDIENCE,
-      redirect_uri:location.origin+location.pathname
+      // Always return through the main site's already-approved Auth0 callback.
+      // Individual utility pages are not necessarily listed in Auth0 Allowed Callback URLs.
+      redirect_uri:location.origin+'/Fleury-Family-Tree-v2/'
     }
   });
 
   if(location.search.includes('code=')&&location.search.includes('state=')){
     await auth0Client.handleRedirectCallback();
     history.replaceState({},document.title,location.pathname);
+    // If sign-in began on a utility page, resume that exact page (including its recovery fragment).
+    let returnTo=null;
+    try{ returnTo=sessionStorage.getItem('fleury_auth_return_to'); sessionStorage.removeItem('fleury_auth_return_to'); }catch(e){}
+    if(returnTo){
+      try{
+        const target=new URL(returnTo,location.origin);
+        if(target.origin===location.origin && target.pathname.startsWith('/Fleury-Family-Tree-v2/')){
+          location.replace(target.href);
+          return null;
+        }
+      }catch(e){}
+    }
   }
 
   currentUser=await auth0Client.isAuthenticated()
@@ -49,6 +63,8 @@ async function initAuth(handler){
 async function signInWithEmail(){
   const c=cfg();
   if(!auth0Client) await init();
+  // Preserve the utility page URL while using the main site's approved callback.
+  try{ sessionStorage.setItem('fleury_auth_return_to',location.href); }catch(e){}
   await auth0Client.loginWithRedirect({
     authorizationParams:{
       audience:c.AUTH0_AUDIENCE,
