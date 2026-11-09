@@ -85,7 +85,12 @@ $('apply').onclick=async()=>{
    try{
     const p=x.p;
     const sources=(x.existing?x.existing.trim().replace(/[;\s]*$/,'')+'; ':'')+'FamilySearch '+x.r.fsid;
-    const payload={...p,'Person ID':String(p['Person ID']||p.person_id||p.id),Name:String(p.Name||p.name||x.r.name),'Source IDs':sources,sources};
+    const payload={...p,'Person ID':String(p['Person ID']||p.person_id||p.id),Name:String(p.Name||p.name||x.r.name),
+      Gender:String(p.Gender??p.gender??''),Birth:String(p.Birth??p.birth??''),Death:String(p.Death??p.death??''),
+      Places:String(p.Places??p.places??''),Notes:String(p.Notes??p.notes??''),
+      'Relationship to Alan':String(p['Relationship to Alan']??p.relationship_to_alan??''),
+      'Evidence Status':String(p['Evidence Status']??p.evidence_status??''),
+      'Source IDs':sources,sources};
     const rels=live.relationships.filter(r=>norm(r.person1||r.a||r.person1_id)===x.key||norm(r.person2||r.b||r.person2_id)===x.key).map(r=>({...r,person1:String(r.person1||r.a||r.person1_id||''),person2:String(r.person2||r.b||r.person2_id||'')}));
     const result=await window.archiveApi.savePerson(payload,rels,[]);
     if(!result||!result.ok)throw Error('Archive did not confirm save');
