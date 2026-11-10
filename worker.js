@@ -132,6 +132,24 @@ async function auth(request,env){
   return {...row,sub};
 }
 
+
+async function ensureAuditTable(env){
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS audit_log(
+    id INTEGER PRIMARY KEY AUTOINCREMENT, occurred_at TEXT NOT NULL, actor_email TEXT NOT NULL,
+    actor_role TEXT NOT NULL, action TEXT NOT NULL, person_id TEXT, summary TEXT NOT NULL,
+    before_json TEXT, after_json TEXT
+  )`).run();
+}
+function auditStatement(env,u,action,personId,summary,beforeValue=null,afterValue=null){
+  return env.DB.prepare(`INSERT INTO audit_log(occurred_at,actor_email,actor_role,action,person_id,summary,before_json,after_json)
+    VALUES(?,?,?,?,?,?,?,?)`).bind(new Date().toISOString(),String(u.email||u.sub||"unknown"),String(u.role||"unknown"),
+    String(action),personId==null?null:String(personId),String(summary||"").slice(0,1000),
+    beforeValue==null?null:JSON.stringify(beforeValue),afterValue==null?null:JSON.stringify(afterValue));
+}
+function isPrivacyRestricted(row){
+  try{const x=JSON.parse(String(row?.json_extra||"{}"));return x?.privacy_restricted===true||x?.privacyLevel==="restricted"}catch(e){return false}
+}
+
 function mapPerson(r){
   const x={...r};
   delete x.name;
@@ -207,7 +225,7 @@ async function verifiedProfile(token){
   return {profile,email,sub:String(profile?.sub||"")};
 }
 
-async function archivePage(env,table,offset,limit){
+async function archivePage(env,table,offset,limit,u=null){
   await ensureRelationshipDetails(env);
   const safeOffset=Math.max(0,Number.isFinite(offset)?Math.floor(offset):0);
   const safeLimit=Math.min(5000,Math.max(1,Number.isFinite(limit)?Math.floor(limit):5000));
@@ -216,7 +234,8 @@ async function archivePage(env,table,offset,limit){
     const result=await env.DB.prepare(
       "SELECT * FROM people LIMIT ? OFFSET ?"
     ).bind(safeLimit,safeOffset).all();
-    return {people:result.results.map(mapPerson),offset:safeOffset,limit:safeLimit};
+    const rows=u?.role==='viewer'?result.results.filter(p=>!isPrivacyRestricted(p)||String(p.person_id)===String(u.personId||'')):result.results;
+    return {people:rows.map(mapPerson),offset:safeOffset,limit:safeLimit};
   }
 
   if(table==="relationships"){
@@ -249,7 +268,7 @@ async function ensureRelationshipDetails(env){
     ["relationship_place","ALTER TABLE relationships ADD COLUMN relationship_place TEXT NOT NULL DEFAULT ''"]
   ]) if(!names.has(name)) await env.DB.prepare(sql).run();
 }
-async function archive(env){
+async function archive(env,u=null){
   await ensureRelationshipDetails(env);
   const people=await env.DB.prepare(
     "SELECT * FROM people"
@@ -262,8 +281,8 @@ async function archive(env){
   ).all();
 
   return {
-    people:people.results.map(mapPerson),
-    relationships:relationships.results,
+    people:(u?.role==='viewer'?people.results.filter(p=>!isPrivacyRestricted(p)||String(p.person_id)===String(u.personId||'')):people.results).map(mapPerson),
+    relationships:(u?.role==='viewer'?relationships.results.filter(r=>{const allowed=new Set(people.results.filter(p=>!isPrivacyRestricted(p)||String(p.person_id)===String(u.personId||'')).map(p=>String(p.person_id)));return allowed.has(String(r.person1))&&allowed.has(String(r.person2))}):relationships.results),
     meta:Object.fromEntries(meta.results.map(x=>[x.key,x.value]))
   };
 }
@@ -386,9 +405,43 @@ export default {
         const table=url.searchParams.get("table")||"people";
         const offset=Number(url.searchParams.get("offset")||"0");
         const limit=Number(url.searchParams.get("limit")||"5000");
-        return json(await archivePage(env,table,offset,limit),200,env);
+        return json(await archivePage(env,table,offset,limit,u),200,env);
       }
 
+
+
+      if(url.pathname==="/api/audit" && request.method==="GET"){
+        if(u.role!=="admin") return json({error:"Admin access required"},403,env,origin);
+        await ensureAuditTable(env);
+        const limit=Math.min(200,Math.max(1,Number(url.searchParams.get("limit")||100)));
+        const rows=await env.DB.prepare("SELECT id,occurred_at,actor_email,actor_role,action,person_id,summary,before_json,after_json FROM audit_log ORDER BY id DESC LIMIT ?").bind(limit).all();
+        return json({entries:rows.results},200,env,origin);
+      }
+      if(url.pathname==="/api/privacy/people" && request.method==="GET"){
+        if(u.role!=="admin") return json({error:"Admin access required"},403,env,origin);
+        const q=String(url.searchParams.get("q")||"").trim().slice(0,120);
+        const rows=q
+          ? await env.DB.prepare("SELECT person_id,name,birth,death,json_extra FROM people WHERE name LIKE ? OR person_id LIKE ? ORDER BY name COLLATE NOCASE LIMIT 60").bind("%"+q+"%","%"+q+"%").all()
+          : await env.DB.prepare("SELECT person_id,name,birth,death,json_extra FROM people WHERE json_extra LIKE '%privacy_restricted%' ORDER BY name COLLATE NOCASE LIMIT 200").all();
+        return json({people:rows.results.map(p=>({personId:p.person_id,name:p.name,birth:p.birth,death:p.death,restricted:isPrivacyRestricted(p)}))},200,env,origin);
+      }
+      if(url.pathname==="/api/privacy/person" && request.method==="PUT"){
+        if(u.role!=="admin") return json({error:"Admin access required"},403,env,origin);
+        const x=await request.json(),id=String(x?.personId||"").trim(),restricted=x?.restricted;
+        if(!id||typeof restricted!=="boolean") return json({error:"Person ID and a true/false restricted setting are required"},400,env,origin);
+        await ensureAuditTable(env);
+        const row=await env.DB.prepare("SELECT * FROM people WHERE person_id=?").bind(id).first();
+        if(!row) return json({error:"Person not found"},404,env,origin);
+        let extra={};try{extra=JSON.parse(String(row.json_extra||"{}"))||{}}catch(e){extra={}}
+        const before={personId:id,restricted:isPrivacyRestricted(row)};
+        extra.privacy_restricted=restricted;
+        const after={personId:id,restricted};
+        await env.DB.batch([
+          env.DB.prepare("UPDATE people SET json_extra=? WHERE person_id=?").bind(JSON.stringify(extra),id),
+          auditStatement(env,u,"privacy_setting",id,restricted?"Restricted this person from viewer accounts":"Removed viewer privacy restriction",before,after)
+        ]);
+        return json({ok:true,personId:id,restricted},200,env,origin);
+      }
 
       if(url.pathname==="/api/access-requests" && request.method==="GET"){
         if(u.role!=="admin") return json({error:"Admin access required"},403,env,origin);
@@ -451,10 +504,13 @@ export default {
         if(!email) return json({error:"Email is required"},400,env);
         if(!["admin","editor","viewer"].includes(role))
           return json({error:"Role must be admin, editor, or viewer"},400,env);
+        await ensureAuditTable(env);
+        const prior=await env.DB.prepare("SELECT email,role,person_id AS personId FROM users WHERE lower(email)=lower(?)").bind(email).first();
         const result=await env.DB.prepare(
           "UPDATE users SET role=?, person_id=? WHERE lower(email)=lower(?)"
         ).bind(role,personId,email).run();
         if(!result.meta?.changes) return json({error:"No approved user matched that email"},404,env);
+        await env.DB.prepare("INSERT INTO audit_log(occurred_at,actor_email,actor_role,action,person_id,summary,before_json,after_json) VALUES(?,?,?,?,?,?,?,?)").bind(new Date().toISOString(),String(u.email||u.sub),u.role,"user_permissions",null,"Changed approved user role or person mapping",JSON.stringify(prior),JSON.stringify({email,role,personId})).run();
         return json({ok:true,email,role,personId},200,env);
       }
 
@@ -476,6 +532,9 @@ export default {
         const x=await request.json(),p=x?.person||{};
         const keepId=String(p["Person ID"]||p.person_id||p.id||""),dropId=String(x?.duplicateId||"");
         if(!keepId||!dropId||keepId===dropId) return json({error:"Two different person IDs are required"},400,env,origin);
+        await ensureAuditTable(env);
+        const mergeBeforePeople=await env.DB.prepare("SELECT * FROM people WHERE person_id IN (?,?)").bind(keepId,dropId).all();
+        const mergeBeforeRels=await env.DB.prepare("SELECT * FROM relationships WHERE person1 IN (?,?) OR person2 IN (?,?)").bind(keepId,dropId,keepId,dropId).all();
         const existing=await env.DB.prepare("SELECT person_id FROM people WHERE person_id IN (?,?)").bind(keepId,dropId).all();
         const found=new Set((existing.results||[]).map(r=>String(r.person_id)));
         if(!found.has(keepId)||!found.has(dropId)) return json({error:"Both people must exist in the archive before merging"},404,env,origin);
@@ -509,7 +568,8 @@ export default {
               SELECT r.rowid FROM relationships r WHERE (r.person1=? OR r.person2=?)
               AND EXISTS (SELECT 1 FROM relationships d WHERE d.type=r.type AND d.person1=r.person1 AND d.person2=r.person2 AND d.rowid<r.rowid)
             )`).bind(keepId,keepId),
-            env.DB.prepare("DELETE FROM people WHERE person_id=?").bind(dropId)
+            env.DB.prepare("DELETE FROM people WHERE person_id=?").bind(dropId),
+            auditStatement(env,u,"person_merge",keepId,"Merged duplicate person "+dropId+" into "+keepId,{people:mergeBeforePeople.results||[],relationships:mergeBeforeRels.results||[]},{keptPersonId:keepId,removedPersonId:dropId,relationshipsRedirected:true})
           ]);
           return json({ok:true,keptPersonId:keepId,removedPersonId:dropId,relationshipsRedirected:true},200,env,origin);
         }catch(e){
@@ -560,6 +620,8 @@ export default {
         if(relatedPeople.length>100) return json({error:"A single save may create at most 100 related people"},400,env,origin);
 
         await ensureRelationshipDetails(env);
+        await ensureAuditTable(env);
+        const beforePerson=await env.DB.prepare("SELECT * FROM people WHERE person_id=?").bind(id).first();
         const familyTypes=new Set(["parent","mother","father","child","son","daughter","spouse","partner","husband","wife"]);
         const cleanFamily=family.map(r=>({
           type:String(r?.type||"").toLowerCase(),
@@ -575,6 +637,7 @@ export default {
         try{
           const current=await env.DB.prepare(`SELECT rowid AS row_id,type,person1,person2,relationship_status,relationship_date,end_date,relationship_place FROM relationships
             WHERE (person1=? OR person2=?) AND lower(type) IN ('parent','mother','father','child','son','daughter','spouse','partner','husband','wife')`).bind(id,id).all();
+          const beforeSnapshot={person:beforePerson?mapPerson(beforePerson):null,relationships:current.results||[]};
           const existingKeys=new Set(),writes=[
             env.DB.prepare(`INSERT INTO people(
               person_id,name,gender,birth,death,relationship_to_alan,evidence_status,source_ids,notes,places,json_extra
@@ -614,6 +677,7 @@ export default {
           for(const [key,r] of desired) if(!existingKeys.has(key)){
             writes.push(env.DB.prepare("INSERT INTO relationships(type,person1,person2,relationship_status,relationship_date,end_date,relationship_place) VALUES(?,?,?,?,?,?,?)").bind(r.type,r.person1,r.person2,r.relationship_status,r.relationship_date,r.end_date,r.relationship_place));
           }
+          writes.push(auditStatement(env,u,beforePerson?"person_update":"person_create",id,beforePerson?"Updated person record and immediate family relationships":"Created person record and immediate family relationships",beforeSnapshot,{person:p,relationships:cleanFamily}));
           await env.DB.batch(writes);
           return json({ok:true,personId:id,relationshipsAdded:cleanFamily.length-existingKeys.size},200,env,origin);
         }catch(e){
@@ -630,9 +694,14 @@ export default {
         if(!id) return json({error:"Person ID is required"},400,env);
 
         try{
+          await ensureAuditTable(env);
+          const beforePerson=await env.DB.prepare("SELECT * FROM people WHERE person_id=?").bind(id).first();
+          if(!beforePerson) return json({error:"Person not found"},404,env,origin);
+          const beforeRels=await env.DB.prepare("SELECT * FROM relationships WHERE person1=? OR person2=?").bind(id,id).all();
           await env.DB.batch([
             env.DB.prepare("DELETE FROM relationships WHERE person1=? OR person2=?").bind(id,id),
-            env.DB.prepare("DELETE FROM people WHERE person_id=?").bind(id)
+            env.DB.prepare("DELETE FROM people WHERE person_id=?").bind(id),
+            auditStatement(env,u,"person_delete",id,"Deleted person and their recorded relationships",{person:mapPerson(beforePerson),relationships:beforeRels.results||[]},null)
           ]);
           return json({ok:true,personId:id},200,env);
         }catch(e){
@@ -760,7 +829,7 @@ export default {
       }
 
       if(url.pathname==="/api/archive" && request.method==="GET")
-        return json(await archive(env),200,env);
+        return json(await archive(env,u),200,env,origin);
 
       if(url.pathname==="/api/archive" && request.method==="PUT"){
         return json({error:"Full-archive replacement is disabled for normal saves. Use individual person/relationship operations; a verified staged restore is available to administrators."},405,env,origin);
