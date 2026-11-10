@@ -494,6 +494,7 @@ export default {
         if(!req) return json({error:"Access request not found"},404,env,origin);
         if(req.status!=="pending") return json({ok:true,status:req.status},200,env,origin);
         const now=new Date().toISOString();
+        await ensureAuditTable(env);
         if(decision==="approve"){
           if(!req.auth_sub) return json({error:"This request has no verified sign-in identity; ask the applicant to sign in again and resubmit."},400,env,origin);
           const existing=await env.DB.prepare(
@@ -509,9 +510,10 @@ export default {
             ).bind(req.auth_sub,req.email,"viewer").run();
           }
         }
-        await env.DB.prepare(
-          "UPDATE access_requests SET status=?,reviewed_at=?,reviewed_by=? WHERE id=?"
-        ).bind(decision==="approve"?"approved":"rejected",now,u.email||u.sub,id).run();
+        await env.DB.batch([
+          env.DB.prepare("UPDATE access_requests SET status=?,reviewed_at=?,reviewed_by=? WHERE id=?").bind(decision==="approve"?"approved":"rejected",now,u.email||u.sub,id),
+          auditStatement(env,u,"access_request_"+decision,null,"Reviewed access request for "+req.email,null,{requestId:id,email:req.email,status:decision==="approve"?"approved":"rejected"})
+        ]);
         return json({ok:true,id,status:decision==="approve"?"approved":"rejected"},200,env,origin);
       }
 
@@ -544,14 +546,17 @@ export default {
 
       if(url.pathname==="/api/mapping" && request.method==="PUT"){
         if(u.role!=="admin") return json({error:"Admin access required"},403,env);
+        await ensureAuditTable(env);
         const x=await request.json();
         const email=String(x?.email||"").trim();
         const personId=x?.personId==null||x.personId===""?null:String(x.personId);
         if(!email) return json({error:"Email is required"},400,env);
+        const prior=await env.DB.prepare("SELECT email,person_id AS personId FROM users WHERE lower(email)=lower(?)").bind(email).first();
         const result=await env.DB.prepare(
           "UPDATE users SET person_id=? WHERE lower(email)=lower(?)"
         ).bind(personId,email).run();
         if(!result.meta?.changes) return json({error:"No approved user matched that email"},404,env);
+        await env.DB.prepare("INSERT INTO audit_log(occurred_at,actor_email,actor_role,action,person_id,summary,before_json,after_json) VALUES(?,?,?,?,?,?,?,?)").bind(new Date().toISOString(),String(u.email||u.sub),u.role,"user_person_mapping",null,"Changed approved user-to-person mapping",JSON.stringify(prior),JSON.stringify({email,personId})).run();
         return json({ok:true,email,personId},200,env);
       }
 
@@ -829,6 +834,8 @@ export default {
         if(Number(orphan?.count||0)>0)
           return json({ok:false,people:pc,relationships:rc,meta:mc,error:"Staged relationships reference missing people. The live archive remains untouched."},409,env,origin);
         try{
+          await ensureAuditTable(env);
+          const beforeCounts={people:Number(pc),relationships:Number(rc),meta:Number(mc)};
           await env.DB.batch([
             env.DB.prepare("DELETE FROM relationships"),
             env.DB.prepare("DELETE FROM people"),
@@ -843,7 +850,8 @@ export default {
             env.DB.prepare("DELETE FROM restore_people_stage WHERE import_id=?").bind(importId),
             env.DB.prepare("DELETE FROM restore_relationships_stage WHERE import_id=?").bind(importId),
             env.DB.prepare("DELETE FROM restore_meta_stage WHERE import_id=?").bind(importId),
-            env.DB.prepare("DELETE FROM restore_imports WHERE id=?").bind(importId)
+            env.DB.prepare("DELETE FROM restore_imports WHERE id=?").bind(importId),
+            auditStatement(env,u,"archive_restore",null,"Promoted a staged master archive after structural verification",null,{importId,stagedCounts:beforeCounts})
           ]);
           const finalPeople=await env.DB.prepare("SELECT COUNT(*) AS count FROM people").first();
           const finalRelationships=await env.DB.prepare("SELECT COUNT(*) AS count FROM relationships").first();
