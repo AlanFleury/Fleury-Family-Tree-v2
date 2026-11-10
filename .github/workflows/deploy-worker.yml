@@ -17,11 +17,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Ensure private backup bucket exists
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          command: r2 bucket list
+      - name: Install Wrangler CLI
+        run: npm install --global wrangler
       - name: Create private backup bucket if missing
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
