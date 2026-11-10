@@ -456,9 +456,9 @@ function relationshipLabel(a,b){
  const sharedBiologicalParents=[...aRecordedParents].filter(parentId=>bRecordedParents.has(parentId));
  if(sharedBiologicalParents.length){
   if(sharedBiologicalParents.length>=2&&aRecordedParents.size>=2&&bRecordedParents.size>=2)return pGender(a)==='F'?'Full sister':pGender(a)==='M'?'Full brother':'Full sibling';
-  if(sharedBiologicalParents.length===1&&aRecordedParents.size>=2&&bRecordedParents.size>=2){
+  if(sharedBiologicalParents.length===1){
    const side=pGender(sharedBiologicalParents[0])==='M'?'Paternal':pGender(sharedBiologicalParents[0])==='F'?'Maternal':'';
-   return (side?side+' ':'')+(pGender(a)==='F'?'half-sister':pGender(a)==='M'?'half-brother':'half-sibling');
+   if(side)return side+' '+(pGender(a)==='F'?'half-sister':pGender(a)==='M'?'half-brother':'half-sibling');
   }
   return 'Sibling — other parent not fully recorded';
  }
