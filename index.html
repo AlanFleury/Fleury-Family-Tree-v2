@@ -1570,7 +1570,7 @@ async function useOfflineArchive(cause){
     throw cause instanceof Error?cause:new Error('The server is unavailable and no saved offline archive exists on this device yet.');
   db={people:cached.people,relationships:cached.relationships,meta:cached.meta||{}};
   currentRole='viewer';
-  signInBtn.classList.add('hidden');
+  signInBtn.classList.remove('hidden');
   signOutBtn.classList.add('hidden');
   authStatus.textContent='OFFLINE MODE — showing this device’s saved archive. Read-only until connection returns.';
   const localStatus=document.getElementById('localSaveStatus');if(localStatus){localStatus.textContent='Offline copy loaded (read-only)';localStatus.title='A saved copy was found in this browser and is being used offline.';localStatus.classList.remove('bad');localStatus.classList.add('ok')}
