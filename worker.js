@@ -242,6 +242,11 @@ async function archivePage(env,table,offset,limit,u=null){
     const result=await env.DB.prepare(
       "SELECT type, person1, person2, relationship_status, relationship_date, end_date, relationship_place FROM relationships ORDER BY rowid LIMIT ? OFFSET ?"
     ).bind(safeLimit,safeOffset).all();
+    if(u?.role==="viewer"){
+      const people=await env.DB.prepare("SELECT person_id,json_extra FROM people").all();
+      const visible=new Set(people.results.filter(p=>!isPrivacyRestricted(p)||String(p.person_id)===String(u.personId||'')).map(p=>String(p.person_id)));
+      return {relationships:result.results.filter(r=>visible.has(String(r.person1))&&visible.has(String(r.person2))),offset:safeOffset,limit:safeLimit};
+    }
     return {relationships:result.results,offset:safeOffset,limit:safeLimit};
   }
 
