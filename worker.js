@@ -660,6 +660,8 @@ export default {
         await ensureRelationshipDetails(env);
         await ensureAuditTable(env);
         const beforePerson=await env.DB.prepare("SELECT * FROM people WHERE person_id=?").bind(id).first();
+        let personJsonExtra=JSON.stringify(p);
+        if(beforePerson&&isPrivacyRestricted(beforePerson)){try{const extra=JSON.parse(personJsonExtra);extra.privacy_restricted=true;personJsonExtra=JSON.stringify(extra)}catch(e){}}
         const familyTypes=new Set(["parent","mother","father","child","son","daughter","spouse","partner","husband","wife"]);
         const cleanFamily=family.map(r=>({
           type:String(r?.type||"").toLowerCase(),
@@ -687,7 +689,7 @@ export default {
             `).bind(id,String(p.Name??p.name??""),String(p.Gender??p.gender??""),String(p.Birth??p.birth??""),String(p.Death??p.death??""),
               String(p["Relationship to Alan"]??p.relationship_to_alan??""),String(p["Evidence Status"]??p.evidence_status??""),
               String(p["Source IDs"]??p.source_ids??p.sources??""),String(p.Notes??p.notes??""),
-              String(p.Places??p.places??""),JSON.stringify(p))
+              String(p.Places??p.places??""),personJsonExtra)
           ];
           const relatedIds=new Set([id]);
           for(const rp of relatedPeople){
