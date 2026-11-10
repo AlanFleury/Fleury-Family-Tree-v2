@@ -280,14 +280,42 @@ async function archive(env,u=null){
     "SELECT key,value FROM meta"
   ).all();
 
+  const visiblePeople=u?.role==='viewer'?people.results.filter(p=>!isPrivacyRestricted(p)||String(p.person_id)===String(u.personId||'')):people.results;
+  const visibleIds=u?.role==='viewer'?new Set(visiblePeople.map(p=>String(p.person_id))):null;
   return {
-    people:(u?.role==='viewer'?people.results.filter(p=>!isPrivacyRestricted(p)||String(p.person_id)===String(u.personId||'')):people.results).map(mapPerson),
-    relationships:(u?.role==='viewer'?relationships.results.filter(r=>{const allowed=new Set(people.results.filter(p=>!isPrivacyRestricted(p)||String(p.person_id)===String(u.personId||'')).map(p=>String(p.person_id)));return allowed.has(String(r.person1))&&allowed.has(String(r.person2))}):relationships.results),
+    people:visiblePeople.map(mapPerson),
+    relationships:u?.role==='viewer'?relationships.results.filter(r=>visibleIds.has(String(r.person1))&&visibleIds.has(String(r.person2))):relationships.results,
     meta:Object.fromEntries(meta.results.map(x=>[x.key,x.value]))
   };
 }
 
+
+async function runScheduledBackup(env){
+  if(!env.BACKUPS) throw new Error("Private R2 backup bucket binding BACKUPS is not configured");
+  const data=await archive(env,null);
+  const now=new Date(),day=now.toISOString().slice(0,10),createdAt=now.toISOString();
+  const snapshot={product:"Fleury Family Tree private archive backup",version:1,createdAt,counts:{people:data.people.length,relationships:data.relationships.length,meta:Object.keys(data.meta||{}).length},...data};
+  const json=JSON.stringify(snapshot);
+  const gzip=()=>new Response(json).body.pipeThrough(new CompressionStream("gzip"));
+  const options={httpMetadata:{contentType:"application/gzip",contentDisposition:'attachment; filename="fleury-family-'+day+'.json.gz"'},customMetadata:{createdAt,people:String(data.people.length),relationships:String(data.relationships.length),format:"gzip-json"}};
+  await env.BACKUPS.put("daily/"+day+".json.gz",gzip(),options);
+  await env.BACKUPS.put("latest.json.gz",gzip(),options);
+  const cutoff=Date.now()-45*24*60*60*1000;
+  let cursor;
+  do{
+    const page=await env.BACKUPS.list({prefix:"daily/",cursor,limit:1000});
+    const expired=(page.objects||[]).filter(o=>{const d=o.key.match(/^daily\/(\d{4}-\d{2}-\d{2})\.json\.gz$/);return d&&Date.parse(d[1]+"T00:00:00Z")<cutoff}).map(o=>o.key);
+    if(expired.length) await env.BACKUPS.delete(expired);
+    cursor=page.truncated?page.cursor:undefined;
+  }while(cursor);
+  await ensureAuditTable(env);
+  await env.DB.prepare("INSERT INTO audit_log(occurred_at,actor_email,actor_role,action,person_id,summary,before_json,after_json) VALUES(?,?,?,?,?,?,?,?)")
+    .bind(createdAt,"system","system","scheduled_backup",null,"Daily compressed archive backup stored in private R2; 45-day retention",null,JSON.stringify(snapshot.counts)).run();
+  return {key:"daily/"+day+".json.gz",counts:snapshot.counts};
+}
+
 export default {
+  async scheduled(controller,env,ctx){ctx.waitUntil(runScheduledBackup(env));},
   async fetch(request,env){
     const origin=request.headers.get("Origin")||"";
     const withCors=(response)=>{
