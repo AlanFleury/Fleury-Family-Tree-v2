@@ -247,6 +247,10 @@ async function updateUser(email,role,personId=null){
   });
 }
 
+async function listAuditEntries(limit=100){return api('/api/audit?limit='+encodeURIComponent(String(limit)));}
+async function listPrivacyPeople(query=''){return api('/api/privacy/people?q='+encodeURIComponent(String(query||'')));}
+async function updatePersonPrivacy(personId,restricted){return api('/api/privacy/person',{method:'PUT',body:JSON.stringify({personId:String(personId),restricted:!!restricted})});}
+
 async function savePersonMapping(email,personId){
   return api('/api/mapping',{
     method:'PUT',
@@ -271,5 +275,5 @@ async function restoreArchiveFromWorkbook(data,onProgress){
 window.archiveApi={
   initAuth,signInWithEmail,signOutUser,getMyRole,repairMissingDetails,startGmailOAuth,testGmailNotification,restoreArchiveFromWorkbook,
   loadDatabase,saveDatabase,savePerson,deletePerson,mergePeople,requestAccess,listAccessRequests,reviewAccessRequest,
-  listUsers,updateUser,savePersonMapping
+  listUsers,updateUser,savePersonMapping,listAuditEntries,listPrivacyPeople,updatePersonPrivacy
 };
