@@ -23,6 +23,10 @@ async function init(){
     // This stores authentication tokens in this browser only; it does not
     // grant archive access without the server-side /api/me role check below.
     cacheLocation:'localstorage',
+    // Use rotating refresh tokens so returning users can renew sessions even
+    // when Safari or an in-app browser blocks third-party Auth0 cookies.
+    useRefreshTokens:true,
+    useRefreshTokensFallback:false,
     authorizationParams:{
       audience:c.AUTH0_AUDIENCE,
       // Always return through the main site's already-approved Auth0 callback.
