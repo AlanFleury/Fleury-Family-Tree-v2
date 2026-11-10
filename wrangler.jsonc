@@ -2,6 +2,10 @@
   "name": "fleury-family-api",
   "main": "worker.js",
   "compatibility_date": "2026-10-06",
+  "r2_buckets": [
+    { "binding": "BACKUPS", "bucket_name": "fleury-family-private-backups-alan" }
+  ],
+  "triggers": { "crons": ["0 2 * * *"] },
   "d1_databases": [
     {
       "binding": "DB",
