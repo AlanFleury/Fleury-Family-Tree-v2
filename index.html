@@ -451,6 +451,17 @@ function relationshipLabel(a,b){
  if((parentMap.get(b)||new Set()).has(a))return pGender(a)==='F'?'Mother':pGender(a)==='M'?'Father':'Parent';
  if((parentMap.get(a)||new Set()).has(b))return pGender(a)==='F'?'Daughter':pGender(a)==='M'?'Son':'Child';
  if((spouseMap.get(a)||new Set()).has(b))return 'Spouse / partner';
+ // Blood siblings must be identified before step-sibling logic. A shared biological parent takes precedence over a parent's later marriage/partnership.
+ const aRecordedParents=parentMap.get(a)||new Set(),bRecordedParents=parentMap.get(b)||new Set();
+ const sharedBiologicalParents=[...aRecordedParents].filter(parentId=>bRecordedParents.has(parentId));
+ if(sharedBiologicalParents.length){
+  if(sharedBiologicalParents.length>=2&&aRecordedParents.size>=2&&bRecordedParents.size>=2)return pGender(a)==='F'?'Full sister':pGender(a)==='M'?'Full brother':'Full sibling';
+  if(sharedBiologicalParents.length===1&&aRecordedParents.size>=2&&bRecordedParents.size>=2){
+   const side=pGender(sharedBiologicalParents[0])==='M'?'Paternal':pGender(sharedBiologicalParents[0])==='F'?'Maternal':'';
+   return (side?side+' ':'')+(pGender(a)==='F'?'half-sister':pGender(a)==='M'?'half-brother':'half-sibling');
+  }
+  return 'Sibling — other parent not fully recorded';
+ }
  // Step-family and in-law labels describe person a's relationship to person b.
  const aSpouses=spouseMap.get(a)||new Set(),bSpouses=spouseMap.get(b)||new Set();
  const gendered=(id,female,male,neutral)=>pGender(id)==='F'?female:pGender(id)==='M'?male:neutral;
