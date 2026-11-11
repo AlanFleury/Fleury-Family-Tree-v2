@@ -642,7 +642,8 @@ function nodeSvg(x,y,p,w=190,h=150,rel='',extra=''){
  const addLines=(value,size=9.5,weight='400',color='#111111',lineHeight=10.5,max=maxChars)=>{
   if(!value)return;
   const wrapped=wrapSvgName(String(value),max);
-  wrapped.forEach(line=>{
+  const visible=wrapped.length>2?[wrapped[0],wrapped[1].slice(0,Math.max(1,max-1))+'…']:wrapped;
+  visible.forEach(line=>{
    lines.push('<text x="'+x+'" y="'+cursor+'" fill="'+color+'" font-family="Arial, sans-serif" font-size="'+size+'" font-weight="'+weight+'" text-anchor="middle">'+esc(line)+'</text>');
    cursor+=lineHeight;
   });
@@ -655,7 +656,8 @@ function nodeSvg(x,y,p,w=190,h=150,rel='',extra=''){
  addLines(places.birth?'Born: '+places.birth:'',9,'400','#111111',10,maxChars);
  addLines(places.death?'Died: '+places.death:'',9,'400','#111111',10,maxChars);
  if(fsUrl&&fsId){
-  const fsLines=wrapSvgName('FamilySearch: '+fsId,maxChars);
+  const rawFsLines=wrapSvgName('FamilySearch: '+fsId,maxChars);
+  const fsLines=rawFsLines.length>2?[rawFsLines[0],rawFsLines[1].slice(0,Math.max(1,maxChars-1))+'…']:rawFsLines;
   fsLines.forEach(line=>{
    lines.push('<a href="'+esc(fsUrl)+'" target="_blank" rel="noopener noreferrer"><text x="'+x+'" y="'+cursor+'" fill="#0645ad" font-family="Arial, sans-serif" font-size="9" font-weight="700" text-anchor="middle" text-decoration="underline">'+esc(line)+'</text></a>');
    cursor+=10;
