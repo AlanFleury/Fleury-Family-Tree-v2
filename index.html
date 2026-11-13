@@ -967,21 +967,25 @@ function renderChartOutput(container,svg,notice=''){
   container.innerHTML=svg?'<div class="tree-scroll">'+svg+'</div>'+(notice?'<div class="notice no-print">'+notice+'</div>':''):'<div class="notice">There is not enough linked family information to draw this chart.</div>';
   if(svg){wireSvgClicks(container);wireChartPan(container)}
 }
+document.addEventListener('DOMContentLoaded',()=>{
+  const handButton=document.getElementById('chartHandTool');
+  if(!handButton||handButton.dataset.bound==='1')return;
+  handButton.dataset.bound='1';
+  handButton.addEventListener('click',()=>{
+    const viewport=document.querySelector('#chartOutput .tree-scroll');
+    if(!viewport){handButton.textContent='✋ Generate a chart first';return;}
+    const active=viewport.dataset.handPan!=='1';
+    viewport.dataset.handPan=active?'1':'0';
+    handButton.setAttribute('aria-pressed',active?'true':'false');
+    handButton.textContent=active?'✋ Hand tool: On':'✋ Hand tool: Off';
+    viewport.classList.toggle('hand-pan',active);
+  });
+});
 function wireChartPan(container){
   const viewport=container.querySelector('.tree-scroll');
   if(!viewport||viewport.dataset.panReady==='1')return;
   viewport.dataset.panReady='1';
   let pointer=null, startX=0, startY=0, startLeft=0, startTop=0, moved=false, suppressClick=false;
-  const handButton=document.getElementById('chartHandTool');
-  if(handButton){
-    handButton.onclick=()=>{
-      const active=viewport.dataset.handPan!=='1';
-      viewport.dataset.handPan=active?'1':'0';
-      handButton.setAttribute('aria-pressed',active?'true':'false');
-      handButton.textContent=active?'✋ Hand tool: On':'✋ Hand tool: Off';
-      viewport.classList.toggle('hand-pan',active);
-    };
-  }
   viewport.addEventListener('pointerdown',event=>{
     if(viewport.dataset.handPan!=='1'||!event.isPrimary||(event.pointerType==='mouse'&&event.button!==0))return;
     const svg=event.target.closest&&event.target.closest('svg');
