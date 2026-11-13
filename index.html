@@ -655,7 +655,7 @@ function nodeSvg(x,y,p,w=190,h=150,rel='',extra=''){
  chartRelation=chartRelationshipAnchorId?relationshipLabel(p.id,chartRelationshipAnchorId):'',
  compactRelation=relation==='No blood relationship found in recorded parent links'?'No recorded blood link':relation,
  dates=chartDates(p),fsUrl=familySearchProfileUrl(p),fsId=fsUrl?decodeURIComponent(fsUrl.split('/').pop()):'',
- age=chartAgeLabel(p),places=chartPlaceParts(p),g=String(p.gender||'').toUpperCase(),
+ age=chartAgeLabel(p),places=chartPlaceParts(p),g=pGender(p.id),
  genderClass=g==='M'?'gender-male':g==='F'?'gender-female':'gender-unknown',
  blood=extra.includes('data-blood="1"'),fill=g==='M'?'#dcecff':g==='F'?'#ffe0ea':'#fff',
  stroke=g==='M'?'#2f5fa8':g==='F'?'#c1121f':'#667085',sw=blood?4:2,
