@@ -96,6 +96,9 @@ th{background:#ead9b7;color:#4b301b}
 #admin.view.active{--tab-bg:#eadbd5;--tab-border:#b68d80;--tab-panel:rgba(255,246,241,.97)}
 #help.view.active{--tab-bg:#e9e2d1;--tab-border:#b8a780;--tab-panel:rgba(251,247,235,.96)}
 
+/* Ensure the chart viewport can scroll on both axes while hand-panning. */
+.tree-scroll.hand-pan{overflow-x:auto!important;overflow-y:auto!important;overscroll-behavior:contain!important;touch-action:none!important}
+.tree-scroll.hand-pan .tree-svg{display:block!important;max-width:none!important;height:auto!important}
 /* Hand tool: drag charts in both directions */
 .tree-scroll.hand-pan{cursor:grab!important;touch-action:none!important;user-select:none;-webkit-user-select:none}
 .tree-scroll.hand-pan.is-panning{cursor:grabbing!important}
@@ -985,6 +988,28 @@ function wireChartPan(container){
     try{viewport.setPointerCapture(event.pointerId)}catch(e){}
     if(event.cancelable)event.preventDefault();
   });
+  /* iOS touch fallback: explicitly translate finger movement into both scroll axes. */
+  let touchStartX=0,touchStartY=0,touchLeft=0,touchTop=0,touchMoved=false;
+  viewport.addEventListener('touchstart',event=>{
+    if(viewport.dataset.handPan!=='1'||!event.touches||event.touches.length!==1)return;
+    const target=event.target;
+    if(!(target.closest&&target.closest('svg')))return;
+    const t=event.touches[0];touchStartX=t.clientX;touchStartY=t.clientY;
+    touchLeft=viewport.scrollLeft;touchTop=viewport.scrollTop;touchMoved=false;
+  },{passive:true});
+  viewport.addEventListener('touchmove',event=>{
+    if(viewport.dataset.handPan!=='1'||!event.touches||event.touches.length!==1)return;
+    const t=event.touches[0],dx=t.clientX-touchStartX,dy=t.clientY-touchStartY;
+    if(!touchMoved&&(Math.abs(dx)>4||Math.abs(dy)>4)){touchMoved=true;viewport.classList.add('is-panning')}
+    if(touchMoved){
+      viewport.scrollLeft=touchLeft-dx;
+      viewport.scrollTop=touchTop-dy;
+      if(event.cancelable)event.preventDefault();
+    }
+  },{passive:false});
+  const finishTouch=()=>{if(touchMoved){suppressClick=true;setTimeout(()=>{suppressClick=false},350)}touchMoved=false;viewport.classList.remove('is-panning')};
+  viewport.addEventListener('touchend',finishTouch,{passive:true});
+  viewport.addEventListener('touchcancel',finishTouch,{passive:true});
   viewport.addEventListener('pointermove',event=>{
     if(pointer===null||event.pointerId!==pointer)return;
     const dx=event.clientX-startX,dy=event.clientY-startY;
