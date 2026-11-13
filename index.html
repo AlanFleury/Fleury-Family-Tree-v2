@@ -1135,32 +1135,8 @@ if('serviceWorker' in navigator && location.protocol==='https:'){
 }
 <\/script>
 <script>
-/* Installable Fleury Family Tree app — website remains available at the same address. */
-(function(){
- let deferredInstall=null;
- const install=document.createElement('button');
- install.type='button';install.id='installAppButton';install.textContent='Install App';
- install.style.cssText='position:fixed;right:14px;bottom:14px;z-index:9999;padding:12px 16px;border-radius:24px;background:#382b1d;color:#fff;border:2px solid #b89a67;box-shadow:0 3px 14px rgba(0,0,0,.28);font-weight:700;display:none';
- document.addEventListener('DOMContentLoaded',()=>{
-   document.body.appendChild(install);
-   if('serviceWorker' in navigator && location.protocol==='https:'){
-     navigator.serviceWorker.register('./service-worker.js').catch(err=>console.warn('App offline support could not be registered:',err));
-   }
-   const isIos=/iphone|ipad|ipod/i.test(navigator.userAgent)&&!window.MSStream;
-   const standalone=window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;
-   if(!standalone){install.style.display='block';if(isIos)install.textContent='Add to Home Screen';}
-   install.addEventListener('click',async()=>{
-     if(deferredInstall){deferredInstall.prompt();await deferredInstall.userChoice;deferredInstall=null;install.style.display='none';return;}
-     if(isIos){alert('To install the Fleury Family Tree on your iPhone or iPad:\n\n1. Tap the Share button in Safari.\n2. Choose “Add to Home Screen”.\n3. Tap “Add”.');}
-     else{alert('Open your browser menu and choose “Install app” or “Add to Home screen”.');}
-   });
- });
- window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstall=e;install.style.display='block';install.textContent='Install App';});
- window.addEventListener('appinstalled',()=>{install.style.display='none';deferredInstall=null;});
-})();
-</script><script>
-(function(){let deferredInstall=null;const install=document.createElement('button');install.type='button';install.id='installAppButton';install.textContent='Install App';install.style.cssText='position:fixed;right:14px;bottom:14px;z-index:9999;padding:12px 16px;border-radius:24px;background:#382b1d;color:#fff;border:2px solid #b89a67;box-shadow:0 3px 14px rgba(0,0,0,.28);font-weight:700;display:none';document.addEventListener('DOMContentLoaded',()=>{document.body.appendChild(install);if('serviceWorker'in navigator&&location.protocol==='https:')navigator.serviceWorker.register('./service-worker.js').catch(err=>console.warn('App offline support could not be registered:',err));const ios=/iphone|ipad|ipod/i.test(navigator.userAgent)&&!window.MSStream,standalone=window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;if(!standalone){install.style.display='block';if(ios)install.textContent='Add to Home Screen'}install.addEventListener('click',async()=>{if(deferredInstall){deferredInstall.prompt();await deferredInstall.userChoice;deferredInstall=null;install.style.display='none';return}if(ios)alert('To install the Fleury Family Tree on your iPhone or iPad:\n\n1. Tap the Share button in Safari.\n2. Choose “Add to Home Screen”.\n3. Tap “Add”.');else alert('Open your browser menu and choose “Install app” or “Add to Home screen”.')})});window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstall=e;install.style.display='block';install.textContent='Install App'});window.addEventListener('appinstalled',()=>{install.style.display='none';deferredInstall=null})})();
-</script></body></html>`;download('fleury-report.html',content,'text/html')}
+<script>
+</body></html>`;download('fleury-report.html',content,'text/html')}
 function download(name,data,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
 function components(){const seen=new Set(),out=[];for(const p of allPeople()){if(seen.has(p.id))continue;const c=[],q=[p.id];seen.add(p.id);while(q.length){const x=q.shift();c.push(x);const ns=new Set([...parentMap.get(x)||[],...childMap.get(x)||[],...spouseMap.get(x)||[]]);for(const y of ns)if(!seen.has(y)){seen.add(y);q.push(y)}}out.push(c)}return out.sort((a,b)=>b.length-a.length)}
 function statsAnalysis(){const ps=allPeople(),comp=components(),years=ps.map(p=>year(p.birth)).filter(Boolean),female=ps.filter(p=>p.gender==='F').length,male=ps.filter(p=>p.gender==='M').length,unknown=ps.length-female-male,ages=ps.map(p=>{const a=year(p.birth),b=year(p.death);return a&&b&&b>=a?b-a:null}).filter(x=>x!=null),avg=ages.length?(ages.reduce((a,b)=>a+b,0)/ages.length).toFixed(1):'n/a',topPlaces=countValues(ps.flatMap(p=>String(p.places||'').split(/[;|]+/).map(x=>x.trim()).filter(Boolean))).slice(0,12),topSurnames=countValues(ps.map(p=>nm(p).split(/\s+/).pop()).filter(Boolean)).slice(0,12),bar=(label,value,total)=>'<div style="margin:8px 0"><div class="section-title"><span>'+esc(label)+'</span><b>'+Number(value).toLocaleString()+'</b></div><div class="bar"><span style="width:'+Math.max(0,Math.min(100,total?value/total*100:0))+'%"></span></div></div>';statAnalysis.innerHTML='<div class="grid"><div class="kpi"><b>Total people</b><h2>'+ps.length.toLocaleString()+'</h2></div><div class="kpi"><b>Relationships</b><h2>'+db.relationships.length.toLocaleString()+'</h2></div><div class="kpi"><b>Average recorded lifespan</b><h2>'+avg+'</h2></div><div class="kpi"><b>Connected components</b><h2>'+comp.length.toLocaleString()+'</h2></div><div class="kpi"><b>Largest component</b><h2>'+Number(comp[0]?.length||0).toLocaleString()+'</h2></div><div class="kpi"><b>Birth range</b><h2>'+((years.length?Math.min(...years):'n/a')+' – '+(years.length?Math.max(...years):'n/a'))+'</h2></div></div><div class="two"><div class="panel"><h3>Gender coverage</h3>'+bar('Male',male,ps.length)+bar('Female',female,ps.length)+bar('Unknown',unknown,ps.length)+'</div><div class="panel"><h3>Family coverage</h3>'+bar('With parents',ps.filter(p=>(parentMap.get(p.id)||new Set()).size>0).length,ps.length)+bar('With children',ps.filter(p=>(childMap.get(p.id)||new Set()).size>0).length,ps.length)+bar('With sources',ps.filter(p=>p.sources).length,ps.length)+'</div></div><div class="two"><div class="panel"><h3>Most common places</h3>'+topPlaces.map(x=>'<p><b>'+esc(x[0])+'</b> — '+x[1]+'</p>').join('')+'</div><div class="panel"><h3>Most common surnames</h3>'+topSurnames.map(x=>'<p><b>'+esc(x[0])+'</b> — '+x[1]+'</p>').join('')+'</div></div>'}
@@ -1797,5 +1773,28 @@ async function loadOnlineArchive(){
 signInBtn.onclick=()=>window.archiveApi.signInWithEmail();
 signOutBtn.onclick=()=>window.archiveApi.signOutUser();
 (async()=>{try{await loadOnlineArchive()}catch(e){console.error(e);authStatus.textContent='Archive error: '+e.message;alert('The private archive could not be loaded. No data was changed.\n\n'+e.message)}})()
+})();
+</script><script>
+(function(){
+ let deferredInstall=null;
+ const install=document.createElement('button');
+ install.type='button';install.id='installAppButton';install.textContent='Install App';
+ install.style.cssText='position:fixed;right:14px;bottom:14px;z-index:9999;padding:12px 16px;border-radius:24px;background:#382b1d;color:#fff;border:2px solid #b89a67;box-shadow:0 3px 14px rgba(0,0,0,.28);font-weight:700;display:none';
+ const init=()=>{
+  if(document.getElementById('installAppButton'))return;
+  document.body.appendChild(install);
+  if('serviceWorker'in navigator&&location.protocol==='https:')navigator.serviceWorker.register('./service-worker.js').catch(e=>console.warn('App offline support:',e));
+  const ios=/iphone|ipad|ipod/i.test(navigator.userAgent)&&!window.MSStream;
+  const standalone=window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;
+  if(!standalone){install.style.display='block';if(ios)install.textContent='Add to Home Screen';}
+  install.addEventListener('click',async()=>{
+   if(deferredInstall){deferredInstall.prompt();await deferredInstall.userChoice;deferredInstall=null;install.style.display='none';}
+   else if(ios)alert('To install on iPhone/iPad: open Safari Share, choose Add to Home Screen, then tap Add.');
+   else alert('Open your browser menu and choose Install app or Add to Home screen.');
+  });
+ };
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+ window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstall=e;install.style.display='block';install.textContent='Install App';});
+ window.addEventListener('appinstalled',()=>{install.style.display='none';deferredInstall=null;});
 })();
 </script></body></html>
