@@ -137,6 +137,10 @@ header{background-image:none!important;background-color:rgba(241,228,200,.72)!im
 .tree-scroll,.tree-svg{background:transparent!important;background-color:transparent!important}
 .tree-scroll{border-color:rgba(188,164,119,.65)!important}
 .tree-svg .person-node rect{fill:rgba(255,250,236,.80)}
+/* Keep gender colours visible in interactive charts and printable wall charts. */
+.tree-svg .person-node.gender-male rect{fill:#dcecff!important;stroke:#2f5fa8}
+.tree-svg .person-node.gender-female rect{fill:#ffe0ea!important;stroke:#c85b7a}
+.tree-svg .person-node.gender-unknown rect{fill:#fff!important;stroke:#667085}
 
 /* Responsive accessibility and layout pass — phones, tablets, laptops and wide screens. */
 :root{color-scheme:light}
