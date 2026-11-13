@@ -96,6 +96,9 @@ th{background:#ead9b7;color:#4b301b}
 #admin.view.active{--tab-bg:#eadbd5;--tab-border:#b68d80;--tab-panel:rgba(255,246,241,.97)}
 #help.view.active{--tab-bg:#e9e2d1;--tab-border:#b8a780;--tab-panel:rgba(251,247,235,.96)}
 
+/* Give large charts a bounded viewport so vertical scrolling is available on desktop. */
+#chartOutput .tree-scroll,#wallOutput .tree-scroll{max-height:72vh;min-height:360px;overflow:auto!important;overscroll-behavior:contain}
+#chartOutput .tree-scroll svg,#wallOutput .tree-scroll svg{display:block;max-width:none!important;height:auto}
 /* Ensure the chart viewport can scroll on both axes while hand-panning. */
 .tree-scroll.hand-pan{overflow-x:auto!important;overflow-y:auto!important;overscroll-behavior:contain!important;touch-action:none!important}
 .tree-scroll.hand-pan .tree-svg{display:block!important;max-width:none!important;height:auto!important}
@@ -1010,25 +1013,31 @@ function wireChartPan(container){
   const finishTouch=()=>{if(touchMoved){suppressClick=true;setTimeout(()=>{suppressClick=false},350)}touchMoved=false;viewport.classList.remove('is-panning')};
   viewport.addEventListener('touchend',finishTouch,{passive:true});
   viewport.addEventListener('touchcancel',finishTouch,{passive:true});
-  viewport.addEventListener('pointermove',event=>{
+  const movePointer=event=>{
     if(pointer===null||event.pointerId!==pointer)return;
     const dx=event.clientX-startX,dy=event.clientY-startY;
-    if(!moved&&(Math.abs(dx)>5||Math.abs(dy)>5)){moved=true;viewport.classList.add('is-panning')}
+    if(!moved&&(Math.abs(dx)>3||Math.abs(dy)>3)){moved=true;viewport.classList.add('is-panning')}
     if(moved){
-      viewport.scrollLeft=startLeft-dx;viewport.scrollTop=startTop-dy;
+      viewport.scrollLeft=startLeft-dx;
+      viewport.scrollTop=startTop-dy;
       if(event.cancelable)event.preventDefault();
     }
-  },{passive:false});
+  };
   const finish=event=>{
     if(pointer===null||(event&&event.pointerId!==pointer))return;
     if(moved){
       suppressClick=true;
       setTimeout(()=>{suppressClick=false},350);
     }
-    pointer=null;viewport.classList.remove('is-panning');
+    const id=pointer;pointer=null;viewport.classList.remove('is-panning');
+    try{if(viewport.hasPointerCapture(id))viewport.releasePointerCapture(id)}catch(e){}
   };
-  viewport.addEventListener('pointerup',finish);
-  viewport.addEventListener('pointercancel',finish);
+  /* Listen at document level as well as the viewport so mouse dragging continues
+     reliably when the pointer crosses SVG nodes or leaves the chart edge. */
+  viewport.addEventListener('pointermove',movePointer,{passive:false});
+  document.addEventListener('pointermove',movePointer,{passive:false});
+  document.addEventListener('pointerup',finish);
+  document.addEventListener('pointercancel',finish);
   viewport.addEventListener('lostpointercapture',finish);
   viewport.addEventListener('click',event=>{
     if(!suppressClick)return;
