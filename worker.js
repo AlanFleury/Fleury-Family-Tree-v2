@@ -115,10 +115,11 @@ async function auth(request,env){
             "UPDATE users SET auth_sub=? WHERE lower(email)=lower(?)"
           ).bind(sub,email).run();
         }else if(email==="alanfleury1@gmail.com"){
-          // One-time bootstrap for the archive owner only.
+          // One-time bootstrap for the archive owner only. Link the owner to
+          // his own family-tree record rather than leaving the viewpoint blank.
           await env.DB.prepare(
-            "INSERT INTO users(auth_sub,email,role) VALUES(?,?,?)"
-          ).bind(sub,email,"admin").run();
+            "INSERT INTO users(auth_sub,email,role,person_id) VALUES(?,?,?,?)"
+          ).bind(sub,email,"admin","ALA").run();
         }
 
         row=await env.DB.prepare(
@@ -129,6 +130,18 @@ async function auth(request,env){
   }
 
   if(!row) throw new Error("Account is not approved for the family archive");
+
+  // Repair the archive owner's historical blank mapping, but only for the
+  // exact verified owner email and only when ALA exists in the people table.
+  // Never replace an existing, non-empty person mapping.
+  if(String(row.email||"").trim().toLowerCase()==="alanfleury1@gmail.com" && !String(row.personId||"").trim()){
+    await env.DB.prepare(
+      "UPDATE users SET person_id='ALA' WHERE auth_sub=? AND (person_id IS NULL OR trim(person_id)='') AND EXISTS (SELECT 1 FROM people WHERE person_id='ALA')"
+    ).bind(sub).run();
+    row=await env.DB.prepare(
+      "SELECT role, person_id AS personId, email FROM users WHERE auth_sub=?"
+    ).bind(sub).first();
+  }
   return {...row,sub};
 }
 
