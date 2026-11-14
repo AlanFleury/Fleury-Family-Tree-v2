@@ -680,11 +680,12 @@ function renderMyConnections(){
   else if(viewerAncestorDepth.has(p.id)){
    const depth=viewerAncestorDepth.get(p.id),gender=pGender(p.id);
    const noun=gender==='F'?'grandmother':gender==='M'?'grandfather':'grandparent';
-   value=depth===1?(gender==='F'?'Mother':gender==='M'?'Father':'Parent'):depth===2?(gender==='F'?'Grandmother':gender==='M'?'Grandfather':'Grandparent'):(depth===3?'Great-':(ord(depth-2)+' great-'))+noun;
+   value=depth===1?(gender==='F'?'Mother':gender==='M'?'Father':'Parent'):(gender==='F'?'Grandmother':gender==='M'?'Grandfather':'Grandparent');
   }
   else if(!tree.distance.has(p.id))value='No recorded connection';
   else{
    value=relationshipLabel(p.id,viewer.id);
+   if(/^\\d+(st|nd|rd|th) cousin(?: (?:once|twice|\\d+ times) removed)?$/i.test(value))value='Cousins';
    if(value==='No blood relationship found in recorded parent links')value='Connected through marriage / step-family';
   }
   connectionsLabelCache.set(p.id,value);return value;
