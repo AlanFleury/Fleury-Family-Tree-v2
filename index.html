@@ -746,8 +746,18 @@ function renderMyConnections(){
  summary.innerHTML='<div class="card"><div class="muted">Your family-tree identity</div><h3>'+esc(nm(viewer))+'</h3><div class="small">Person ID: '+esc(viewer.id)+'</div></div><div class="card"><div class="muted">People with a recorded path to you</div><div class="stat">'+Math.max(0,connectedCount-1).toLocaleString()+'</div></div><div class="card"><div class="muted">People with no recorded path</div><div class="stat">'+unconnectedCount.toLocaleString()+'</div></div>';
  status.textContent='Showing '+total.toLocaleString()+' of '+allCount.toLocaleString()+' people in the archive. A missing path means no connection is currently recorded; it does not prove that no biological relationship exists.';
  const slice=rows.slice(connectionsPage*connectionsPageSize,(connectionsPage+1)*connectionsPageSize);
+ // Cousins stay together in the relationship selector, while each selected
+ // person's row retains their exact cousin degree and removal.
+ const displayRelationshipFor=p=>{
+  const group=labelFor(p);
+  if(group==='Cousins'){
+   const exact=relationshipLabel(p.id,viewer.id);
+   if(/^\\d+(st|nd|rd|th) cousin(?: (?:once|twice|\\d+ times) removed)?$/i.test(exact))return exact;
+  }
+  return group;
+ };
  table.innerHTML='<table><thead><tr><th>Person</th><th>Relationship to you</th></tr></thead><tbody>'+slice.map(p=>{
-  return '<tr><td><button type="button" class="link connection-person" data-connection-open="'+esc(p.id)+'">'+esc(nm(p))+'</button></td><td>'+esc(labelFor(p))+'</td></tr>';
+  return '<tr><td><button type="button" class="link connection-person" data-connection-open="'+esc(p.id)+'">'+esc(nm(p))+'</button></td><td>'+esc(displayRelationshipFor(p))+'</td></tr>';
  }).join('')+'</tbody></table>';
  pager.innerHTML='<button type="button" data-connections-page="-1" '+(connectionsPage?'':'disabled')+'>Previous</button><span>Page '+(connectionsPage+1)+' of '+pages+' • '+total.toLocaleString()+' people</span><button type="button" data-connections-page="1" '+(connectionsPage<pages-1?'':'disabled')+'>Next page</button>';
 }
