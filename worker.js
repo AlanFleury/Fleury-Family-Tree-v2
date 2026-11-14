@@ -119,7 +119,7 @@ async function auth(request,env){
           // his own family-tree record rather than leaving the viewpoint blank.
           await env.DB.prepare(
             "INSERT INTO users(auth_sub,email,role,person_id) VALUES(?,?,?,?)"
-          ).bind(sub,email,"admin","ALA").run();
+          ).bind(sub,email,"admin","I154").run();
         }
 
         row=await env.DB.prepare(
@@ -136,7 +136,7 @@ async function auth(request,env){
   // Never replace an existing, non-empty person mapping.
   if(String(row.email||"").trim().toLowerCase()==="alanfleury1@gmail.com" && !String(row.personId||"").trim()){
     await env.DB.prepare(
-      "UPDATE users SET person_id='ALA' WHERE auth_sub=? AND (person_id IS NULL OR trim(person_id)='') AND EXISTS (SELECT 1 FROM people WHERE person_id='ALA')"
+      "UPDATE users SET person_id='I154' WHERE auth_sub=? AND (person_id IS NULL OR trim(person_id)='') AND EXISTS (SELECT 1 FROM people WHERE person_id='I154')"
     ).bind(sub).run();
     row=await env.DB.prepare(
       "SELECT role, person_id AS personId, email FROM users WHERE auth_sub=?"
@@ -148,7 +148,7 @@ async function auth(request,env){
   // non-empty mapping or change her existing administrator role.
   if(String(row.email||"").trim().toLowerCase()==="hazelfleury@gmail.com" && !String(row.personId||"").trim()){
     await env.DB.prepare(
-      "UPDATE users SET person_id='123' WHERE auth_sub=? AND (person_id IS NULL OR trim(person_id)='') AND EXISTS (SELECT 1 FROM people WHERE person_id='123')"
+      "UPDATE users SET person_id='I23' WHERE auth_sub=? AND (person_id IS NULL OR trim(person_id)='') AND EXISTS (SELECT 1 FROM people WHERE person_id='I23')"
     ).bind(sub).run();
     row=await env.DB.prepare(
       "SELECT role, person_id AS personId, email FROM users WHERE auth_sub=?"
@@ -162,6 +162,24 @@ async function auth(request,env){
     await env.DB.prepare(
       "UPDATE users SET person_id='17760' WHERE auth_sub=? AND (person_id IS NULL OR trim(person_id)='') AND EXISTS (SELECT 1 FROM people WHERE person_id='17760')"
     ).bind(sub).run();
+    row=await env.DB.prepare(
+      "SELECT role, person_id AS personId, email FROM users WHERE auth_sub=?"
+    ).bind(sub).first();
+  }
+
+  // Repair the remaining approved accounts using the Person IDs confirmed
+  // in the administrator's approved-user list. Only fill blank mappings.
+  const confirmedMappings = {
+    "andrewfleury@gmail.com":"I57",
+    "bgosse@rogers.com":"I17759",
+    "petertdwalsh@gmail.com":"I18203",
+    "taniskellett@gmail.com":"I13"
+  };
+  const confirmedPersonId = confirmedMappings[String(row.email||"").trim().toLowerCase()];
+  if(confirmedPersonId && !String(row.personId||"").trim()){
+    await env.DB.prepare(
+      "UPDATE users SET person_id=? WHERE auth_sub=? AND (person_id IS NULL OR trim(person_id)='') AND EXISTS (SELECT 1 FROM people WHERE person_id=?)"
+    ).bind(confirmedPersonId,sub,confirmedPersonId).run();
     row=await env.DB.prepare(
       "SELECT role, person_id AS personId, email FROM users WHERE auth_sub=?"
     ).bind(sub).first();
