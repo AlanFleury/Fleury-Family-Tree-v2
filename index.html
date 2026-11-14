@@ -647,9 +647,10 @@ function renderMyConnections(){
  const treeKey=String(viewer.id)+'|'+db.relationships.length+'|'+pmap.size;
  if(treeKey!==connectionsTreeCacheKey){connectionsTreeCache=buildConnectionsTree(viewer.id);connectionsTreeCacheKey=treeKey;connectionsLabelCache=new Map();connectionsLabelCacheKey=treeKey}
  const tree=connectionsTreeCache;
- const searchText=document.getElementById('connectionsSearch').value.trim().toLocaleLowerCase();
- const filter=document.getElementById('connectionsFilter').value;
- const sort=document.getElementById('connectionsSort').value;
+ // The simplified My Connections view no longer has search/filter/sort controls.
+ const searchText='';
+ const filter='all';
+ const sort='closest';
  const relationshipFilter=document.getElementById('connectionsRelationship').value;
  // Only build generation sets when the selected filter needs them. The previous
  // version walked the entire connected archive from each parent on every render.
@@ -1604,9 +1605,6 @@ mergePreviewBtn.onclick=()=>{try{if(currentRole!=='admin')throw new Error('Sign 
 mergeConfirmBtn.onclick=async()=>{let x;try{if(currentRole!=='admin'||!currentUser)throw new Error('Administrator sign-in is required.');x=mergePreviewData();if(!confirm('Merge '+x.drop.name+' ('+x.drop.id+') into '+x.keep.name+' ('+x.keep.id+')? All relationship types will be redirected, and duplicate links removed.'))return;mergeConfirmBtn.disabled=true;mergePreviewOutput.innerHTML='<p class="muted">Merging person and all relationship types in one database operation…</p>';const merged={...x.keep};for(const k of x.filled)merged[k]=x.drop[k];await window.archiveApi.mergePeople({'Person ID':merged.id,Name:merged.name,Gender:merged.gender,Birth:merged.birth,Death:merged.death,Places:merged.places,Notes:merged.notes,'Source IDs':merged.sources,'Relationship to Alan':merged.relationshipToAlan,'Evidence Status':merged.evidence},mergeDropId);db.people=db.people.filter(p=>p.id!==mergeDropId).map(p=>p.id===mergeKeepId?merged:p);db.relationships=x.rels;reindex();await persist();mergeKeepInput.value='';mergeDropInput.value='';mergeKeepId=null;mergeDropId=null;mergeKeepChosen.textContent='No person selected';mergeDropChosen.textContent='No person selected';mergePreviewOutput.innerHTML='<p class="ok"><b>Merge complete.</b> Duplicate ID removed and all relationships redirected to '+esc(merged.id)+'.</p>';renderStats();renderPeople();renderFamilyInputs()}catch(e){mergePreviewOutput.innerHTML='<p class="bad">Merge failed: '+esc(e.message||e)+'. The merge endpoint is atomic; review the archive before retrying.</p>';mergeConfirmBtn.disabled=false}};
 wirePicker(relA,relAMatches,i=>{selected.a=i;relA.value=nm(person(i))});wirePicker(relB,relBMatches,i=>{selected.b=i;relB.value=nm(person(i))});wirePicker(chartPerson,chartMatches,i=>{selected.chart=i;chartPerson.value=nm(person(i))});wirePicker(wallPerson,wallMatches,i=>{selected.wall=i;wallPerson.value=nm(person(i))});wirePicker(reportPerson,reportPersonMatches,i=>{selected.reportPerson=i;reportPerson.value=nm(person(i))});wirePicker(editPerson,editMatches,i=>{selected.edit=i;editPerson.value=nm(person(i));loadEdit(i)});wirePicker(compareA,compareAMatches,i=>{selected.compareA=i;compareA.value=nm(person(i))});wirePicker(compareB,compareBMatches,i=>{selected.compareB=i;compareB.value=nm(person(i))});wirePicker(toolTimelinePerson,toolTimelineMatches,i=>{selected.toolTimeline=i;toolTimelinePerson.value=nm(person(i))});wirePicker(matrixPerson,matrixMatches,i=>{selected.matrix=i;matrixPerson.value=nm(person(i))});
 
-document.getElementById('connectionsSearch').oninput=()=>{connectionsPage=0;renderMyConnections()};
-document.getElementById('connectionsFilter').onchange=()=>{connectionsPage=0;renderMyConnections()};
-document.getElementById('connectionsSort').onchange=()=>{connectionsPage=0;renderMyConnections()};
 document.getElementById('connectionsRelationship').onchange=()=>{connectionsPage=0;renderMyConnections()};
 document.getElementById('connectionsPager').addEventListener('click',e=>{const b=e.target.closest('[data-connections-page]');if(!b)return;connectionsPage=Math.max(0,connectionsPage+Number(b.dataset.connectionsPage));renderMyConnections()});
 document.getElementById('connectionsTable').addEventListener('click',e=>{const b=e.target.closest('[data-connection-open]');if(!b)return;const personId=b.dataset.connectionOpen;if(!person(personId))return;goTab('explore');showPerson(personId,true)});
