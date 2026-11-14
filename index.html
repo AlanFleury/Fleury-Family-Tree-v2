@@ -681,15 +681,15 @@ function renderMyConnections(){
   return tree.distance.has(p.id)?'Extended / not assigned':'No recorded connection';
  };
  let rows=allPeople().filter(p=>{
-  if(searchText&&!searchablePersonText(p).includes(searchText)&&!labelFor(p).toLocaleLowerCase().includes(searchText))return false;
-  const connected=tree.distance.has(p.id),isAncestor=ancestorIds.has(p.id),isDescendant=descendantIds.has(p.id),label=labelFor(p);
+  if(searchText&&!searchablePersonText(p).includes(searchText))return false;
+  const connected=tree.distance.has(p.id),isAncestor=ancestorIds.has(p.id),isDescendant=descendantIds.has(p.id);
   if(filter==='connected'&&!connected)return false;
   if(filter==='ancestors'&&!isAncestor)return false;
   if(filter==='descendants'&&!isDescendant)return false;
   if(filter==='paternal'&&!paternalIds.has(p.id))return false;
   if(filter==='maternal'&&!maternalIds.has(p.id))return false;
-  if(filter==='marriage'&&(!connected||!marriageLabel(label)))return false;
-  if(filter==='extended'&&(!connected||isAncestor||isDescendant||marriageLabel(label)||p.id===viewer.id))return false;
+  if(filter==='marriage'&&(!connected||!marriageLabel(labelFor(p))))return false;
+  if(filter==='extended'&&(!connected||isAncestor||isDescendant||marriageLabel(labelFor(p))||p.id===viewer.id))return false;
   if(filter==='unconnected'&&connected)return false;
   return true;
  });
