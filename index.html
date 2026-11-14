@@ -330,6 +330,16 @@ a,.link{overflow-wrap:anywhere}
   .form-actions button{max-width:100%;white-space:normal;overflow-wrap:anywhere}
   .footer{overflow-wrap:anywhere;padding-left:12px;padding-right:12px}
 }
+
+/* Avoid nested vertical scrollbars in the chart pages.
+   Let the document/page scroll vertically; keep the chart viewport available
+   for horizontal movement when a wide family tree needs it. */
+#chartOutput .tree-scroll,
+#wallOutput .tree-scroll {
+  max-height: none !important;
+  min-height: 0 !important;
+  height: auto !important;
+}
 </style></head><body>
 <header><div class="head"><img class="family-crest" src="./fleury-crest.png" alt="Fleury family crest — crowned helmet, spread-wing eagle and FLEURY banner" title="Fleury family crest"><div class="brand-title"><h1>Fleury Family Tree — Ultimate Edition</h1><div class="sub">Private online family archive • 17,972 people • 30,079 recorded relationships • no subscription required</div></div><div class="toolbar"><span id="authStatus" class="small"></span><span id="localSaveStatus" class="small" role="status" aria-live="polite" title="The local offline copy is checked when the archive loads">Offline copy not checked</span><button id="signInBtn">Sign in</button><button id="signOutBtn" class="hidden">Sign out</button><button id="backupBtn">Backup</button><button id="emergencyHtmlBtn" type="button" title="Download a self-contained offline copy of your family archive">Emergency HTML backup</button><button id="verifyBackupBtn" type="button">Verify backup</button><input id="verifyBackupFile" type="file" accept=".json,application/json" class="hidden"><button id="importBtn">Restore backup</button><input id="importFile" type="file" accept="application/json" class="hidden"><button id="resetBtn">Reset local edits</button></div></div><nav id="nav"></nav></header>
 <main>
