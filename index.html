@@ -378,7 +378,7 @@ a,.link{overflow-wrap:anywhere}
   <p class="muted">Everyone in the archive, shown from the point of view of the person linked to your signed-in account. Connection paths use the family relationships recorded in this archive.</p>
   <div class="form">
    <div><label>Search people</label><input id="connectionsSearch" placeholder="Search by name, Person ID, dates or details…"></div>
-   <div><label>Show</label><select id="connectionsFilter"><option value="all">Everyone in the archive</option><option value="connected">People connected to me</option><option value="ancestors">My ancestors</option><option value="descendants">My descendants</option><option value="paternal">Paternal branch</option><option value="maternal">Maternal branch</option><option value="marriage">Marriage and step-family connections</option><option value="extended">Extended blood relatives</option><option value="unconnected">No recorded connection</option></select></div>
+   <div><label>Show</label><select id="connectionsFilter"><option value="all">Everyone in the archive</option><option value="connected">People connected to me</option><option value="cousins">All cousins</option><option value="cousin-1">1st cousins (including removed)</option><option value="cousin-2">2nd cousins (including removed)</option><option value="cousin-3">3rd cousins (including removed)</option><option value="cousin-4">4th cousins and beyond</option><option value="removed">Cousins once / twice removed</option><option value="ancestors">My ancestors</option><option value="descendants">My descendants</option><option value="paternal">Paternal branch</option><option value="maternal">Maternal branch</option><option value="marriage">Marriage and step-family connections</option><option value="extended">Extended blood relatives</option><option value="unconnected">No recorded connection</option></select></div>
    <div><label>Sort by</label><select id="connectionsSort"><option value="closest">Closest connection first</option><option value="name">Name</option><option value="relationship">Relationship</option></select></div>
   </div>
   <div id="connectionsSummary" class="grid"></div>
@@ -684,6 +684,13 @@ function renderMyConnections(){
   if(searchText&&!searchablePersonText(p).includes(searchText))return false;
   const connected=tree.distance.has(p.id),isAncestor=ancestorIds.has(p.id),isDescendant=descendantIds.has(p.id);
   if(filter==='connected'&&!connected)return false;
+  const cousinMatch=labelFor(p).match(/^(\\d+)(st|nd|rd|th) cousin(?: (once|twice|\\d+ times) removed)?$/i);
+  if(filter==='cousins'&&!cousinMatch)return false;
+  if(filter==='cousin-1'&&(!cousinMatch||Number(cousinMatch[1])!==1))return false;
+  if(filter==='cousin-2'&&(!cousinMatch||Number(cousinMatch[1])!==2))return false;
+  if(filter==='cousin-3'&&(!cousinMatch||Number(cousinMatch[1])!==3))return false;
+  if(filter==='cousin-4'&&(!cousinMatch||Number(cousinMatch[1])<4))return false;
+  if(filter==='removed'&&(!cousinMatch||!cousinMatch[3]))return false;
   if(filter==='ancestors'&&!isAncestor)return false;
   if(filter==='descendants'&&!isDescendant)return false;
   if(filter==='paternal'&&!paternalIds.has(p.id))return false;
