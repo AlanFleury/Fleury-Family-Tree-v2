@@ -377,7 +377,7 @@ a,.link{overflow-wrap:anywhere}
   <div class="section-title"><h2>My Family Connections</h2><span id="connectionsCount" class="badge"></span></div>
   <p class="muted">Everyone in the archive, shown from the point of view of the person linked to your signed-in account. Connection paths use the family relationships recorded in this archive.</p>
   <div class="form">
-   <div><label>Relationship to you</label><select id="connectionsRelationship"><option value="">Everyone in the archive</option><option value="You">You</option><option value="Mother">Mother</option><option value="Father">Father</option><option value="Parent">Parent</option><option value="Daughter">Daughter</option><option value="Son">Son</option><option value="Child">Child</option><option value="Grandmother">Grandmother</option><option value="Grandfather">Grandfather</option><option value="Grandparent">Grandparent</option><option value="Granddaughter">Granddaughter</option><option value="Grandson">Grandson</option><option value="Grandchild">Grandchild</option><option value="Brother">Brother</option><option value="Sister">Sister</option><option value="Sibling">Sibling</option><option value="Paternal Brother">Paternal Brother</option><option value="Paternal Sister">Paternal Sister</option><option value="Maternal Brother">Maternal Brother</option><option value="Maternal Sister">Maternal Sister</option><option value="Aunt">Aunt</option><option value="Uncle">Uncle</option><option value="Niece">Niece</option><option value="Nephew">Nephew</option><option value="Spouse / partner">Spouse / partner</option><option value="Step-parent">Step-parent</option><option value="Stepsibling">Stepsibling</option><option value="Brother-in-law">Brother-in-law</option><option value="Sister-in-law">Sister-in-law</option><option value="Connected through marriage / step-family">Connected through marriage / step-family</option><option value="No recorded connection">No recorded connection</option><option value="1st cousin">1st cousin</option><option value="1st cousin once removed">1st cousin once removed</option><option value="1st cousin twice removed">1st cousin twice removed</option><option value="1st cousin 3 times removed">1st cousin 3 times removed</option><option value="1st cousin 4 times removed">1st cousin 4 times removed</option><option value="1st cousin 5 times removed">1st cousin 5 times removed</option><option value="1st cousin 6 times removed">1st cousin 6 times removed</option><option value="2nd cousin">2nd cousin</option><option value="2nd cousin once removed">2nd cousin once removed</option><option value="2nd cousin twice removed">2nd cousin twice removed</option><option value="2nd cousin 3 times removed">2nd cousin 3 times removed</option><option value="2nd cousin 4 times removed">2nd cousin 4 times removed</option><option value="2nd cousin 5 times removed">2nd cousin 5 times removed</option><option value="2nd cousin 6 times removed">2nd cousin 6 times removed</option><option value="3rd cousin">3rd cousin</option><option value="3rd cousin once removed">3rd cousin once removed</option><option value="3rd cousin twice removed">3rd cousin twice removed</option><option value="3rd cousin 3 times removed">3rd cousin 3 times removed</option><option value="3rd cousin 4 times removed">3rd cousin 4 times removed</option><option value="3rd cousin 5 times removed">3rd cousin 5 times removed</option><option value="3rd cousin 6 times removed">3rd cousin 6 times removed</option><option value="4th cousin">4th cousin</option><option value="4th cousin once removed">4th cousin once removed</option><option value="4th cousin twice removed">4th cousin twice removed</option><option value="4th cousin 3 times removed">4th cousin 3 times removed</option><option value="4th cousin 4 times removed">4th cousin 4 times removed</option><option value="4th cousin 5 times removed">4th cousin 5 times removed</option><option value="4th cousin 6 times removed">4th cousin 6 times removed</option></select></div>
+   <div><label>Relationship to you</label><select id="connectionsRelationship"><option value="">Everyone in the archive</option></select></div>
   </div>
   <div id="connectionsSummary" class="grid"></div>
   <div id="connectionsStatus" class="notice" role="status" aria-live="polite"></div>
@@ -651,7 +651,7 @@ function renderMyConnections(){
  const searchText='';
  const filter='all';
  const sort='closest';
- const relationshipFilter=document.getElementById('connectionsRelationship').value;
+
  // Only build generation sets when the selected filter needs them. The previous
  // version walked the entire connected archive from each parent on every render.
  const needsAncestors=filter==='ancestors'||filter==='extended';
@@ -684,6 +684,14 @@ function renderMyConnections(){
   connectionsLabelCache.set(p.id,value);return value;
  };
  const relationshipSelect=document.getElementById('connectionsRelationship');
+ // Derive every available category from the actual relationships in this archive.
+ const previousRelationship=relationshipSelect.value;
+ const relationshipCategories=new Set();
+ for(const candidate of allPeople())relationshipCategories.add(labelFor(candidate));
+ const orderedCategories=[...relationshipCategories].filter(Boolean).sort((a,b)=>a.localeCompare(b,undefined,{numeric:true,sensitivity:'base'}));
+ relationshipSelect.innerHTML='<option value="">Everyone in the archive</option>'+orderedCategories.map(value=>'<option value="'+esc(value)+'">'+esc(value)+'</option>').join('');
+ if(relationshipCategories.has(previousRelationship))relationshipSelect.value=previousRelationship;
+ const relationshipFilter=relationshipSelect.value;
  const marriageLabel=value=>/spouse|partner|in-law|step|marriage|connected through marriage/i.test(value);
  const branchFor=function(p){
   if(p.id===viewer.id)return 'You';
