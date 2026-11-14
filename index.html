@@ -647,6 +647,7 @@ function renderMyConnections(){
  const treeKey=String(viewer.id)+'|'+db.relationships.length+'|'+pmap.size;
  if(treeKey!==connectionsTreeCacheKey){connectionsTreeCache=buildConnectionsTree(viewer.id);connectionsTreeCacheKey=treeKey;connectionsLabelCache=new Map();connectionsLabelCacheKey=treeKey}
  const tree=connectionsTreeCache;
+ const viewerAncestorDepth=new Map(ancestors(viewer.id,30).map(x=>[x.id,x.d]));
  // The simplified My Connections view no longer has search/filter/sort controls.
  const searchText='';
  const filter='all';
@@ -676,6 +677,11 @@ function renderMyConnections(){
   if(connectionsLabelCache.has(p.id))return connectionsLabelCache.get(p.id);
   let value;
   if(p.id===viewer.id)value='You';
+  else if(viewerAncestorDepth.has(p.id)){
+   const depth=viewerAncestorDepth.get(p.id),gender=pGender(p.id);
+   const noun=gender==='F'?'grandmother':gender==='M'?'grandfather':'grandparent';
+   value=depth===1?(gender==='F'?'Mother':gender==='M'?'Father':'Parent'):depth===2?(gender==='F'?'Grandmother':gender==='M'?'Grandfather':'Grandparent'):(depth===3?'Great-':(ord(depth-2)+' great-'))+noun;
+  }
   else if(!tree.distance.has(p.id))value='No recorded connection';
   else{
    value=relationshipLabel(p.id,viewer.id);
