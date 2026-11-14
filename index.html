@@ -654,9 +654,21 @@ function renderMyConnections(){
  // version walked the entire connected archive from each parent on every render.
  const needsAncestors=filter==='ancestors'||filter==='extended';
  const needsDescendants=filter==='descendants'||filter==='extended';
+ const needsBranches=filter==='paternal'||filter==='maternal';
  const ancestorIds=needsAncestors?new Set(ancestors(viewer.id,30).map(x=>x.id)):new Set();
  const descendantIds=needsDescendants?new Set(descendants(viewer.id,30).map(x=>x.id)):new Set();
  const parents=[...(parentMap.get(viewer.id)||[])];
+ const paternalIds=new Set(),maternalIds=new Set();
+ if(needsBranches){
+  for(const parentId of parents){
+   const gender=pGender(parentId);
+   if((filter==='paternal'&&gender==='M')||(filter==='maternal'&&gender==='F')){
+    for(const id of buildConnectionsTree(parentId,viewer.id).distance.keys()){
+     if(gender==='M')paternalIds.add(id);else maternalIds.add(id);
+    }
+   }
+  }
+ }
  const labelCache=new Map();
  const labelFor=function(p){
   if(labelCache.has(p.id))return labelCache.get(p.id);
@@ -689,13 +701,15 @@ function renderMyConnections(){
   const connected=tree.distance.has(p.id),isAncestor=ancestorIds.has(p.id),isDescendant=descendantIds.has(p.id);
   if(relationshipFilter&&labelFor(p)!==relationshipFilter)return false;
   if(filter==='connected'&&!connected)return false;
-  const cousinMatch=labelFor(p).match(/^(\\d+)(st|nd|rd|th) cousin(?: (once|twice|\\d+ times) removed)?$/i);
-  if(filter==='cousins'&&!cousinMatch)return false;
-  if(filter==='cousin-1'&&(!cousinMatch||Number(cousinMatch[1])!==1))return false;
-  if(filter==='cousin-2'&&(!cousinMatch||Number(cousinMatch[1])!==2))return false;
-  if(filter==='cousin-3'&&(!cousinMatch||Number(cousinMatch[1])!==3))return false;
-  if(filter==='cousin-4'&&(!cousinMatch||Number(cousinMatch[1])<4))return false;
-  if(filter==='removed'&&(!cousinMatch||!cousinMatch[3]))return false;
+  if(['cousins','cousin-1','cousin-2','cousin-3','cousin-4','removed'].includes(filter)){
+   const cousinMatch=labelFor(p).match(/^(\d+)(st|nd|rd|th) cousin(?: (once|twice|\d+ times) removed)?$/i);
+   if(filter==='cousins'&&!cousinMatch)return false;
+   if(filter==='cousin-1'&&(!cousinMatch||Number(cousinMatch[1])!==1))return false;
+   if(filter==='cousin-2'&&(!cousinMatch||Number(cousinMatch[1])!==2))return false;
+   if(filter==='cousin-3'&&(!cousinMatch||Number(cousinMatch[1])!==3))return false;
+   if(filter==='cousin-4'&&(!cousinMatch||Number(cousinMatch[1])<4))return false;
+   if(filter==='removed'&&(!cousinMatch||!cousinMatch[3]))return false;
+  }
   if(filter==='ancestors'&&!isAncestor)return false;
   if(filter==='descendants'&&!isDescendant)return false;
   if(filter==='paternal'&&!paternalIds.has(p.id))return false;
