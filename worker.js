@@ -154,6 +154,18 @@ async function auth(request,env){
       "SELECT role, person_id AS personId, email FROM users WHERE auth_sub=?"
     ).bind(sub).first();
   }
+
+  // Repair Colleen Harrison's historical blank mapping only for her exact
+  // approved email and only when her confirmed person record exists. Never
+  // overwrite a non-empty mapping or change her existing role.
+  if(String(row.email||"").trim().toLowerCase()==="colleenharrison22@gmail.com" && !String(row.personId||"").trim()){
+    await env.DB.prepare(
+      "UPDATE users SET person_id='17760' WHERE auth_sub=? AND (person_id IS NULL OR trim(person_id)='') AND EXISTS (SELECT 1 FROM people WHERE person_id='17760')"
+    ).bind(sub).run();
+    row=await env.DB.prepare(
+      "SELECT role, person_id AS personId, email FROM users WHERE auth_sub=?"
+    ).bind(sub).first();
+  }
   return {...row,sub};
 }
 
