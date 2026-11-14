@@ -631,6 +631,8 @@ function bloodlinePathToAlan(personId,targetId=null){
 function relFinder(){const a=selected.a,b=selected.b;if(!a||!b){relOutput.innerHTML='<div class="notice">Select both people.</div>';return}const path=shortestPath(a,b);const direct=(relByPerson.get(a)||[]).filter(r=>r.a===b||r.b===b);const label=relationshipLabel(a,b);const recorded=direct.length?direct.map(r=>esc(r.type)).join(', '):(label&&label!=='Unrelated'?`${esc(label)} — established from the recorded family connections; no separate relationship entry is needed.`:'No separate relationship entry is recorded, and no family connection was found.');relOutput.innerHTML=`<div class="grid"><div class="card"><b>Calculated relationship</b><h2>${esc(label)}</h2></div><div class="card"><b>Relationship record</b><p>${recorded}</p></div><div class="card"><b>Connection path</b><p>${path?path.map(x=>link(x)).join(' → '):'No path found'}</p></div></div>`}
 let connectionsPage=0;
 const connectionsPageSize=100;
+let connectionsTreeCacheKey='',connectionsTreeCache=null;
+let connectionsLabelCacheKey='',connectionsLabelCache=new Map();
 function buildConnectionsTree(startId,blockedId=null){
  const previous=new Map([[startId,null]]),distance=new Map([[startId,0]]),queue=[startId];
  for(let head=0;head<queue.length;head++){
@@ -645,7 +647,9 @@ function renderMyConnections(){
  if(!currentUser){count.textContent='Sign-in required';summary.innerHTML='';table.innerHTML='';pager.innerHTML='';status.innerHTML='Sign in to see how people in the archive are connected to you.';return}
  const viewer=resolveViewpointPerson();
  if(!viewer){count.textContent='Person not linked';summary.innerHTML='';table.innerHTML='';pager.innerHTML='';status.innerHTML='Your signed-in account is not yet linked to a person in the family tree. Ask the archive administrator to connect your account to your Person ID. No other person has been substituted.';return}
- const tree=buildConnectionsTree(viewer.id);
+ const treeKey=String(viewer.id)+'|'+db.relationships.length+'|'+pmap.size;
+ if(treeKey!==connectionsTreeCacheKey){connectionsTreeCache=buildConnectionsTree(viewer.id);connectionsTreeCacheKey=treeKey;connectionsLabelCache=new Map();connectionsLabelCacheKey=treeKey}
+ const tree=connectionsTreeCache;
  const searchText=document.getElementById('connectionsSearch').value.trim().toLocaleLowerCase();
  const filter=document.getElementById('connectionsFilter').value;
  const sort=document.getElementById('connectionsSort').value;
@@ -669,9 +673,9 @@ function renderMyConnections(){
    }
   }
  }
- const labelCache=new Map();
+ if(connectionsLabelCacheKey!==treeKey){connectionsLabelCache=new Map();connectionsLabelCacheKey=treeKey}
  const labelFor=function(p){
-  if(labelCache.has(p.id))return labelCache.get(p.id);
+  if(connectionsLabelCache.has(p.id))return connectionsLabelCache.get(p.id);
   let value;
   if(p.id===viewer.id)value='You';
   else if(!tree.distance.has(p.id))value='No recorded connection';
@@ -679,7 +683,7 @@ function renderMyConnections(){
    value=relationshipLabel(p.id,viewer.id);
    if(value==='No blood relationship found in recorded parent links')value='Connected through marriage / step-family';
   }
-  labelCache.set(p.id,value);return value;
+  connectionsLabelCache.set(p.id,value);return value;
  };
  const relationshipSelect=document.getElementById('connectionsRelationship');
  const marriageLabel=value=>/spouse|partner|in-law|step|marriage|connected through marriage/i.test(value);
