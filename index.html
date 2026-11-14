@@ -379,6 +379,7 @@ a,.link{overflow-wrap:anywhere}
   <div class="form">
    <div><label>Search people</label><input id="connectionsSearch" placeholder="Search by name, Person ID, dates or details…"></div>
    <div><label>Show</label><select id="connectionsFilter"><option value="all">Everyone in the archive</option><option value="connected">People connected to me</option><option value="cousins">All cousins</option><option value="cousin-1">1st cousins (including removed)</option><option value="cousin-2">2nd cousins (including removed)</option><option value="cousin-3">3rd cousins (including removed)</option><option value="cousin-4">4th cousins and beyond</option><option value="removed">Cousins once / twice removed</option><option value="ancestors">My ancestors</option><option value="descendants">My descendants</option><option value="paternal">Paternal branch</option><option value="maternal">Maternal branch</option><option value="marriage">Marriage and step-family connections</option><option value="extended">Extended blood relatives</option><option value="unconnected">No recorded connection</option></select></div>
+   <div><label>Relationship to you</label><select id="connectionsRelationship"><option value="">All relationship types</option></select></div>
    <div><label>Sort by</label><select id="connectionsSort"><option value="closest">Closest connection first</option><option value="name">Name</option><option value="relationship">Relationship</option></select></div>
   </div>
   <div id="connectionsSummary" class="grid"></div>
@@ -657,6 +658,7 @@ function renderMyConnections(){
  const searchText=document.getElementById('connectionsSearch').value.trim().toLocaleLowerCase();
  const filter=document.getElementById('connectionsFilter').value;
  const sort=document.getElementById('connectionsSort').value;
+ const relationshipFilter=document.getElementById('connectionsRelationship').value;
  const labelCache=new Map();
  const labelFor=function(p){
   if(labelCache.has(p.id))return labelCache.get(p.id);
@@ -669,6 +671,11 @@ function renderMyConnections(){
   }
   labelCache.set(p.id,value);return value;
  };
+ const relationshipSelect=document.getElementById('connectionsRelationship');
+ const previousRelationship=relationshipSelect.value;
+ const relationshipOptions=[...new Set(allPeople().map(p=>labelFor(p)))].sort((a,b)=>a.localeCompare(b));
+ relationshipSelect.innerHTML='<option value="">All relationship types</option>'+relationshipOptions.map(value=>'<option value="'+esc(value)+'">'+esc(value)+'</option>').join('');
+ relationshipSelect.value=relationshipOptions.includes(previousRelationship)?previousRelationship:'';
  const marriageLabel=value=>/spouse|partner|in-law|step|marriage|connected through marriage/i.test(value);
  const branchFor=function(p){
   if(p.id===viewer.id)return 'You';
@@ -683,6 +690,7 @@ function renderMyConnections(){
  let rows=allPeople().filter(p=>{
   if(searchText&&!searchablePersonText(p).includes(searchText))return false;
   const connected=tree.distance.has(p.id),isAncestor=ancestorIds.has(p.id),isDescendant=descendantIds.has(p.id);
+  if(relationshipFilter&&labelFor(p)!==relationshipFilter)return false;
   if(filter==='connected'&&!connected)return false;
   const cousinMatch=labelFor(p).match(/^(\\d+)(st|nd|rd|th) cousin(?: (once|twice|\\d+ times) removed)?$/i);
   if(filter==='cousins'&&!cousinMatch)return false;
@@ -1588,6 +1596,7 @@ wirePicker(relA,relAMatches,i=>{selected.a=i;relA.value=nm(person(i))});wirePick
 document.getElementById('connectionsSearch').oninput=()=>{connectionsPage=0;renderMyConnections()};
 document.getElementById('connectionsFilter').onchange=()=>{connectionsPage=0;renderMyConnections()};
 document.getElementById('connectionsSort').onchange=()=>{connectionsPage=0;renderMyConnections()};
+document.getElementById('connectionsRelationship').onchange=()=>{connectionsPage=0;renderMyConnections()};
 document.getElementById('connectionsPager').addEventListener('click',e=>{const b=e.target.closest('[data-connections-page]');if(!b)return;connectionsPage=Math.max(0,connectionsPage+Number(b.dataset.connectionsPage));renderMyConnections()});
 document.getElementById('connectionsTable').addEventListener('click',e=>{const b=e.target.closest('[data-connection-open]');if(!b)return;const personId=b.dataset.connectionOpen;if(!person(personId))return;goTab('explore');showPerson(personId,true)});
 
