@@ -646,19 +646,17 @@ function renderMyConnections(){
  const viewer=resolveViewpointPerson();
  if(!viewer){count.textContent='Person not linked';summary.innerHTML='';table.innerHTML='';pager.innerHTML='';status.innerHTML='Your signed-in account is not yet linked to a person in the family tree. Ask the archive administrator to connect your account to your Person ID. No other person has been substituted.';return}
  const tree=buildConnectionsTree(viewer.id);
- const ancestorIds=new Set(ancestors(viewer.id,30).map(x=>x.id));
- const descendantIds=new Set(descendants(viewer.id,30).map(x=>x.id));
- const parents=[...(parentMap.get(viewer.id)||[])];
- const paternalIds=new Set(),maternalIds=new Set();
- for(const parentId of parents){
-  const gender=pGender(parentId);
-  if(gender==='M')for(const id of buildConnectionsTree(parentId,viewer.id).distance.keys())paternalIds.add(id);
-  if(gender==='F')for(const id of buildConnectionsTree(parentId,viewer.id).distance.keys())maternalIds.add(id);
- }
  const searchText=document.getElementById('connectionsSearch').value.trim().toLocaleLowerCase();
  const filter=document.getElementById('connectionsFilter').value;
  const sort=document.getElementById('connectionsSort').value;
  const relationshipFilter=document.getElementById('connectionsRelationship').value;
+ // Only build generation sets when the selected filter needs them. The previous
+ // version walked the entire connected archive from each parent on every render.
+ const needsAncestors=filter==='ancestors'||filter==='extended';
+ const needsDescendants=filter==='descendants'||filter==='extended';
+ const ancestorIds=needsAncestors?new Set(ancestors(viewer.id,30).map(x=>x.id)):new Set();
+ const descendantIds=needsDescendants?new Set(descendants(viewer.id,30).map(x=>x.id)):new Set();
+ const parents=[...(parentMap.get(viewer.id)||[])];
  const labelCache=new Map();
  const labelFor=function(p){
   if(labelCache.has(p.id))return labelCache.get(p.id);
@@ -675,13 +673,16 @@ function renderMyConnections(){
  const marriageLabel=value=>/spouse|partner|in-law|step|marriage|connected through marriage/i.test(value);
  const branchFor=function(p){
   if(p.id===viewer.id)return 'You';
-  const paternal=paternalIds.has(p.id),maternal=maternalIds.has(p.id);
-  if(paternal&&maternal)return 'Both sides';
-  if(paternal)return 'Paternal';
-  if(maternal)return 'Maternal';
+  if(!tree.distance.has(p.id))return 'No recorded connection';
   if(descendantIds.has(p.id))return 'Your descendants';
+  const path=tree.pathTo(p.id);
+  const firstStep=path&&path.length>1?path[1]:null;
+  if(firstStep&&parents.includes(firstStep)){
+   const gender=pGender(firstStep);
+   return gender==='M'?'Paternal':gender==='F'?'Maternal':'Extended / not assigned';
+  }
   if(marriageLabel(labelFor(p)))return 'By marriage / step-family';
-  return tree.distance.has(p.id)?'Extended / not assigned':'No recorded connection';
+  return 'Extended / not assigned';
  };
  let rows=allPeople().filter(p=>{
   if(searchText&&!searchablePersonText(p).includes(searchText))return false;
