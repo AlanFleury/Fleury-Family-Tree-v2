@@ -379,7 +379,7 @@ a,.link{overflow-wrap:anywhere}
   <div class="form">
    <div><label>Search people</label><input id="connectionsSearch" placeholder="Search by name, Person ID, dates or details…"></div>
    <div><label>Show</label><select id="connectionsFilter"><option value="all">Everyone in the archive</option><option value="connected">People connected to me</option><option value="cousins">All cousins</option><option value="cousin-1">1st cousins (including removed)</option><option value="cousin-2">2nd cousins (including removed)</option><option value="cousin-3">3rd cousins (including removed)</option><option value="cousin-4">4th cousins and beyond</option><option value="removed">Cousins once / twice removed</option><option value="ancestors">My ancestors</option><option value="descendants">My descendants</option><option value="paternal">Paternal branch</option><option value="maternal">Maternal branch</option><option value="marriage">Marriage and step-family connections</option><option value="extended">Extended blood relatives</option><option value="unconnected">No recorded connection</option></select></div>
-   <div><label>Relationship to you</label><select id="connectionsRelationship"><option value="">All relationship types</option></select></div>
+   <div><label>Relationship to you</label><select id="connectionsRelationship"><option value="">All relationship types</option><option>You</option><option>Mother</option><option>Father</option><option>Parent</option><option>Daughter</option><option>Son</option><option>Child</option><option>Grandmother</option><option>Grandfather</option><option>Grandparent</option><option>Granddaughter</option><option>Grandson</option><option>Grandchild</option><option>Brother</option><option>Sister</option><option>Sibling</option><option>Paternal Brother</option><option>Paternal Sister</option><option>Maternal Brother</option><option>Maternal Sister</option><option>Aunt</option><option>Uncle</option><option>Niece</option><option>Nephew</option><option>Spouse / partner</option><option>Step-parent</option><option>Stepsibling</option><option>Brother-in-law</option><option>Sister-in-law</option><option>Connected through marriage / step-family</option><option>No recorded connection</option><option>1st cousin</option><option>1st cousin once removed</option><option>1st cousin twice removed</option><option>2nd cousin</option><option>2nd cousin once removed</option><option>2nd cousin twice removed</option><option>3rd cousin</option><option>3rd cousin once removed</option><option>4th cousin</option></select></div>
    <div><label>Sort by</label><select id="connectionsSort"><option value="closest">Closest connection first</option><option value="name">Name</option><option value="relationship">Relationship</option></select></div>
   </div>
   <div id="connectionsSummary" class="grid"></div>
@@ -672,10 +672,6 @@ function renderMyConnections(){
   labelCache.set(p.id,value);return value;
  };
  const relationshipSelect=document.getElementById('connectionsRelationship');
- const previousRelationship=relationshipSelect.value;
- const relationshipOptions=[...new Set(allPeople().map(p=>labelFor(p)))].sort((a,b)=>a.localeCompare(b));
- relationshipSelect.innerHTML='<option value="">All relationship types</option>'+relationshipOptions.map(value=>'<option value="'+esc(value)+'">'+esc(value)+'</option>').join('');
- relationshipSelect.value=relationshipOptions.includes(previousRelationship)?previousRelationship:'';
  const marriageLabel=value=>/spouse|partner|in-law|step|marriage|connected through marriage/i.test(value);
  const branchFor=function(p){
   if(p.id===viewer.id)return 'You';
