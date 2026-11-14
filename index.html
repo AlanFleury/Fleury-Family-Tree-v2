@@ -1613,7 +1613,7 @@ document.getElementById('connectionsRelationship').onchange=()=>{connectionsPage
 document.getElementById('connectionsPager').addEventListener('click',e=>{const b=e.target.closest('[data-connections-page]');if(!b)return;connectionsPage=Math.max(0,connectionsPage+Number(b.dataset.connectionsPage));renderMyConnections()});
 document.getElementById('connectionsTable').addEventListener('click',e=>{const b=e.target.closest('[data-connection-open]');if(!b)return;const personId=b.dataset.connectionOpen;if(!person(personId))return;goTab('explore');showPerson(personId,true)});
 
-globalSearch.oninput=()=>{const q=globalSearch.value.trim();if(!q){exploreResults.innerHTML='';return}const ms=search(q,100);exploreResults.innerHTML=ms.map(p=>`<div class="card"><h3>${link(p.id)}</h3><div>${esc(p.birth||'')} ${p.death?'– '+esc(p.death):''}</div><div class="small muted">${esc(p.places||'')} • ${esc(p.id)}</div></div>`).join('')||'<div class="card">No matches.</div>'};
+globalSearch.oninput=()=>{const q=globalSearch.value.trim();if(!q){exploreResults.innerHTML='';return}const ms=search(q,100),viewpoint=resolveViewpointPerson();exploreResults.innerHTML=ms.map(p=>{const relation=viewpoint&&p.id!==viewpoint.id?relationshipLabel(p.id,viewpoint.id):'';return `<div class="card"><h3>${link(p.id)}${relation?` <span class="muted" style="font-size:.82em;font-weight:400">— ${esc(relation)}</span>`:''}</h3><div>${esc(p.birth||'')} ${p.death?'– '+esc(p.death):''}</div><div class="small muted">${esc(p.places||'')} • ${esc(p.id)}</div></div>`}).join('')||'<div class="card">No matches.</div>'};
 quickExplore.onchange=()=>{
   const action=quickExplore.value;
   if(action==='stats'){renderStats();exploreResults.innerHTML='';return}
@@ -1624,7 +1624,7 @@ quickExplore.onchange=()=>{
   const root=person(id),items=action==='ancestors'?ancestors(id,30):descendants(id,30);
   const title=action==='ancestors'?'Ancestors of ':'Descendants of ';
   const grouped=new Map();for(const item of items){if(!grouped.has(item.d))grouped.set(item.d,[]);grouped.get(item.d).push(item)}
-  const groups=[...grouped].sort((a,b)=>a[0]-b[0]).map(([d,rows])=>'<div class="card"><h3>'+esc(ord(d)+' generation '+(action==='ancestors'?'ancestors':'descendants'))+'</h3><div>'+rows.map(x=>link(x.id)).join(' • ')+'</div></div>').join('');
+  const groups=[...grouped].sort((a,b)=>a[0]-b[0]).map(([d,rows])=>'<div class="card"><h3>'+esc(ord(d)+' generation '+(action==='ancestors'?'ancestors':'descendants'))+'</h3><div>'+rows.map(x=>link(x.id,nm(person(x.id))+' — '+relationshipLabel(x.id,id))).join(' • ')+'</div></div>').join('');
   exploreResults.innerHTML='<div class="panel"><h2>'+esc(title)+link(id,nm(root))+'</h2><p class="muted">'+items.length.toLocaleString()+' recorded people across '+grouped.size+' generation levels.</p>'+(groups||'<p>No recorded connections found.</p>')+'</div>';
 };
 document.addEventListener('keydown',e=>{if(e.key==='/'&&!e.ctrlKey&&!e.metaKey&&!['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)){e.preventDefault();goTab('explore');globalSearch.focus()}if(e.key==='Escape'&&document.activeElement===globalSearch){globalSearch.value='';exploreResults.innerHTML=''}});
