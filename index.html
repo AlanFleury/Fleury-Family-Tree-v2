@@ -374,12 +374,11 @@ a,.link{overflow-wrap:anywhere}
 
 <section id="connections" class="view">
  <div class="panel">
-  <div class="section-title"><h2>My Family Connections</h2><span id="connectionsCount" class="badge"></span></div>
+  <div class="section-title"><h2>My Family Connections</h2><span id="connectionsCount" class="badge"></span><button type="button" class="primary" id="printConnectionsReport" style="margin-left:auto">Print report</button></div>
   <p class="muted">Everyone in the archive, shown from the point of view of the person linked to your signed-in account. Connection paths use the family relationships recorded in this archive.</p>
   <div class="form">
    <div><label>Relationship to you</label><select id="connectionsRelationship"><option value="">Everyone in the archive</option></select></div>
   </div>
-  <div class="form-actions no-print"><button type="button" id="printConnectionsReport">Print report</button></div>
   <div id="connectionsSummary" class="grid"></div>
   <div id="connectionsStatus" class="notice" role="status" aria-live="polite"></div>
   <div id="connectionsTable" class="table-wrap"></div>
