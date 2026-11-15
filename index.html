@@ -379,6 +379,7 @@ a,.link{overflow-wrap:anywhere}
   <div class="form">
    <div><label>Relationship to you</label><select id="connectionsRelationship"><option value="">Everyone in the archive</option></select></div>
   </div>
+  <div class="form-actions no-print"><button type="button" id="printConnectionsReport">Print report</button></div>
   <div id="connectionsSummary" class="grid"></div>
   <div id="connectionsStatus" class="notice" role="status" aria-live="polite"></div>
   <div id="connectionsTable" class="table-wrap"></div>
@@ -627,6 +628,9 @@ function bloodlinePathToAlan(personId,targetId=null){
 }
 function relFinder(){const a=selected.a,b=selected.b;if(!a||!b){relOutput.innerHTML='<div class="notice">Select both people.</div>';return}const path=shortestPath(a,b);const direct=(relByPerson.get(a)||[]).filter(r=>r.a===b||r.b===b);const label=relationshipLabel(a,b);const recorded=direct.length?direct.map(r=>esc(r.type)).join(', '):(label&&label!=='Unrelated'?`${esc(label)} — established from the recorded family connections; no separate relationship entry is needed.`:'No separate relationship entry is recorded, and no family connection was found.');relOutput.innerHTML=`<div class="grid"><div class="card"><b>Calculated relationship</b><h2>${esc(label)}</h2></div><div class="card"><b>Relationship record</b><p>${recorded}</p></div><div class="card"><b>Connection path</b><p>${path?path.map(x=>link(x)).join(' → '):'No path found'}</p></div></div>`}
 let connectionsPage=0;
+let connectionsPrintRows=[];
+let connectionsPrintTitle='Everyone in the archive';
+let connectionsPrintViewer='';
 const connectionsPageSize=100;
 let connectionsTreeCacheKey='',connectionsTreeCache=null;
 let connectionsLabelCacheKey='',connectionsLabelCache=new Map();
@@ -745,6 +749,9 @@ function renderMyConnections(){
  else rows.sort((a,b)=>(tree.distance.get(a.id)??Infinity)-(tree.distance.get(b.id)??Infinity)||nm(a).localeCompare(nm(b)));
  const total=rows.length,pages=Math.max(1,Math.ceil(total/connectionsPageSize));
  connectionsPage=Math.max(0,Math.min(connectionsPage,pages-1));
+ connectionsPrintTitle=relationshipFilter||'Everyone in the archive';
+ connectionsPrintViewer=nm(viewer);
+ connectionsPrintRows=rows.map(p=>({name:nm(p),id:p.id,relationship:displayRelationshipFor(p)}));
  const connectedCount=tree.distance.size,allCount=allPeople().length,unconnectedCount=Math.max(0,allCount-connectedCount);
  count.textContent=total.toLocaleString()+' people shown';
  summary.innerHTML='<div class="card"><div class="muted">Your family-tree identity</div><h3>'+esc(nm(viewer))+'</h3><div class="small">Person ID: '+esc(viewer.id)+'</div></div><div class="card"><div class="muted">People with a recorded path to you</div><div class="stat">'+Math.max(0,connectedCount-1).toLocaleString()+'</div></div><div class="card"><div class="muted">People with no recorded path</div><div class="stat">'+unconnectedCount.toLocaleString()+'</div></div>';
@@ -1615,6 +1622,16 @@ function mergePreviewData(){const keep=person(mergeKeepId),drop=person(mergeDrop
 mergePreviewBtn.onclick=()=>{try{if(currentRole!=='admin')throw new Error('Sign in with an administrator account to merge IDs.');const x=mergePreviewData();mergePreviewOutput.innerHTML='<div class="notice"><b>Preview only — no changes have been made.</b><ul><li>Keep <b>'+esc(x.keep.name)+'</b> (ID '+esc(x.keep.id)+')</li><li>Merge <b>'+esc(x.drop.name)+'</b> (ID '+esc(x.drop.id)+') into the kept person</li><li>'+x.changed+' relationship records reference the duplicate and will be redirected to the kept ID</li><li>'+x.filled.length+' empty fields can be filled from the duplicate: '+(x.filled.map(esc).join(', ')||'none')+'</li><li>'+x.removed+' duplicate relationship records will be removed</li></ul><p>Review this carefully before confirming. A backup is recommended first.</p></div>';mergeConfirmBtn.disabled=false}catch(e){mergePreviewOutput.innerHTML='<p class="bad">'+esc(e.message||e)+'</p>';mergeConfirmBtn.disabled=true}};
 mergeConfirmBtn.onclick=async()=>{let x;try{if(currentRole!=='admin'||!currentUser)throw new Error('Administrator sign-in is required.');x=mergePreviewData();if(!confirm('Merge '+x.drop.name+' ('+x.drop.id+') into '+x.keep.name+' ('+x.keep.id+')? All relationship types will be redirected, and duplicate links removed.'))return;mergeConfirmBtn.disabled=true;mergePreviewOutput.innerHTML='<p class="muted">Merging person and all relationship types in one database operation…</p>';const merged={...x.keep};for(const k of x.filled)merged[k]=x.drop[k];await window.archiveApi.mergePeople({'Person ID':merged.id,Name:merged.name,Gender:merged.gender,Birth:merged.birth,Death:merged.death,Places:merged.places,Notes:merged.notes,'Source IDs':merged.sources,'Relationship to Alan':merged.relationshipToAlan,'Evidence Status':merged.evidence},mergeDropId);db.people=db.people.filter(p=>p.id!==mergeDropId).map(p=>p.id===mergeKeepId?merged:p);db.relationships=x.rels;reindex();await persist();mergeKeepInput.value='';mergeDropInput.value='';mergeKeepId=null;mergeDropId=null;mergeKeepChosen.textContent='No person selected';mergeDropChosen.textContent='No person selected';mergePreviewOutput.innerHTML='<p class="ok"><b>Merge complete.</b> Duplicate ID removed and all relationships redirected to '+esc(merged.id)+'.</p>';renderStats();renderPeople();renderFamilyInputs()}catch(e){mergePreviewOutput.innerHTML='<p class="bad">Merge failed: '+esc(e.message||e)+'. The merge endpoint is atomic; review the archive before retrying.</p>';mergeConfirmBtn.disabled=false}};
 wirePicker(relA,relAMatches,i=>{selected.a=i;relA.value=nm(person(i))});wirePicker(relB,relBMatches,i=>{selected.b=i;relB.value=nm(person(i))});wirePicker(chartPerson,chartMatches,i=>{selected.chart=i;chartPerson.value=nm(person(i))});wirePicker(wallPerson,wallMatches,i=>{selected.wall=i;wallPerson.value=nm(person(i))});wirePicker(reportPerson,reportPersonMatches,i=>{selected.reportPerson=i;reportPerson.value=nm(person(i))});wirePicker(editPerson,editMatches,i=>{selected.edit=i;editPerson.value=nm(person(i));loadEdit(i)});wirePicker(compareA,compareAMatches,i=>{selected.compareA=i;compareA.value=nm(person(i))});wirePicker(compareB,compareBMatches,i=>{selected.compareB=i;compareB.value=nm(person(i))});wirePicker(toolTimelinePerson,toolTimelineMatches,i=>{selected.toolTimeline=i;toolTimelinePerson.value=nm(person(i))});wirePicker(matrixPerson,matrixMatches,i=>{selected.matrix=i;matrixPerson.value=nm(person(i))});
+
+
+document.getElementById('printConnectionsReport').onclick=()=>{
+ if(!connectionsPrintRows.length){alert('There are no people in this report to print.');return}
+ const win=window.open('','_blank');
+ if(!win){alert('Please allow pop-ups for this site to print the report.');return}
+ const rows=connectionsPrintRows.map(p=>'<tr><td>'+esc(p.name)+'</td><td>'+esc(p.relationship)+'</td><td>'+esc(p.id)+'</td></tr>').join('');
+ const html='<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>My Family Connections — '+esc(connectionsPrintTitle)+'</title><style>body{font:14px Arial,sans-serif;color:#222;margin:28px}h1{font-family:Georgia,serif;margin-bottom:6px}p{color:#555;margin:4px 0 18px}table{width:100%;border-collapse:collapse}th,td{padding:8px 10px;border:1px solid #bbb;text-align:left}th{background:#eee}tr{break-inside:avoid}.footer{margin-top:20px;font-size:11px;color:#666}@media print{body{margin:15mm}thead{display:table-header-group}}</style></head><body><h1>My Family Connections</h1><p><b>Relationship:</b> '+esc(connectionsPrintTitle)+'<br><b>Showing relationships from:</b> '+esc(connectionsPrintViewer)+'<br><b>People:</b> '+connectionsPrintRows.length.toLocaleString()+'</p><table><thead><tr><th>Person</th><th>Relationship to you</th><th>Person ID</th></tr></thead><tbody>'+rows+'</tbody></table><div class="footer">Printed from the Fleury Family Tree archive.</div><script>window.onload=()=>setTimeout(()=>window.print(),250)<\\/script></body></html>';
+ win.document.open();win.document.write(html);win.document.close();
+};
 
 document.getElementById('connectionsRelationship').onchange=()=>{connectionsPage=0;renderMyConnections()};
 document.getElementById('connectionsPager').addEventListener('click',e=>{const b=e.target.closest('[data-connections-page]');if(!b)return;connectionsPage=Math.max(0,connectionsPage+Number(b.dataset.connectionsPage));renderMyConnections()});
