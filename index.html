@@ -686,8 +686,8 @@ function renderMyConnections(){
   else{
    value=relationshipLabel(p.id,viewer.id);
    // Compact great-aunt/uncle labels; all direct ancestors are grouped above.
-   value=value.replace(/^(\\d+(?:st|nd|rd|th)) great-(aunt|uncle)$/i,'$1 $2').replace(/^great-(aunt|uncle)$/i,'1st $1');
-   if(/^\\d+(st|nd|rd|th) cousin(?: (?:once|twice|\\d+ times) removed)?$/i.test(value))value='Cousins';
+   value=value.replace(/^(\d+(?:st|nd|rd|th)) great-(aunt|uncle)$/i,'$1 $2').replace(/^great-(aunt|uncle)$/i,'1st $1');
+   if(/^\d+(st|nd|rd|th) cousin(?: (?:once|twice|\d+ times) removed)?$/i.test(value))value='Cousins';
    if(value==='No blood relationship found in recorded parent links')value='Connected through marriage / step-family';
   }
   connectionsLabelCache.set(p.id,value);return value;
@@ -754,7 +754,7 @@ function renderMyConnections(){
   const group=labelFor(p);
   if(group==='Cousins'){
    const exact=relationshipLabel(p.id,viewer.id);
-   if(/^\\d+(st|nd|rd|th) cousin(?: (?:once|twice|\\d+ times) removed)?$/i.test(exact))return exact;
+   if(/^\d+(st|nd|rd|th) cousin(?: (?:once|twice|\d+ times) removed)?$/i.test(exact))return exact;
   }
   return group;
  };
@@ -1366,7 +1366,7 @@ let pendingGedcomImport=null;
 function parseGedcom(text){
  const records=[];let current=null;
  for(const raw of String(text||'').replace(/^\\uFEFF/,'').split(/\\r?\\n/)){
-  const m=raw.match(/^\\s*(\\d+)\\s+(?:(@[^@]+@)\\s+)?([A-Z0-9_]+)(?:\\s+(.*))?$/i);if(!m)continue;
+  const m=raw.match(/^\\s*(\d+)\\s+(?:(@[^@]+@)\\s+)?([A-Z0-9_]+)(?:\\s+(.*))?$/i);if(!m)continue;
   const level=Number(m[1]),xref=m[2]||'',tag=m[3].toUpperCase(),value=m[4]||'';
   if(level===0){if(current)records.push(current);current={xref,tag,value,fields:[],raw:[]};}
   else if(current){current.fields.push({level,tag,value});current.raw.push(raw);}
