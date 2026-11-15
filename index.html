@@ -574,8 +574,8 @@ function relationshipLabel(a,b){
  if([...bSpouses].some(spouseId=>[...(parentMap.get(spouseId)||[])].some(parentId=>(childMap.get(parentId)||new Set()).has(a))))return gendered(b,'Niece-in-law','Nephew-in-law','Relative-in-law');
  const aAnc=ancestors(a,30),bAnc=ancestors(b,30),aDist=new Map(aAnc.map(x=>[x.id,x.d])),bDist=new Map(bAnc.map(x=>[x.id,x.d]));
  // Direct ancestors and descendants get their own clear labels (grandmother, great-grandfather, etc.).
- if(bDist.has(a)){const d=bDist.get(a),g=pGender(a),base=g==='F'?'grandmother':g==='M'?'grandfather':'grandparent';return d===1?(g==='F'?'Mother':g==='M'?'Father':'Parent'):d===2?base:(ord(d-1)+' '+base)}
- if(aDist.has(b)){const d=aDist.get(b),g=pGender(a),base=g==='F'?'granddaughter':g==='M'?'grandson':'grandchild';return d===1?(g==='F'?'Daughter':g==='M'?'Son':'Child'):d===2?base:(ord(d-1)+' '+base)}
+ if(bDist.has(a)){const d=bDist.get(a),g=pGender(a),base=g==='F'?'grandmother':g==='M'?'grandfather':'grandparent';return d===1?(g==='F'?'Mother':g==='M'?'Father':'Parent'):d===2?base:(ord(d-2)+' great-'+base)}
+ if(aDist.has(b)){const d=aDist.get(b),g=pGender(a),base=g==='F'?'granddaughter':g==='M'?'grandson':'grandchild';return d===1?(g==='F'?'Daughter':g==='M'?'Son':'Child'):d===2?base:(ord(d-2)+' great-'+base)}
  // Use the nearest common ancestor so cousin degree/removal stays consistent across descendants.
  const common=bAnc.filter(y=>aDist.has(y.id)).map(y=>({id:y.id,da:aDist.get(y.id),db:y.d})).sort((x,y)=>(x.da+x.db)-(y.da+y.db)||Math.max(x.da,x.db)-Math.max(y.da,y.db));
  if(common.length){
