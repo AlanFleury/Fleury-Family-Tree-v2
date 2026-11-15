@@ -689,9 +689,9 @@ function renderMyConnections(){
    value=relationshipLabel(p.id,viewer.id);
    // Keep exact great-aunt/uncle wording for each person, but group these
    // relationships together in the filter just like cousins.
-   if(/^(?:\d+(?:st|nd|rd|th) )?great-(?:aunt|uncle)$/i.test(value))value='Great-aunts & Great-uncles';
-   if(/^(?:aunt|uncle)$/i.test(value))value='Aunts & Uncles';
-   if(/^(?:niece|nephew)$/i.test(value))value='Nieces & Nephews';
+   if(/^(?:\d+(?:st|nd|rd|th) )?great-(?:aunt|uncle|aunt\/uncle)$/i.test(value))value='Great-aunts & Great-uncles';
+   if(/^(?:aunt|uncle|aunt\/uncle)$/i.test(value))value='Aunts & Uncles';
+   if(/^(?:niece|nephew|niece\/nephew)$/i.test(value))value='Nieces & Nephews';
    if(/^\d+(st|nd|rd|th) cousin(?: (?:once|twice|\d+ times) removed)?$/i.test(value))value='Cousins';
    if(value==='No blood relationship found in recorded parent links')value='Connected through marriage / step-family';
   }
@@ -773,8 +773,8 @@ function renderMyConnections(){
    const n=depth-2,suffix=n%100>=11&&n%100<=13?'th':n%10===1?'st':n%10===2?'nd':n%10===3?'rd':'th';
    return n+suffix+' great-'+noun;
   }
-  if(group==='Aunts & Uncles')return /^aunt$/i.test(exact)?'Aunt':'Uncle';
-  if(group==='Nieces & Nephews')return /^niece$/i.test(exact)?'Niece':'Nephew';
+  if(group==='Aunts & Uncles')return /^aunt$/i.test(exact)?'Aunt':/^uncle$/i.test(exact)?'Uncle':'Aunt/Uncle';
+  if(group==='Nieces & Nephews')return /^niece$/i.test(exact)?'Niece':/^nephew$/i.test(exact)?'Nephew':'Niece/Nephew';
   return group;
  };
  connectionsPrintRows=rows.map(p=>({name:nm(p),id:p.id,relationship:displayRelationshipFor(p)}));
