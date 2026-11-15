@@ -691,6 +691,7 @@ function renderMyConnections(){
    if(/^\d+(st|nd|rd|th) cousin(?: (?:once|twice|\d+ times) removed)?$/i.test(value))value='Cousins';
    if(value==='No blood relationship found in recorded parent links')value='Connected through marriage / step-family';
   }
+  if(value==='Grandmother'||value==='Grandfather')value='Grandparents';
   connectionsLabelCache.set(p.id,value);return value;
  };
  const relationshipSelect=document.getElementById('connectionsRelationship');
@@ -759,6 +760,7 @@ function renderMyConnections(){
    if(/^great-(?:aunt|uncle)$/i.test(exact))return '1st '+exact;
    if(/^\d+(?:st|nd|rd|th) great-(?:aunt|uncle)$/i.test(exact))return exact;
   }
+  if(group==='Grandparents')return pGender(p.id)==='F'?'Grandmother':'Grandfather';
   return group;
  };
  table.innerHTML='<table><thead><tr><th>Person</th><th>Relationship to you</th></tr></thead><tbody>'+slice.map(p=>{
