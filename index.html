@@ -685,6 +685,8 @@ function renderMyConnections(){
   else if(!tree.distance.has(p.id))value='No recorded connection';
   else{
    value=relationshipLabel(p.id,viewer.id);
+   // Compact great-aunt/uncle labels; all direct ancestors are grouped above.
+   value=value.replace(/^(\\d+(?:st|nd|rd|th)) great-(aunt|uncle)$/i,'$1 $2').replace(/^great-(aunt|uncle)$/i,'1st $1');
    if(/^\\d+(st|nd|rd|th) cousin(?: (?:once|twice|\\d+ times) removed)?$/i.test(value))value='Cousins';
    if(value==='No blood relationship found in recorded parent links')value='Connected through marriage / step-family';
   }
