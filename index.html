@@ -685,8 +685,9 @@ function renderMyConnections(){
   else if(!tree.distance.has(p.id))value='No recorded connection';
   else{
    value=relationshipLabel(p.id,viewer.id);
-   // Compact great-aunt/uncle labels; all direct ancestors are grouped above.
-   value=value.replace(/^(\d+(?:st|nd|rd|th)) great-(aunt|uncle)$/i,'$1 $2').replace(/^great-(aunt|uncle)$/i,'1st $1');
+   // Keep exact great-aunt/uncle wording for each person, but group these
+   // relationships together in the filter just like cousins.
+   if(/^great-(?:aunt|uncle)$/i.test(value)||/^\d+(?:st|nd|rd|th) great-(?:aunt|uncle)$/i.test(value))value='Great-aunts & Great-uncles';
    if(/^\d+(st|nd|rd|th) cousin(?: (?:once|twice|\d+ times) removed)?$/i.test(value))value='Cousins';
    if(value==='No blood relationship found in recorded parent links')value='Connected through marriage / step-family';
   }
@@ -748,13 +749,15 @@ function renderMyConnections(){
  summary.innerHTML='<div class="card"><div class="muted">Your family-tree identity</div><h3>'+esc(nm(viewer))+'</h3><div class="small">Person ID: '+esc(viewer.id)+'</div></div><div class="card"><div class="muted">People with a recorded path to you</div><div class="stat">'+Math.max(0,connectedCount-1).toLocaleString()+'</div></div><div class="card"><div class="muted">People with no recorded path</div><div class="stat">'+unconnectedCount.toLocaleString()+'</div></div>';
  status.textContent='Showing '+total.toLocaleString()+' of '+allCount.toLocaleString()+' people in the archive. A missing path means no connection is currently recorded; it does not prove that no biological relationship exists.';
  const slice=rows.slice(connectionsPage*connectionsPageSize,(connectionsPage+1)*connectionsPageSize);
- // Cousins stay together in the relationship selector, while each selected
- // person's row retains their exact cousin degree and removal.
+ // Cousins and great-aunts/uncles stay together in the relationship
+ // selector, while each person's row retains their exact relationship.
  const displayRelationshipFor=p=>{
   const group=labelFor(p);
-  if(group==='Cousins'){
-   const exact=relationshipLabel(p.id,viewer.id);
-   if(/^\d+(st|nd|rd|th) cousin(?: (?:once|twice|\d+ times) removed)?$/i.test(exact))return exact;
+  const exact=relationshipLabel(p.id,viewer.id);
+  if(group==='Cousins'&&/^\d+(st|nd|rd|th) cousin(?: (?:once|twice|\d+ times) removed)?$/i.test(exact))return exact;
+  if(group==='Great-aunts & Great-uncles'){
+   if(/^great-(?:aunt|uncle)$/i.test(exact))return '1st '+exact;
+   if(/^\d+(?:st|nd|rd|th) great-(?:aunt|uncle)$/i.test(exact))return exact;
   }
   return group;
  };
