@@ -751,7 +751,6 @@ function renderMyConnections(){
  connectionsPage=Math.max(0,Math.min(connectionsPage,pages-1));
  connectionsPrintTitle=relationshipFilter||'Everyone in the archive';
  connectionsPrintViewer=nm(viewer);
- connectionsPrintRows=rows.map(p=>({name:nm(p),id:p.id,relationship:displayRelationshipFor(p)}));
  const connectedCount=tree.distance.size,allCount=allPeople().length,unconnectedCount=Math.max(0,allCount-connectedCount);
  count.textContent=total.toLocaleString()+' people shown';
  summary.innerHTML='<div class="card"><div class="muted">Your family-tree identity</div><h3>'+esc(nm(viewer))+'</h3><div class="small">Person ID: '+esc(viewer.id)+'</div></div><div class="card"><div class="muted">People with a recorded path to you</div><div class="stat">'+Math.max(0,connectedCount-1).toLocaleString()+'</div></div><div class="card"><div class="muted">People with no recorded path</div><div class="stat">'+unconnectedCount.toLocaleString()+'</div></div>';
@@ -770,6 +769,7 @@ function renderMyConnections(){
   if(group==='Grandparents')return pGender(p.id)==='F'?'Grandmother':'Grandfather';
   return group;
  };
+ connectionsPrintRows=rows.map(p=>({name:nm(p),id:p.id,relationship:displayRelationshipFor(p)}));
  table.innerHTML='<table><thead><tr><th>Person</th><th>Relationship to you</th></tr></thead><tbody>'+slice.map(p=>{
   return '<tr><td><button type="button" class="link connection-person" data-connection-open="'+esc(p.id)+'">'+esc(nm(p))+'</button></td><td>'+esc(displayRelationshipFor(p))+'</td></tr>';
  }).join('')+'</tbody></table>';
