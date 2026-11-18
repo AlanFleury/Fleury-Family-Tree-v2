@@ -434,7 +434,7 @@ function setRelationshipFinderSignedInPerson(){
   relOutput.innerHTML='';
   return true;
 }
-function reindex(){ancestorMemo.clear();connectionsTreeCacheKey='';connectionsTreeCache=null;connectionsLabelCacheKey='';connectionsLabelCache=new Map();cachedChartViewerKey=null;cachedChartViewer=null;pmap=new Map(db.people.filter(valid).map(p=>[p.id,p]));parentMap=new Map();childMap=new Map();spouseMap=new Map();relByPerson=new Map();for(const r of db.relationships){const a=r.a,b=r.b;if(!a||!b)continue;(relByPerson.get(a)||relByPerson.set(a,[]).get(a)).push(r);(relByPerson.get(b)||relByPerson.set(b,[]).get(b)).push(r);if(r.type==='parent'){(parentMap.get(b)||parentMap.set(b,new Set()).get(b)).add(a);(childMap.get(a)||childMap.set(a,new Set()).get(a)).add(b)}if(['spouse','partner','husband','wife'].includes(r.type)){(spouseMap.get(a)||spouseMap.set(a,new Set()).get(a)).add(b);(spouseMap.get(b)||spouseMap.set(b,new Set()).get(b)).add(a)}}}
+function reindex(){ancestorMemo.clear();connectionsTreeCacheKey='';connectionsTreeCache=null;connectionsLabelCacheKey='';connectionsLabelCache=new Map();connectionsCategoriesReadyKey='';connectionsCategoryBuildKey='';connectionsCategoryBuildToken++;cachedChartViewerKey=null;cachedChartViewer=null;pmap=new Map(db.people.filter(valid).map(p=>[p.id,p]));parentMap=new Map();childMap=new Map();spouseMap=new Map();relByPerson=new Map();for(const r of db.relationships){const a=r.a,b=r.b;if(!a||!b)continue;(relByPerson.get(a)||relByPerson.set(a,[]).get(a)).push(r);(relByPerson.get(b)||relByPerson.set(b,[]).get(b)).push(r);if(r.type==='parent'){(parentMap.get(b)||parentMap.set(b,new Set()).get(b)).add(a);(childMap.get(a)||childMap.set(a,new Set()).get(a)).add(b)}if(['spouse','partner','husband','wife'].includes(r.type)){(spouseMap.get(a)||spouseMap.set(a,new Set()).get(a)).add(b);(spouseMap.get(b)||spouseMap.set(b,new Set()).get(b)).add(a)}}}
 function allPeople(){return [...pmap.values()]}
 function searchablePersonText(p){try{return lower([p.name,p.id,p.birth,p.death,p.places,p.sources,p.notes,p.relationshipToAlan,p.evidence,...Object.entries(p||{}).filter(([k])=>/alias|alternate|maiden|surname|former.?name|aka/i.test(k)).map(([,v])=>typeof v==='string'||typeof v==='number'?String(v):Array.isArray(v)?v.join(' '):'')].join(' '))}catch(e){return lower([p?.name,p?.id,p?.birth,p?.death,p?.places,p?.sources,p?.notes].join(' '))}}
 function search(q,limit=80){q=lower(q).trim();if(!q)return[];return allPeople().filter(p=>searchablePersonText(p).includes(q)).sort((a,b)=>nm(a).localeCompare(nm(b))).slice(0,limit)}
@@ -634,6 +634,8 @@ let connectionsPrintViewer='';
 const connectionsPageSize=100;
 let connectionsTreeCacheKey='',connectionsTreeCache=null;
 let connectionsLabelCacheKey='',connectionsLabelCache=new Map();
+let connectionsCategoriesReadyKey='',connectionsCategoryBuildKey='',connectionsCategoryBuildToken=0;
+let connectionsPrintViewerId='';
 function buildConnectionsTree(startId,blockedId=null){
  const previous=new Map([[startId,null]]),distance=new Map([[startId,0]]),queue=[startId];
  for(let head=0;head<queue.length;head++){
@@ -700,14 +702,11 @@ function renderMyConnections(){
   connectionsLabelCache.set(p.id,value);return value;
  };
  const relationshipSelect=document.getElementById('connectionsRelationship');
- // Derive every available category from the actual relationships in this archive.
  const previousRelationship=relationshipSelect.value;
- const relationshipCategories=new Set();
- for(const candidate of allPeople())relationshipCategories.add(labelFor(candidate));
- const orderedCategories=[...relationshipCategories].filter(Boolean).sort((a,b)=>a.localeCompare(b,undefined,{numeric:true,sensitivity:'base'}));
- relationshipSelect.innerHTML='<option value="">Everyone in the archive</option>'+orderedCategories.map(value=>'<option value="'+esc(value)+'">'+esc(value)+'</option>').join('');
- if(relationshipCategories.has(previousRelationship))relationshipSelect.value=previousRelationship;
- const relationshipFilter=relationshipSelect.value;
+ const categoriesReady=connectionsCategoriesReadyKey===treeKey;
+ relationshipSelect.disabled=!categoriesReady;
+ if(!categoriesReady)relationshipSelect.innerHTML='<option value="">Preparing relationship filters…</option>';
+ const relationshipFilter=categoriesReady?relationshipSelect.value:'';
  const marriageLabel=value=>/spouse|partner|in-law|step|marriage|connected through marriage/i.test(value);
  const branchFor=function(p){
   if(p.id===viewer.id)return 'You';
@@ -752,6 +751,7 @@ function renderMyConnections(){
  connectionsPage=Math.max(0,Math.min(connectionsPage,pages-1));
  connectionsPrintTitle=relationshipFilter||'Everyone in the archive';
  connectionsPrintViewer=nm(viewer);
+ connectionsPrintViewerId=viewer.id;
  const connectedCount=tree.distance.size,allCount=allPeople().length,unconnectedCount=Math.max(0,allCount-connectedCount);
  count.textContent=total.toLocaleString()+' people shown';
  summary.innerHTML='<div class="card"><div class="muted">Your family-tree identity</div><h3>'+esc(nm(viewer))+'</h3><div class="small">Person ID: '+esc(viewer.id)+'</div></div><div class="card"><div class="muted">People with a recorded path to you</div><div class="stat">'+Math.max(0,connectedCount-1).toLocaleString()+'</div></div><div class="card"><div class="muted">People with no recorded path</div><div class="stat">'+unconnectedCount.toLocaleString()+'</div></div>';
@@ -778,11 +778,26 @@ function renderMyConnections(){
   if(group==='Nieces & Nephews')return /^niece$/i.test(exact)?'Niece':/^nephew$/i.test(exact)?'Nephew':'Niece/Nephew';
   return group;
  };
- connectionsPrintRows=rows.map(p=>({name:nm(p),id:p.id,relationship:displayRelationshipFor(p)}));
+ connectionsPrintRows=rows;
  table.innerHTML='<table><thead><tr><th>Person</th><th>Relationship to you</th></tr></thead><tbody>'+slice.map(p=>{
   return '<tr><td><button type="button" class="link connection-person" data-connection-open="'+esc(p.id)+'">'+esc(nm(p))+'</button></td><td>'+esc(displayRelationshipFor(p))+'</td></tr>';
  }).join('')+'</tbody></table>';
  pager.innerHTML='<button type="button" data-connections-page="-1" '+(connectionsPage?'':'disabled')+'>Previous</button><span>Page '+(connectionsPage+1)+' of '+pages+' • '+total.toLocaleString()+' people</span><button type="button" data-connections-page="1" '+(connectionsPage<pages-1?'':'disabled')+'>Next page</button>';
+ if(!categoriesReady&&connectionsCategoryBuildKey!==treeKey){
+  const candidates=allPeople();let index=0;const token=++connectionsCategoryBuildToken;connectionsCategoryBuildKey=treeKey;
+  const buildChunk=()=>{
+   if(token!==connectionsCategoryBuildToken||connectionsTreeCacheKey!==treeKey)return;
+   const end=Math.min(index+250,candidates.length);
+   for(;index<end;index++)labelFor(candidates[index]);
+   if(index<candidates.length){setTimeout(buildChunk,0);return;}
+   const relationshipCategories=new Set(connectionsLabelCache.values());
+   const orderedCategories=[...relationshipCategories].filter(Boolean).sort((a,b)=>a.localeCompare(b,undefined,{numeric:true,sensitivity:'base'}));
+   relationshipSelect.innerHTML='<option value="">Everyone in the archive</option>'+orderedCategories.map(value=>'<option value="'+esc(value)+'">'+esc(value)+'</option>').join('');
+   relationshipSelect.disabled=false;connectionsCategoriesReadyKey=treeKey;connectionsCategoryBuildKey='';
+   if(previousRelationship&&relationshipCategories.has(previousRelationship)){relationshipSelect.value=previousRelationship;connectionsPage=0;renderMyConnections();}
+  };
+  setTimeout(buildChunk,0);
+ }
 }
 function parentLabel(p,d){if(!p)return'';if(d===1)return p.gender==='F'?'Mother':'Father';return `${ord(d)}-generation ancestor`}
 function childLabel(p,d){if(!p)return'';return d===1?(p.gender==='F'?'Daughter':'Son'):`${ord(d)}-generation descendant`}
@@ -1637,8 +1652,9 @@ document.getElementById('printConnectionsReport').onclick=()=>{
  if(!connectionsPrintRows.length){alert('There are no people in this report to print.');return}
  const win=window.open('','_blank');
  if(!win){alert('Please allow pop-ups for this site to print the report.');return}
- const rows=connectionsPrintRows.map(p=>'<tr><td>'+esc(p.name)+'</td><td>'+esc(p.relationship)+'</td></tr>').join('');
- const html='<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>My Family Connections — '+esc(connectionsPrintTitle)+'</title><style>body{font:14px Arial,sans-serif;color:#222;margin:28px}h1{font-family:Georgia,serif;margin-bottom:6px}p{color:#555;margin:4px 0 18px}table{width:100%;border-collapse:collapse}th,td{padding:8px 10px;border:1px solid #bbb;text-align:left}th{background:#eee}tr{break-inside:avoid}.footer{margin-top:20px;font-size:11px;color:#666}@media print{body{margin:15mm}thead{display:table-header-group}}</style></head><body><h1>My Family Connections</h1><p><b>Relationship:</b> '+esc(connectionsPrintTitle)+'<br><b>Showing relationships from:</b> '+esc(connectionsPrintViewer)+'<br><b>People:</b> '+connectionsPrintRows.length.toLocaleString()+'</p><table><thead><tr><th>Person</th><th>Relationship to you</th></tr></thead><tbody>'+rows+'</tbody></table><div class="footer">Printed from the Fleury Family Tree archive.</div><script>window.onload=()=>setTimeout(()=>window.print(),250)<\\/script></body></html>';
+ const printRows=connectionsPrintRows.map(p=>{let relationship=relationshipLabel(p.id,connectionsPrintViewerId);if(relationship==='No blood relationship found in recorded parent links'&&connectionsTreeCache?.distance.has(p.id))relationship='Connected through marriage / step-family';return {name:nm(p),relationship}});
+ const rows=printRows.map(p=>'<tr><td>'+esc(p.name)+'</td><td>'+esc(p.relationship)+'</td></tr>').join('');
+ const html='<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>My Family Connections — '+esc(connectionsPrintTitle)+'</title><style>body{font:14px Arial,sans-serif;color:#222;margin:28px}h1{font-family:Georgia,serif;margin-bottom:6px}p{color:#555;margin:4px 0 18px}table{width:100%;border-collapse:collapse}th,td{padding:8px 10px;border:1px solid #bbb;text-align:left}th{background:#eee}tr{break-inside:avoid}.footer{margin-top:20px;font-size:11px;color:#666}@media print{body{margin:15mm}thead{display:table-header-group}}</style></head><body><h1>My Family Connections</h1><p><b>Relationship:</b> '+esc(connectionsPrintTitle)+'<br><b>Showing relationships from:</b> '+esc(connectionsPrintViewer)+'<br><b>People:</b> '+printRows.length.toLocaleString()+'</p><table><thead><tr><th>Person</th><th>Relationship to you</th></tr></thead><tbody>'+rows+'</tbody></table><div class="footer">Printed from the Fleury Family Tree archive.</div><script>window.onload=()=>setTimeout(()=>window.print(),250)<\\/script></body></html>';
  win.document.open();win.document.write(html);win.document.close();
 };
 
