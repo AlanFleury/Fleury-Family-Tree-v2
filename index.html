@@ -1256,8 +1256,9 @@ function wireChartPan(container){
     if(!svg)return;
     pointer=event.pointerId;startX=event.clientX;startY=event.clientY;
     startLeft=viewport.scrollLeft;startTop=viewport.scrollTop;moved=false;
-    try{viewport.setPointerCapture(event.pointerId)}catch(e){}
-    if(event.cancelable)event.preventDefault();
+    // Do not capture the pointer or cancel pointerdown here: doing so retargets
+    // the browser's click to the scroll viewport and prevents person cards opening.
+    // Document-level pointermove/up listeners below still allow reliable dragging.
   });
   /* iOS touch fallback: explicitly translate finger movement into both scroll axes. */
   let touchStartX=0,touchStartY=0,touchLeft=0,touchTop=0,touchMoved=false;
@@ -1297,8 +1298,7 @@ function wireChartPan(container){
       suppressClick=true;
       setTimeout(()=>{suppressClick=false},350);
     }
-    const id=pointer;pointer=null;viewport.classList.remove('is-panning');
-    try{if(viewport.hasPointerCapture(id))viewport.releasePointerCapture(id)}catch(e){}
+    pointer=null;viewport.classList.remove('is-panning');
   };
   /* Listen at document level as well as the viewport so mouse dragging continues
      reliably when the pointer crosses SVG nodes or leaves the chart edge. */
