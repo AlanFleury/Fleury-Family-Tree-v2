@@ -607,6 +607,18 @@ function resolveViewpointPerson(){
   const matches=allPeople().filter(p=>names.includes(norm(p.name)));
   if(matches.length===1)return matches[0];
   const email=String(currentUser.email||'').trim().toLowerCase();
+  // Confirmed account-to-person links used when the API user record has not
+  // yet returned its personId. This is a display/relationship fallback only;
+  // server-side roles and archive permissions remain controlled by /api/me.
+  const confirmedEmailPersonIds={
+   'hazelfleury@gmail.com':'I23'
+  };
+  const confirmedId=confirmedEmailPersonIds[email];
+  if(confirmedId){
+   const wanted=confirmedId.toLowerCase();
+   const linked=allPeople().find(p=>String(p.id||'').replace(/^@|@$/g,'').toLowerCase()===wanted);
+   if(linked)return linked;
+  }
   if(email==='alanfleury1@gmail.com')return resolveAlanPerson();
   return null;
  }
