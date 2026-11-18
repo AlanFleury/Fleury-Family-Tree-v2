@@ -1987,6 +1987,17 @@ async function loadOnlineArchive(){
       {currentRole=null;goTab('access');accessRequestStatus.innerHTML='<p class="notice">You are signed in but are not yet approved. No family data has been loaded. Submit an access request below.</p>';return false}
     return useOfflineArchive(roleError);
   }
+  // Hazel's Person ID was explicitly confirmed as I23. Keep the
+  // approved admin role unchanged and repair only this account's person link.
+  if(String(currentUser?.email||'').trim().toLowerCase()==='hazelfleury@gmail.com' &&
+     currentRole==='admin' && String(currentUser.personId||'').replace(/^@|@$/g,'')!=='I23'){
+    try{
+      await window.archiveApi.updateUser(currentUser.email,currentRole,'I23');
+      currentUser.personId='I23';
+    }catch(mappingError){
+      console.warn('Could not persist Hazel Fleury person mapping:',mappingError);
+    }
+  }
   try{
     const remote=await window.archiveApi.loadDatabase();
     if(!Array.isArray(remote.people)||!Array.isArray(remote.relationships))
